@@ -156,7 +156,7 @@
     },
     {
       "path": ".kinotch/scripts/update-base-index.ps1",
-      "sha256": "0af222c1e8c0365b6b76f97fdef6e21b1ad7270c3241e867c1b947e17e02bba8"
+      "sha256": "dcd9ac0c29094dd006cf7df52a216eb7464f58b0634c5fbe602bb6c1c9723ca2"
     },
     {
       "path": ".kinotch/templates/ADR.md",
@@ -296,7 +296,7 @@
     },
     {
       "path": ".kinotch/tests/run-tests.ps1",
-      "sha256": "b8f52cb32afcfb0b646ab4874be02eb5cebace697ffdad608d684d1513efbe35"
+      "sha256": "964531e6af58e9ba6dca5a6238f15777c0fc146f15cba2cad0469052eeec749d"
     },
     {
       "path": "AGENTS.md",

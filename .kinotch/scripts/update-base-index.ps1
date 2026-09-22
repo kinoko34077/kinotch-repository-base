@@ -1,3 +1,29 @@
+function ConvertTo-BaseRelativePath {
+    param(
+        [Parameter(Mandatory=$true)][string]$Root,
+        [Parameter(Mandatory=$true)][string]$AbsolutePath
+    )
+
+    $rootValue = ([string]$Root).Replace('\', '/')
+    $pathValue = ([string]$AbsolutePath).Replace('\', '/')
+    while ($rootValue.Length -gt 1 -and $rootValue.EndsWith('/')) {
+        $rootValue = $rootValue.Substring(0, $rootValue.Length - 1)
+    }
+
+    if ($rootValue -eq '/') {
+        return $pathValue.TrimStart('/')
+    }
+    if ($pathValue -eq $rootValue) {
+        return ''
+    }
+
+    $prefix = $rootValue + '/'
+    if (-not $pathValue.StartsWith($prefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw "Path is outside repository root: $AbsolutePath"
+    }
+    return $pathValue.Substring($prefix.Length).TrimStart('/')
+}
+
 function Get-BaseProtectedPaths {
     param([Parameter(Mandatory=$true)][string]$Root)
 
@@ -10,7 +36,7 @@ function Get-BaseProtectedPaths {
         "knt.cmd"
     )
     $common = @(Get-ChildItem -LiteralPath (Join-Path $Root ".kinotch") -Recurse -File | ForEach-Object {
-        $relative = $_.FullName.Substring($Root.Length).TrimStart([char]92) -replace "\\", "/"
+        $relative = ConvertTo-BaseRelativePath -Root $Root -AbsolutePath $_.FullName
         if ($relative -ne ".kinotch/base-files.json") { $relative }
     })
 

@@ -7,6 +7,7 @@ $PowerShellExecutable = (Get-Command pwsh -ErrorAction SilentlyContinue | Select
 if ([string]::IsNullOrWhiteSpace($PowerShellExecutable)) {
     $PowerShellExecutable = (Get-Command powershell -ErrorAction Stop | Select-Object -First 1).Source
 }
+. (Join-Path $RepoRoot ".kinotch/scripts/update-base-index.ps1")
 $Passed = 0
 $Failed = 0
 
@@ -30,7 +31,7 @@ function Get-FixtureProtectedPaths([string]$Root) {
         "knt.cmd"
     )
     $common = @(Get-ChildItem -LiteralPath (Join-Path $Root ".kinotch") -Recurse -File | ForEach-Object {
-        $relative = $_.FullName.Substring($Root.Length).TrimStart([char]92) -replace "\\", "/"
+        $relative = ConvertTo-BaseRelativePath -Root $Root -AbsolutePath $_.FullName
         if ($relative -ne ".kinotch/base-files.json") { $relative }
     })
     return @($fixed + $common | Sort-Object)
@@ -98,6 +99,30 @@ function Invoke-TestCase([string]$Name, [scriptblock]$Body) {
         $script:Failed++
         Write-Host "[FAIL] $Name :: $($_.Exception.Message)" -ForegroundColor Red
     }
+}
+
+Invoke-TestCase "Windows-style repository path is canonicalized" {
+    $actual = ConvertTo-BaseRelativePath -Root "C:\repo" -AbsolutePath "C:\repo\.kinotch\README_BASE.md"
+    Assert-Equal ".kinotch/README_BASE.md" $actual "Windows-style relative path"
+}
+
+Invoke-TestCase "Unix-style repository path is canonicalized" {
+    $actual = ConvertTo-BaseRelativePath -Root "/home/user/repo" -AbsolutePath "/home/user/repo/.kinotch/README_BASE.md"
+    Assert-Equal ".kinotch/README_BASE.md" $actual "Unix-style relative path"
+}
+
+Invoke-TestCase "Protected paths never begin with a separator" {
+    $paths = @(Get-BaseProtectedPaths -Root $RepoRoot)
+    Assert-True (@($paths | Where-Object { $_ -match "^[\\/]" }).Count -eq 0) "protected path has a leading separator"
+}
+
+Invoke-TestCase "Protected paths and Base index use canonical separators" {
+    $paths = @(Get-BaseProtectedPaths -Root $RepoRoot)
+    Assert-True (@($paths | Where-Object { $_ -match "\\" }).Count -eq 0) "protected path contains a Windows separator"
+    $index = Get-Content -Raw -Encoding UTF8 (Join-Path $RepoRoot ".kinotch/base-files.json") | ConvertFrom-Json
+    $indexedPaths = @($index.files | ForEach-Object { [string]$_.path })
+    Assert-True (@($indexedPaths | Where-Object { $_ -match "^[\\/]" }).Count -eq 0) "index path has a leading separator"
+    Assert-True (@($indexedPaths | Where-Object { $_ -match "\\" }).Count -eq 0) "index path contains a Windows separator"
 }
 
 Invoke-TestCase "valid minimal project passes doctor" {
