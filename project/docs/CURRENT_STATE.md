@@ -35,6 +35,10 @@ Last verified: 2026-09-23 — KiNoTch. Repository Base v0.2.1 complete
   integration remains HOLD.
 - Runtime Portable Contract semantics are owned by `kinotch-runtime`; Base
   does not duplicate the portable definitions.
+- The SynTrail-LM design-only third Pilot evaluation is complete in Runtime:
+  Progress is PARTIAL GO, direct CancellationToken mapping is REVISE/REJECTED,
+  and Resource / Artifact are HOLD. No SynTrail-LM production code or Rust
+  Runtime crate was added.
 
 ## Known issues
 
@@ -61,8 +65,9 @@ Last verified: 2026-09-23 — KiNoTch. Repository Base v0.2.1 complete
    application operation appears without Response or Context wrapping.
 2. Consider `SynTrail-LM` as the next heterogeneous candidate only for
    Progress, Cancellation, Resource, or Artifact where existing behavior gives
-   those meanings a real need. The design probe is being performed against its
-   exact `origin/main` without modifying its dirty user worktree.
+   those meanings a real need. The design probe was performed against its
+   exact `origin/main` without modifying its dirty user worktree; see the
+   Runtime Pilot report for the evidence and per-Contract decisions.
 3. Keep Runtime provisional until an additional heterogeneous repository
    validates the same meanings.
 
