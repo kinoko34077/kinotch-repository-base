@@ -39,6 +39,11 @@ Last verified: 2026-09-23 — KiNoTch. Repository Base v0.2.1 complete
   Progress is PARTIAL GO, direct CancellationToken mapping is REVISE/REJECTED,
   and Resource / Artifact are HOLD. No SynTrail-LM production code or Rust
   Runtime crate was added.
+- The fourth `standby-display` and fifth `dev_agent` design probes are also
+  complete in Runtime. Generated artifact/hash integrity remains Project
+  tooling; AgentBackend remains Agent-owned. Only a narrow artifact-reference
+  meaning is a provisional PARTIAL GO candidate. No Surface Pack or production
+  integration was added.
 
 ## Known issues
 
@@ -70,6 +75,8 @@ Last verified: 2026-09-23 — KiNoTch. Repository Base v0.2.1 complete
    Runtime Pilot report for the evidence and per-Contract decisions.
 3. Keep Runtime provisional until an additional heterogeneous repository
    validates the same meanings.
+4. Do not add Base schemas, Profiles, Surface Packs, or tooling for the
+   fourth/fifth design observations until the same change reason repeats.
 
 ## Verification
 
