@@ -1,0 +1,14 @@
+{
+  "profile": "api",
+  "description": "HTTP API/service。",
+  "runtime_modules": [
+    "kernel",
+    "errors",
+    "config",
+    "logging",
+    "api"
+  ],
+  "surfaces": {
+    "api": true
+  }
+}

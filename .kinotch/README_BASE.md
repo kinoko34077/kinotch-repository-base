@@ -1,0 +1,87 @@
+# KiNoTch. Repository Base — Common README
+
+この文書はKiNoTch.標準リポジトリの共通取扱説明書である。個別READMEへ同じ説明を複製しない。
+
+## 基本境界
+
+```text
+README.md      = GitHub上の個別プロジェクト紹介
+project/**     = 個別仕様・実装・設定・テスト
+.kinotch/**    = 共通基盤。通常の個別開発では編集しない
+KiNoTch.Runtime = 複数repoで再利用する共通実装。個別repoへコピーしない
+```
+
+## 共通コマンド
+
+Windows cmd:
+
+```bat
+knt.cmd doctor
+knt.cmd setup
+knt.cmd dev
+knt.cmd test
+knt.cmd build
+knt.cmd verify
+knt.cmd smoke
+```
+
+PowerShell:
+
+```powershell
+.\.kinotch\scripts\knt.ps1 doctor
+```
+
+各コマンドの実体は `project/project.json` の `commands` に定義する。Base側の入口は変更しない。
+
+## doctor
+
+`doctor` は以下を確認する。
+
+- Base共通ファイルが変更されていないか
+- `project/project.json` が読めるか
+- 基本ディレクトリが存在するか
+- 選択Profile / Surface / Runtime Module
+- 定義済み共通コマンド
+
+環境固有診断は、後からKiNoTch. Runtimeのdoctor moduleとして追加可能とする。
+
+## verify
+
+`project/project.json.commands.verify` があればそれを実行する。
+
+未定義の場合は、定義済みの `test` と `build` を順に実行する。これにより技術スタックが違ってもAgent・人間から見える操作語彙を固定する。
+
+## 個別コードの置場
+
+原則:
+
+```text
+project/src/
+├─ core/         # Domain / 純粋処理。Surfaceを知らない
+├─ application/  # Action / use case
+└─ adapters/     # GUI / CLI / MCP / API / OS / external service
+```
+
+小規模repoでは不要な階層を無理に増やさず、`project/src/`直下から開始してもよい。
+
+## 状態の分類
+
+状態・ファイルを必要に応じて以下へ分類する。
+
+- persistent: 正本として保存する状態
+- session: 実行セッション中だけ必要
+- cache: 再生成可能
+- temp: 一時処理用
+- generated: 正本から生成され手編集しない
+- artifact: 利用者へ渡す成果物
+
+保存形式そのものは各projectで定義する。
+
+## 共通化の判断
+
+個別repoで便利だった処理を即Runtimeへ入れない。以下を満たす場合に昇格候補とする。
+
+1. 複数repoで同じ知識として必要
+2. 同じ理由で変更される
+3. 個別実装を残すより依存・矛盾を減らせる
+4. Surface / Domain固有事情をRuntimeへ漏らさず切り出せる
