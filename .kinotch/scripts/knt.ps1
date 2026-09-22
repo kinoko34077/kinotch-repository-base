@@ -69,6 +69,43 @@ function Get-SelectedInitProfiles {
     return @($selected)
 }
 
+function Get-DefaultPackName([string]$ProfileName) {
+    if ($ProfileName -eq "windows-gui") { return "windows" }
+    return $ProfileName
+}
+
+function Get-MigrateOptions {
+    $selected = New-Object System.Collections.Generic.List[string]
+    $apply = $false
+    $values = @($RemainingArgs)
+    for ($index = 0; $index -lt $values.Count; $index++) {
+        $value = [string]$values[$index]
+        if ($value -eq "--apply") {
+            $apply = $true
+            continue
+        }
+        if ($value -eq "--profile") {
+            if ($index + 1 -ge $values.Count -or [string]::IsNullOrWhiteSpace([string]$values[$index + 1])) {
+                throw "migrate requires a value after --profile"
+            }
+            $value = [string]$values[++$index]
+        }
+        elseif ($value -like "--profile=*") {
+            $value = $value.Substring("--profile=".Length)
+        }
+        else {
+            throw "Unknown migrate option: $value"
+        }
+
+        if ($value -eq "windows") { $value = "windows-gui" }
+        if ($value -notin @("cli", "windows-gui", "mcp", "api")) {
+            throw "Unsupported Default Pack profile: $value"
+        }
+        if ($value -notin $selected) { [void]$selected.Add($value) }
+    }
+    return [pscustomobject]@{ profiles = @($selected); apply = $apply }
+}
+
 function Write-KntJsonFile([string]$Path, $Value) {
     $json = ConvertTo-Json $Value -Depth 20
     [IO.File]::WriteAllText($Path, $json + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
@@ -133,8 +170,8 @@ function Invoke-Init {
         }
         foreach ($surface in @($profile.surfaces.PSObject.Properties | Where-Object { $_.Value -eq $true })) {
             if ($surface.Name -notin $surfaceNames) { [void]$surfaceNames.Add([string]$surface.Name) }
-            $defaults.packs | Add-Member -NotePropertyName $surface.Name -NotePropertyValue ([pscustomobject]@{ state = "DEFAULT" }) -Force
         }
+        $defaults.packs | Add-Member -NotePropertyName (Get-DefaultPackName $profileName) -NotePropertyValue ([pscustomobject]@{ state = "DEFAULT" }) -Force
     }
     $manifest.runtime.modules = @($moduleNames)
     foreach ($surface in @($manifest.surfaces.PSObject.Properties)) {
@@ -143,6 +180,82 @@ function Invoke-Init {
     Write-KntJsonFile -Path $ManifestPath -Value $manifest
     Write-KntJsonFile -Path (Join-Path $projectRoot "defaults.json") -Value $defaults
     Write-Knt "Initialized Project with Default Packs: $($profiles -join ', ')"
+    return 0
+}
+
+function Invoke-Migrate($Manifest) {
+    $options = Get-MigrateOptions
+    $profileNames = @($options.profiles)
+    if ($profileNames.Count -eq 0) {
+        if ($Manifest.PSObject.Properties["profiles"] -and @($Manifest.profiles).Count -gt 0) {
+            $profileNames = @($Manifest.profiles | ForEach-Object { [string]$_ })
+        }
+        else {
+            $profileNames = @([string]$Manifest.profile)
+        }
+    }
+    $profileNames = @($profileNames | Where-Object { $_ -in @("cli", "windows-gui", "mcp", "api") } | Select-Object -Unique)
+    if ($profileNames.Count -eq 0) {
+        Write-Knt "No Default Pack profile selected; use --profile cli, --profile windows, --profile mcp, or --profile api."
+        return 0
+    }
+
+    $projectRoot = Join-Path $Root "project"
+    $defaultsRelative = Get-ManifestPathValue $Manifest "defaults" "defaults.json"
+    $defaultsPath = Join-Path $projectRoot $defaultsRelative
+    $defaultsSchema = Get-KntJson -Path (Join-Path $BaseDir "schemas/defaults.schema.json")
+    $defaults = $null
+    $createdDefaults = $false
+    if (Test-Path -LiteralPath $defaultsPath -PathType Leaf) {
+        $defaults = Get-KntJson -Path $defaultsPath
+        $defaultErrors = @(Test-KntSchema -Data $defaults -Schema $defaultsSchema -Path $defaultsRelative)
+        if ($defaultErrors.Count -gt 0) {
+            throw "Default state validation failed: " + ($defaultErrors -join "; ")
+        }
+    }
+    else {
+        $defaults = [pscustomobject]@{ schema_version = 1; packs = [pscustomobject]@{} }
+        $createdDefaults = $true
+    }
+
+    $changedDefaults = $false
+    foreach ($profileName in $profileNames) {
+        $packName = Get-DefaultPackName $profileName
+        $packProperty = $defaults.packs.PSObject.Properties[$packName]
+        if ($packProperty) {
+            $state = [string](Get-KntJsonProperty $packProperty.Value "state")
+            Write-Knt "Candidate Default Pack '$packName': preserved state $state"
+        }
+        else {
+            Write-Knt "Candidate Default Pack '$packName': state DEFAULT"
+            if ($options.apply) {
+                $defaults.packs | Add-Member -NotePropertyName $packName -NotePropertyValue ([pscustomobject]@{ state = "DEFAULT" }) -Force
+                $changedDefaults = $true
+            }
+        }
+    }
+
+    if (-not $options.apply) {
+        Write-Knt "Dry run: no files changed. Re-run with --apply to record selected Default Pack states."
+        return 0
+    }
+
+    $changedManifest = $false
+    if (-not $Manifest.paths.PSObject.Properties["defaults"]) {
+        $Manifest.paths | Add-Member -NotePropertyName defaults -NotePropertyValue $defaultsRelative -Force
+        $changedManifest = $true
+    }
+    if ($createdDefaults -or $changedDefaults) {
+        Write-KntJsonFile -Path $defaultsPath -Value $defaults
+        Write-Knt "Updated Default state file: project/$defaultsRelative"
+    }
+    if ($changedManifest) {
+        Write-KntJsonFile -Path $ManifestPath -Value $Manifest
+        Write-Knt "Updated Manifest path declaration: paths.defaults"
+    }
+    if (-not $createdDefaults -and -not $changedDefaults -and -not $changedManifest) {
+        Write-Knt "No changes required; existing Default states were preserved."
+    }
     return 0
 }
 
@@ -385,6 +498,7 @@ Usage:
 Common commands:
   doctor      Base/project structure and schema diagnostics
   init        Create a Project from selected Default Pack profiles
+  migrate     Show or explicitly record Default Pack candidates
   base-check  Detect modifications in common Base files
   base-refresh Regenerate Base file hashes (repository-base only)
   setup       Project setup command
@@ -420,6 +534,7 @@ try {
 
     $manifest = Get-Manifest
     if ($Command -eq "doctor") { exit (Invoke-Doctor $manifest) }
+    if ($Command -eq "migrate") { exit (Invoke-Migrate $manifest) }
 
     if ($Command -eq "verify") {
         $direct = Resolve-Command $manifest "verify"

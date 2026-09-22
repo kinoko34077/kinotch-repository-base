@@ -98,7 +98,8 @@ function Invoke-KntFixture {
         [string]$Command,
         [int]$ExpectedExit = 0,
         [scriptblock]$AssertOutput,
-        [scriptblock]$Prepare
+        [scriptblock]$Prepare,
+        [string[]]$Arguments
     )
     $tempRoot = Join-Path ([IO.Path]::GetTempPath()) ("kinotch-base-test-" + [guid]::NewGuid().ToString("N"))
     New-Item -ItemType Directory -Path $tempRoot -Force | Out-Null
@@ -110,7 +111,8 @@ function Invoke-KntFixture {
         Copy-Item -LiteralPath (Join-Path $FixtureRoot $Name) -Destination (Join-Path $tempRoot "project") -Recurse -Force
         if ($Prepare) { & $Prepare $tempRoot }
         $router = Join-Path $tempRoot ".kinotch/scripts/knt.ps1"
-        $outputLines = @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $router -RootOverride $tempRoot $Command 2>&1)
+        $invokeArgs = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $router, "-RootOverride", $tempRoot, $Command) + @($Arguments)
+        $outputLines = @(& $PowerShellExecutable @invokeArgs 2>&1)
         $exitCode = $LASTEXITCODE
         $output = $outputLines -join [Environment]::NewLine
         Assert-Equal $ExpectedExit $exitCode "$Name $Command exit code"
@@ -286,6 +288,34 @@ Invoke-TestCase "init refuses to overwrite an existing Project" {
     $exitCode = $LASTEXITCODE
     Assert-Equal 1 $exitCode "init refusal exit code"
     Assert-True (($output -join [Environment]::NewLine) -match "already initialized|project/project.json") "init refusal was not reported"
+}
+Invoke-TestCase "migrate dry-run reports candidates without writing" {
+    Invoke-KntFixture -Name "valid-minimal" -Command "migrate" -Arguments @("--profile", "cli") -ExpectedExit 0 -AssertOutput {
+        param($root, $output)
+        Assert-True ($output -match "Candidate Default Pack.*cli") "migrate candidate was not reported"
+        Assert-True ($output -match "no files changed|--apply") "migrate dry-run warning was not reported"
+        Assert-True (-not (Test-Path (Join-Path $root "project/defaults.json"))) "migrate dry-run wrote a file"
+    }
+}
+Invoke-TestCase "migrate apply preserves Project override and adds missing pack" {
+    Invoke-KntFixture -Name "valid-minimal" -Command "migrate" -Arguments @("--apply", "--profile", "cli", "--profile", "mcp") -ExpectedExit 0 -Prepare {
+        param($root)
+        $manifestPath = Join-Path $root "project/project.json"
+        $manifest = Get-Content -Raw -Encoding UTF8 $manifestPath | ConvertFrom-Json
+        $manifest.paths | Add-Member -NotePropertyName defaults -NotePropertyValue "defaults.json" -Force
+        [IO.File]::WriteAllText($manifestPath, (ConvertTo-Json $manifest -Depth 20) + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
+        $defaults = [pscustomobject]@{
+            schema_version = 1
+            packs = [pscustomobject]@{ cli = [pscustomobject]@{ state = "OVERRIDE"; notes = "Project-owned CLI" } }
+        }
+        [IO.File]::WriteAllText((Join-Path $root "project/defaults.json"), (ConvertTo-Json $defaults -Depth 10) + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
+    } -AssertOutput {
+        param($root, $output)
+        $defaults = Get-Content -Raw -Encoding UTF8 (Join-Path $root "project/defaults.json") | ConvertFrom-Json
+        Assert-Equal "OVERRIDE" $defaults.packs.cli.state "existing override state"
+        Assert-Equal "DEFAULT" $defaults.packs.mcp.state "new Default state"
+        Assert-True ($output -match "preserved.*OVERRIDE") "override preservation was not reported"
+    }
 }
 Invoke-TestCase "oneOf requires exactly one matching schema" {
     $schema = [pscustomobject]@{

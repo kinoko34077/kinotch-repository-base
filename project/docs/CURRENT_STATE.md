@@ -48,6 +48,9 @@ Last verified: 2026-09-23 — KiNoTch. Repository Base v0.2.1 complete
   removable CLI / Windows / MCP / API conveniences may be offered as
   Project-overridable Defaults without waiting for Portable Contract maturity.
 - The canonical four-layer policy is `.kinotch/meta/06_DEFAULT_FIRST_STANDARD.md`.
+- `knt init` now generates a safe multi-profile Project Overlay, and `knt migrate`
+  reports Default Pack candidates by default and applies them only with explicit
+  `--apply`, preserving existing `OVERRIDE` / `DISABLED` states.
 
 ## Known issues
 
@@ -70,8 +73,8 @@ Last verified: 2026-09-23 — KiNoTch. Repository Base v0.2.1 complete
 
 ## Next work
 
-1. Add the safe Default-state manifest and profile-aware `knt init` foundation;
-   do not add Domain behavior or a universal Surface library.
+1. Keep Default Pack behavior removable and Project-owned; do not add Domain
+   behavior or a universal Surface library.
 2. Keep the `kinotch-api` production boundary unchanged unless a pure
    application operation appears without Response or Context wrapping.
 3. Consider `SynTrail-LM` as the next heterogeneous candidate only for

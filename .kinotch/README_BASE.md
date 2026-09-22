@@ -30,6 +30,8 @@ knt.cmd dev
 knt.cmd test
 knt.cmd build
 knt.cmd verify
+knt.cmd init --profile cli --profile mcp
+knt.cmd migrate --profile cli
 knt.cmd smoke
 ```
 
@@ -56,6 +58,12 @@ PowerShell:
 環境固有診断は、後からKiNoTch. Runtimeのdoctor moduleとして追加可能とする。
 
 `base-refresh` は `repository-base` 自身でのみ使用するBase index再生成入口である。通常の個別Repositoryから共通ファイルを勝手に更新するためのコマンドではない。
+
+## init / migrate
+
+`knt init --profile <profile>` は `cli`、`windows`、`mcp`、`api` のDefault Packを複数選択し、TemplateからProject Overlayを生成する。既存の `project/project.json` または既存Projectファイルは上書きしない。
+
+`knt migrate` は既存Projectの候補を表示するだけで、既定ではファイルを変更しない。`--apply` を明示した場合だけ `project/defaults.json` と必要なManifest pathを更新し、既存の `OVERRIDE` / `DISABLED` 状態は保持する。Domain fileは変更しない。
 
 ## Validatorの対応範囲
 

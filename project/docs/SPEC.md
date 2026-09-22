@@ -20,6 +20,8 @@ The Base reduces the effort to create, read, repair, and verify a repository wit
 8. The repository works as a Base without Runtime implementation.
 9. Unneeded Surface and Runtime dependencies are not forced.
 10. Common knowledge other than the human-facing README is not duplicated in each repository.
+11. Low-risk shared conveniences can be recorded as Project-level `DEFAULT`, `OVERRIDE`, or `DISABLED` states without changing Domain code.
+12. `knt init` can generate a selected multi-profile Project and `knt migrate` is dry-run by default with explicit, non-destructive apply.
 
 ## Fixed read order
 
@@ -37,7 +39,7 @@ The Runtime owns execution implementations and the cross-repository Execution Co
 
 ## Inputs and outputs
 
-Inputs are the repository files, project/project.json, contract registries, Base schemas, profile declarations, and command arguments. doctor emits diagnostics and an exit code. verify delegates to the configured project verification command or test then build fallback. base-check reports common-file drift. Base self-tests report individual behavior failures and an aggregate exit code.
+Inputs are the repository files, project/project.json, contract registries, Base schemas, profile declarations, Default state, and command arguments. doctor emits diagnostics and an exit code. verify delegates to the configured project verification command or test then build fallback. base-check reports common-file drift. init generates only a missing Project Overlay. migrate reports candidates and writes only after explicit `--apply`, preserving existing Default states. Base self-tests report individual behavior failures and an aggregate exit code.
 
 ## Constraints
 
@@ -57,4 +59,4 @@ KiNoTch. Base owns repository structure, Agent entry points, and implementation 
 
 ## Tests
 
-Base self-tests under .kinotch/tests/ cover manifest and registry schema validation, required paths, profile checks, command routing, verify fallback, Base hash protection, and fixture isolation. The CI gate runs doctor followed by verify.
+Base self-tests under .kinotch/tests/ cover manifest and registry schema validation, Default state validation, required paths, profile checks, init/migrate safety, command routing, verify fallback, Base hash protection, and fixture isolation. The CI gate runs doctor followed by verify.
