@@ -29,7 +29,7 @@ README.md
 
 ## 4. 個別領域
 
-`project/**` は個別repoの正規編集領域である。
+`project/**` は個別repoの正規編集領域である。Base-wide Metaは `.kinotch/meta/`、新規repo生成用Templateは `.kinotch/templates/project/` に置く。
 
 推奨:
 
@@ -47,7 +47,7 @@ project/
 
 ## 5. 共通領域
 
-`.kinotch/**` と `AGENTS.md`、`knt.cmd`等はBase管理物である。個別repo固有事情をここへ書き込まない。
+`.kinotch/**` と `AGENTS.md`、`knt.cmd`等はBase管理物である。個別repo固有事情をここへ書き込まない。Runtime implementationはBaseへコピーしない。
 
 ## 6. 技術スタック
 
@@ -59,7 +59,7 @@ GitHub Actions等、ホスト側がルート固定パスを要求するものは
 
 ## 8. Runtime
 
-RuntimeはBaseへコピーしない。`project/project.json.runtime.modules` で必要Moduleを宣言し、実体は外部Runtime package / libraryとして参照する。
+RuntimeはBaseへコピーしない。`project/project.json.runtime.modules` で必要Moduleを宣言し、実体は外部Runtime package / libraryとして参照する。Base v0.xのModule名は論理宣言であり、実在packageを意味しない。
 
 ## 9. Base更新
 

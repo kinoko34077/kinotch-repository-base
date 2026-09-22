@@ -11,8 +11,12 @@
 - 現在状態: `project/docs/CURRENT_STATE.md`
 - Action: `project/contracts/actions.json`
 - Surface差分: `project/contracts/surfaces.json`
+- Base Meta: `.kinotch/meta/`
+- 新規Repository用Template: `.kinotch/templates/project/`
 
 実装コードが仕様と衝突した場合、勝手にコードを正本化しない。
+
+Base-wide MetaとTemplateは共通層に置く。個別Projectの情報を `.kinotch/` へ書かない。
 
 ## Modification Boundary
 

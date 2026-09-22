@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed for implementation
+Accepted and implemented in Base v0.2
 
 ## Context
 

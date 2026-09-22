@@ -184,6 +184,20 @@ Invoke-TestCase "base-refresh indexes new common file" {
     }
 }
 
+Invoke-TestCase "Base documentation and profile status are finalized" {
+    $spec = Get-Content -Raw (Join-Path $RepoRoot "project/docs/SPEC.md")
+    $state = Get-Content -Raw (Join-Path $RepoRoot "project/docs/CURRENT_STATE.md")
+    $runtime = Get-Content -Raw (Join-Path $RepoRoot ".kinotch/RUNTIME_INTEGRATION.md")
+    Assert-True (([regex]::Matches($spec, "(?m)^\d+\. ")).Count -ge 10) "SPEC acceptance criteria are incomplete"
+    Assert-True ($state -notmatch "Project-specific definition has not been filled") "CURRENT_STATE still contains a template placeholder"
+    Assert-True ($runtime -match "Action Result") "Runtime defined-contract content is missing"
+    Assert-True ($runtime -match "ActionRequest") "Runtime candidate-contract content is missing"
+    foreach ($profileFile in Get-ChildItem (Join-Path $RepoRoot ".kinotch/profiles") -File) {
+        $profile = Get-Content -Raw -Encoding UTF8 $profileFile.FullName | ConvertFrom-Json
+        Assert-Equal "planned" $profile.status "$($profileFile.Name) profile status"
+    }
+}
+
 Write-Host "Self-test summary: passed=$Passed failed=$Failed"
 if ($Failed -gt 0) { exit 1 }
 exit 0

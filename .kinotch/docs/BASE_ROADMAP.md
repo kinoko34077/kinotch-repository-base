@@ -14,6 +14,16 @@
 - Spec / Current State / ADR骨格
 - Base / Runtime設計Meta
 
+## Phase 0.5 — Repository Base v0.2 Hardening
+
+- Base自身のIdentityとSPEC / CURRENT_STATE
+- `.kinotch/meta/` と `.kinotch/templates/project/` の分離
+- Manifest / Action / Surface Schema validation
+- Profile / path / command diagnostics
+- Base self-test fixtures and runner
+- Deterministic `base-refresh` and strict Base protection
+- Runtime Contractの確定済み / 候補の分離
+
 ## Phase 1 — Runtime Kernel v0.1
 
 - Action / Result / Error / Progress / Resourceの最小実装
