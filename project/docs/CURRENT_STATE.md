@@ -13,7 +13,7 @@ Last verified: 2026-09-22 — KiNoTch. Repository Base v0.2.1 complete
 - Profile existence and Profile / Surface / Runtime module diagnostics
 - Manifest path and command cwd diagnostics
 - Strict Base hash index and deterministic refresh
-- Base self-test runner with 25 passing cases
+- Base self-test runner with 27 passing cases
 - Base and Runtime Meta under .kinotch/meta/
 - New Repository templates under .kinotch/templates/project/
 - Runtime Contractの確定済み / Runtime Phase 1候補の区別
@@ -28,8 +28,8 @@ Last verified: 2026-09-22 — KiNoTch. Repository Base v0.2.1 complete
 - KiNoTch. Runtime v0.1 reference implementation now exists in the separate
   `kinotch-runtime` repository.
 - Runtime v0.1 Execution Contract canonicalization is complete in Runtime.
-- The first `jev-audit` CLI/MCP Pilot is complete; Contract evaluation is
-  pending.
+- The first `jev-audit` CLI/MCP Pilot evaluation is complete, with a maturity
+  matrix and accepted ADR in Runtime.
 
 ## Known issues
 
@@ -52,10 +52,10 @@ Last verified: 2026-09-22 — KiNoTch. Repository Base v0.2.1 complete
 
 ## Next work
 
-1. Evaluate `jev-audit` Pilot evidence and classify Runtime Contracts by
-   maturity.
-2. Prepare the limited `kinotch-api` second Pilot without changing Base
-   structure or adding Surface Packs.
+1. Run the limited `kinotch-api` heterogeneous design probe without changing
+   Base structure or adding Surface Packs.
+2. Carry only the evaluated Action ID, ActionRequest, and ActionError
+   meanings into the next Pilot; keep ActionResult as an observation target.
 3. Keep Runtime provisional until an additional heterogeneous repository
    validates the same meanings.
 

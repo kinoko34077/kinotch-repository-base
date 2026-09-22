@@ -4,31 +4,33 @@ Base v0.2はRuntime実装そのものを内包しない。ここではRepository
 
 ## Base v0.2で定義済み
 
-以下はBaseにSchemaまたはRegistryとして存在し、Repository構造と宣言の検証に利用する。
+以下はRepository Baseが正本として所有し、Repository構造と宣言の検証に
+利用する。
 
-- Action Registry
+- Project Manifest
+- Profile
+- Surface declaration
+- Action Registry structure
+- Repository structure
+
+Base側の `.kinotch/schemas/` には、Baseが検証する宣言のSchemaと、Runtime
+Execution Contractの検証互換コピーが存在する。互換コピーはRuntimeの実行
+実装やExecution Contractのcanonical sourceを意味しない。
+
+## Runtime所有のExecution Contract
+
+以下はKiNoTch. Runtimeが正本として所有し、実行意味を定義する。
+
 - Action Result
 - Action Error
 - Progress Event
 - Resource
 - Artifact
-- Project Manifest
-- Profile
-- Surface declaration
+- Action execution semantics
 
-これらのSchemaは .kinotch/schemas/ を参照する。Schemaは構文の正本であり、Runtimeの実行実装を意味しない。
-
-## Runtime Phase 1候補
-
-以下はRuntime実装とPilotで意味・所有権を検証してから確定する。
-
-- ActionRequest
-- ActionContext
-- Cancellation
-- Config execution semantics
-- filesystem / logging / platform service bindings
-
-候補はBase v0.xでは存在するpackageや実装を意味しない。
+ActionRequest、ActionContext、Cancellation、Config execution semantics、
+filesystem / logging / platform service bindingsは、Runtime側でPilotごとに
+検証する候補であり、Baseの所有物ではない。
 
 ## 現在のRuntime Contract正本
 
