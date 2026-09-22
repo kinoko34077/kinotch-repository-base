@@ -50,19 +50,24 @@
 - `knt init`はProfile選択からRuntime moduleを自動注入しない。
 - 既存Framework・Project実装はOverrideとして保持できる。
 
-## Phase 3B — Actual Default behavior
+## Phase 3B — Actual Default behavior (safe slice complete)
 
 - `verify` common router and fallback gate
 - `ci-test` non-deploy workflow template
 - `generated-integrity` SHA-256 check/update templates
 - `web-app` / `pwa` manifest, service worker, registration, and check templates
 - `file-io` format-independent boundary and safe helper
+- `cli` JSON/error/help/exit helper
+- `windows` Explorer/clipboard shell boundary
+- `mcp` tool boundary descriptor without a second registry
+- `api` permissive error-envelope schema without HTTP policy
 - No Domain format, deploy policy, or Runtime module is generated.
 
-## Phase 4 — init / migrate and existing repository adoption
+## Phase 4 — init / migrate and existing repository adoption (next)
 
 - `knt init --profile <surface> --default <tool-default>`
 - `knt migrate` dry-run / explicit `--apply`
+- Explicit apply materializes only missing safe helpers and preserves overrides.
 - Manifest-less repository-shape probe via a Base source override
 - generated artifact / stale check
 - 詳細doctor / conformance report

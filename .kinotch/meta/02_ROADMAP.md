@@ -1,8 +1,9 @@
 # 02 — Roadmap
 
-Current position: Phase 3 Default Pack implementation. Phase 2A Portable
-Contract validation remains independent and provisional; Default adoption does
-not wait for Portable Contract maturity.
+Current position: Phase 3B safe Default behavior implemented; Phase 4 canary
+adoption review is next. Phase 2A Portable Contract validation remains
+independent and provisional; Default adoption does not wait for Portable
+Contract maturity.
 
 ## Phase 0 — Repository Base v0.1系
 
@@ -117,7 +118,8 @@ Default identifier・互換Surface・説明の正本は
 
 ## Phase 3B — Actual Default behavior
 
-現在位置。Catalogで選択したDefaultへ、Domainを拘束しない実装を与える。
+Safe, removable implementation slice complete. Catalogで選択したDefaultへ、
+Domainを拘束しない実装を与える。
 
 - `verify`: common router、direct verifyまたはtest→build fallback
 - `ci-test`: non-deploy GitHub Actions verify workflow
@@ -125,6 +127,8 @@ Default identifier・互換Surface・説明の正本は
 - `web-app` / `pwa`: manifest、pass-through service worker、registration helper、check
 - `file-io`: format-independent open/save boundary and safe helper
 - `secrets` / `local-app`: templateのsecret hygieneと共通command vocabulary
+- Surface helpers: `cli` JSON/error/help/exit, `windows` shell boundary, `mcp`
+  tool guidance, and permissive `api` error-envelope schema
 
 未実装・Project-owned:
 
@@ -168,6 +172,8 @@ Default identifier・互換Surface・説明の正本は
 - smoke / health
 
 ## Phase 4 — init / migrate and existing repository adoption
+
+次の工程。既存repoは一括変更せず、canaryごとのdry-runと明示判断から開始する。
 
 - `knt init --profile <surface> --default <tool-default>`
 - 複数Surface / Tool Default選択による初期化

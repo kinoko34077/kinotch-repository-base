@@ -26,7 +26,8 @@ The Base reduces the effort to create, read, repair, and verify a repository wit
 14. Surface Defaults and Tool Defaults are defined by one machine-readable Default Catalog and can be selected without router hard-coded lists.
 15. `minimal`, `web-app`, `cli`, `windows-gui`, `mcp`, `api`, `agent`, and `library` are valid Surface Profiles, with `windows` retained as an alias.
 16. Selecting `ci-test`, `pwa`, `generated-integrity`, or `file-io` materializes only removable, Domain-neutral implementation files; `verify` connects to the common router without forcing a toolchain.
-17. `knt migrate` can perform a read-only repository-shape probe without a Project Manifest and refuses `--apply` until a Base Manifest exists.
+17. Selecting `cli`, `windows`, `mcp`, or `api` materializes only removable helpers or permissive boundary descriptors; it does not add a framework, dispatch registry, HTTP policy, or Domain behavior.
+18. `knt migrate` can perform a read-only repository-shape probe without a Project Manifest and refuses `--apply` until a Base Manifest exists; explicit apply materializes only missing safe helpers and preserves overrides.
 
 ## Fixed read order
 

@@ -334,7 +334,7 @@ function Write-KntJsonFile([string]$Path, $Value) {
     [IO.File]::WriteAllText($Path, $json + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
 }
 
-function Copy-DefaultImplementation([string]$DefaultId, [string]$ProjectRoot) {
+function Copy-DefaultImplementation([string]$DefaultId, [string]$ProjectRoot, [string]$Kind = "Tool") {
     $templateRoot = Join-Path $BaseDir ("templates/defaults/" + $DefaultId)
     if (-not (Test-Path -LiteralPath $templateRoot -PathType Container)) { return }
     foreach ($templateFile in @(Get-ChildItem -LiteralPath $templateRoot -Recurse -File -Force)) {
@@ -346,13 +346,13 @@ function Copy-DefaultImplementation([string]$DefaultId, [string]$ProjectRoot) {
             $destination = Join-Path $ProjectRoot $relative
         }
         if (Test-Path -LiteralPath $destination) {
-            Write-Knt "Default '$DefaultId' preserved existing path: $relative"
+            Write-Knt "$Kind Default '$DefaultId' preserved existing path: $relative"
             continue
         }
         $parent = Split-Path -Parent $destination
         New-Item -ItemType Directory -Path $parent -Force | Out-Null
         Copy-Item -LiteralPath $templateFile.FullName -Destination $destination -Force
-        Write-Knt "Default '$DefaultId' added: $relative"
+        Write-Knt "$Kind Default '$DefaultId' added: $relative"
     }
 }
 
@@ -443,6 +443,7 @@ function Invoke-Init {
             if ($surface.Name -notin $surfaceNames) { [void]$surfaceNames.Add([string]$surface.Name) }
         }
         $defaults.packs | Add-Member -NotePropertyName ([string]$profileEntry.id) -NotePropertyValue (Get-DefaultStateEntry "DEFAULT") -Force
+        Copy-DefaultImplementation -DefaultId ([string]$profileEntry.id) -ProjectRoot $projectRoot -Kind "Surface"
     }
     foreach ($toolEntry in $toolEntries) {
         $defaults.packs | Add-Member -NotePropertyName ([string]$toolEntry.id) -NotePropertyValue (Get-DefaultStateEntry "DEFAULT") -Force
@@ -530,6 +531,15 @@ function Invoke-Migrate($Manifest) {
 
     if (-not $Manifest) {
         throw "migrate --apply requires an existing Project Manifest; dry-run completed without changing this repository"
+    }
+
+    foreach ($entry in $selectedEntries) {
+        $packProperty = $defaults.packs.PSObject.Properties[[string]$entry.id]
+        $state = if ($packProperty) { [string](Get-KntJsonProperty $packProperty.Value "state") } else { "DEFAULT" }
+        if ($state -eq "DEFAULT") {
+            $kind = if ([string]$entry.kind -eq "surface") { "Surface" } else { "Tool" }
+            Copy-DefaultImplementation -DefaultId ([string]$entry.id) -ProjectRoot $projectRoot -Kind $kind
+        }
     }
 
     $changedManifest = $false
@@ -676,6 +686,30 @@ function Test-SelectedDefaultImplementations($DefaultsData) {
         if ($state -ne "DEFAULT") { continue }
         $defaultId = [string]$packProperty.Name
         switch ($defaultId) {
+            "cli" {
+                if (-not (Test-Path -LiteralPath (Join-Path $projectRoot "tools/cli-default.ps1") -PathType Leaf)) {
+                    Write-Host "[doctor] MISSING implementation for Surface Default 'cli'" -ForegroundColor Red
+                    $ok = $false
+                }
+            }
+            "windows" {
+                if (-not (Test-Path -LiteralPath (Join-Path $projectRoot "tools/windows-shell.ps1") -PathType Leaf)) {
+                    Write-Host "[doctor] MISSING implementation for Surface Default 'windows'" -ForegroundColor Red
+                    $ok = $false
+                }
+            }
+            "mcp" {
+                if (-not (Test-Path -LiteralPath (Join-Path $projectRoot "contracts/mcp-tools.json") -PathType Leaf)) {
+                    Write-Host "[doctor] MISSING implementation for Surface Default 'mcp'" -ForegroundColor Red
+                    $ok = $false
+                }
+            }
+            "api" {
+                if (-not (Test-Path -LiteralPath (Join-Path $projectRoot "contracts/api-error-envelope.json") -PathType Leaf)) {
+                    Write-Host "[doctor] MISSING implementation for Surface Default 'api'" -ForegroundColor Red
+                    $ok = $false
+                }
+            }
             "ci-test" {
                 if (-not (Test-Path -LiteralPath (Join-Path $Root ".github/workflows/verify.yml") -PathType Leaf)) {
                     Write-Host "[doctor] MISSING implementation for Default 'ci-test'" -ForegroundColor Red

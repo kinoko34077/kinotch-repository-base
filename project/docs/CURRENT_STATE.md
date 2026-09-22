@@ -1,6 +1,6 @@
 # Current State
 
-Last verified: 2026-09-23 — KiNoTch. Repository Base v0.2.1 complete
+Last verified: 2026-09-23 — self-test 42/42; doctor, base-check, and verify passed locally
 
 ## Implemented
 
@@ -13,7 +13,7 @@ Last verified: 2026-09-23 — KiNoTch. Repository Base v0.2.1 complete
 - Profile existence and Profile / Surface contradiction diagnostics
 - Manifest path and command cwd diagnostics
 - Strict Base hash index and deterministic refresh
-- Base self-test runner with 40 passing cases
+- Base self-test runner with 42 passing cases
 - Base and Runtime Meta under .kinotch/meta/
 - New Repository templates under .kinotch/templates/project/
 - Runtime Contractの確定済み / Runtime Phase 1候補の区別
@@ -27,9 +27,11 @@ Last verified: 2026-09-23 — KiNoTch. Repository Base v0.2.1 complete
 - Surface Profile selection no longer injects Runtime modules; new templates start with an empty module list
 - `knt migrate` catalog-driven dry-run / explicit apply with `OVERRIDE` and `DISABLED` preservation
 - Default implementation templates for `ci-test`, `pwa`, `generated-integrity`, and `file-io`
+- Surface Default helpers for `cli`, `windows`, `mcp`, and `api`
 - `knt verify` integration for selected PWA and generated-integrity checks
 - Manifest-less read-only `knt migrate` repository-shape probe using package, Cargo,
   Python, workflow, and web-asset markers
+- Explicit `knt migrate --apply` materialization of missing safe Default helpers
 
 ## In progress
 
@@ -52,8 +54,10 @@ Last verified: 2026-09-23 — KiNoTch. Repository Base v0.2.1 complete
   tooling; AgentBackend remains Agent-owned. Only a narrow artifact-reference
   meaning is a provisional PARTIAL GO candidate. No Surface Pack or production
   integration was added.
-- Default-first standardization is now in Phase 3B: low-risk, removable Surface
-  and Tool conveniences have catalog entries and selected implementations.
+- Default-first standardization has completed the safe Phase 3B implementation
+  slice: low-risk, removable Surface and Tool conveniences have catalog entries
+  and selected implementations. Phase 4 canary adoption review is next; no
+  existing Project has been modified.
 - The canonical four-layer policy is `.kinotch/meta/06_DEFAULT_FIRST_STANDARD.md`.
 - The Default Catalog is `.kinotch/defaults/catalog.json`; it is the single
   source for supported Surface / Tool Default identifiers and aliases.
@@ -85,10 +89,10 @@ Last verified: 2026-09-23 — KiNoTch. Repository Base v0.2.1 complete
 
 ## Next work
 
-1. Correct and complete all-repository dry-run classifications, including
-   GitHub-only repositories and browser-extension / Streamlit shapes.
-2. Apply the Default Catalog to canary repositories by dry-run only first;
-   record `DEFAULT`, `OVERRIDE`, `DISABLED`, or `N/A` without rewriting them.
+1. Run repository-local canary adoption reviews by dry-run first and preserve
+   existing `OVERRIDE` / `DISABLED` implementations.
+2. Apply a Default only after an active Project decision and its repository-local
+   verification; do not bulk-rewrite existing repositories.
 3. Keep Default Pack behavior removable and Project-owned; do not add Domain
    behavior or a universal Surface library.
 4. Keep the `kinotch-api` production boundary unchanged unless a pure

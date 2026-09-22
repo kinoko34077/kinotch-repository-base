@@ -351,6 +351,21 @@ Invoke-TestCase "init accepts all catalog surface profiles without Runtime injec
         Assert-Equal "DEFAULT" $defaults.packs.windows.state "windows Default state"
     }
 }
+Invoke-TestCase "surface Defaults materialize safe CLI, Windows, MCP, and API helpers" {
+    Invoke-KntInitFixture -Profiles @("cli", "windows-gui", "mcp", "api") -AssertOutput {
+        param($root, $output)
+        foreach ($relative in @(
+            "project/tools/cli-default.ps1",
+            "project/tools/windows-shell.ps1",
+            "project/contracts/mcp-tools.json",
+            "project/contracts/api-error-envelope.json"
+        )) {
+            Assert-True (Test-Path -LiteralPath (Join-Path $root $relative) -PathType Leaf) "missing surface Default implementation: $relative"
+        }
+        Assert-True ($output -match "Surface Default 'cli' added") "CLI surface Default was not materialized"
+        Assert-True ($output -match "Surface Default 'api' added") "API surface Default was not materialized"
+    }
+}
 Invoke-TestCase "init records selected Tool Defaults from the catalog" {
     Invoke-KntInitFixture -Profiles @("web-app") -Defaults @("verify", "pwa") -AssertOutput {
         param($root, $output)
@@ -449,6 +464,16 @@ Invoke-TestCase "migrate apply preserves Project override and adds missing pack"
         Assert-Equal "OVERRIDE" $defaults.packs.cli.state "existing override state"
         Assert-Equal "DISABLED" $defaults.packs.mcp.state "existing disabled state"
         Assert-True ($output -match "preserved.*OVERRIDE") "override preservation was not reported"
+    }
+}
+Invoke-TestCase "migrate apply materializes missing safe Tool Default files" {
+    Invoke-KntFixture -Name "valid-minimal" -Command "migrate" -Arguments @("--apply", "--default", "pwa") -ExpectedExit 0 -AssertOutput {
+        param($root, $output)
+        Assert-True (Test-Path -LiteralPath (Join-Path $root "project/public/manifest.webmanifest") -PathType Leaf) "migrate apply did not materialize PWA manifest"
+        Assert-True (Test-Path -LiteralPath (Join-Path $root "project/tools/pwa-check.ps1") -PathType Leaf) "migrate apply did not materialize PWA checker"
+        $defaults = Get-Content -Raw -Encoding UTF8 (Join-Path $root "project/defaults.json") | ConvertFrom-Json
+        Assert-Equal "DEFAULT" $defaults.packs.pwa.state "migrate applied Tool Default state"
+        Assert-True ($output -match "Tool Default 'pwa' added") "migrate apply did not report materialized PWA files"
     }
 }
 Invoke-TestCase "doctor rejects an unknown Default catalog id" {

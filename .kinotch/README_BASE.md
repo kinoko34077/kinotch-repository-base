@@ -63,9 +63,9 @@ PowerShell:
 
 ## init / migrate
 
-`knt init --profile <surface>` は `minimal`、`web-app`、`cli`、`windows-gui`（`windows` alias）、`mcp`、`api`、`agent`、`library` を複数選択し、TemplateからProject Overlayを生成する。`--default <tool-default>` で `verify`、`ci-test`、`generated-integrity`、`file-io`、`pwa`、`pages`、`secrets`、`local-app` 等のTool Defaultも選択できる。`ci-test` は非Deployのworkflow、`pwa` はmanifest / service worker / registration helper / check、`generated-integrity` はSHA-256 metadata / check / update helper、`file-io` は形式非依存のfile boundary / helperを生成する。`verify` はBase routerのdirect verifyまたはtest→build fallbackを使用する。選択ProfileはSurface宣言だけを生成し、`runtime.modules` は空のまま保持する。既存の `project/project.json` または既存Projectファイルは上書きしない。
+`knt init --profile <surface>` は `minimal`、`web-app`、`cli`、`windows-gui`（`windows` alias）、`mcp`、`api`、`agent`、`library` を複数選択し、TemplateからProject Overlayを生成する。`--default <tool-default>` で `verify`、`ci-test`、`generated-integrity`、`file-io`、`pwa`、`pages`、`secrets`、`local-app` 等のTool Defaultも選択できる。`cli` はJSON/error/exit/help helper、`windows` はExplorer/clipboard境界、`mcp` はtool naming/input/diagnostic境界、`api` はHTTP statusやcode体系を固定しないerror envelope schemaを生成する。`ci-test` は非Deployのworkflow、`pwa` はmanifest / service worker / registration helper / check、`generated-integrity` はSHA-256 metadata / check / update helper、`file-io` は形式非依存のfile boundary / helperを生成する。`verify` はBase routerのdirect verifyまたはtest→build fallbackを使用する。選択ProfileはSurface宣言と安全な補助だけを生成し、`runtime.modules` は空のまま保持する。既存の `project/project.json` または既存Projectファイルは上書きしない。
 
-`knt migrate` は既存ProjectのSurface / Tool Default候補を表示するだけで、既定ではファイルを変更しない。Project Manifestがない場合も、`-BaseOverride` を指定したBase routerからrepository shapeをread-only検出できる。`--apply` を明示した場合だけManifestのあるProjectの `project/defaults.json` と必要なManifest pathを更新し、既存の `OVERRIDE` / `DISABLED` 状態は保持する。Domain fileは変更しない。
+`knt migrate` は既存ProjectのSurface / Tool Default候補を表示するだけで、既定ではファイルを変更しない。Project Manifestがない場合も、`-BaseOverride` を指定したBase routerからrepository shapeをread-only検出できる。`--apply` を明示した場合だけManifestのあるProjectの `project/defaults.json` と必要なManifest pathを更新し、DEFAULT状態の安全な補助ファイルを不足分だけ生成する。既存の `OVERRIDE` / `DISABLED` 状態と既存ファイルは保持する。Domain fileは変更しない。
 
 ## Validatorの対応範囲
 
