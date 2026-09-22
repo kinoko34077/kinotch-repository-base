@@ -89,12 +89,26 @@ function Test-KntSchemaNode {
 
     $oneOf = Get-KntJsonProperty $Schema "oneOf"
     if ($null -ne $oneOf) {
-        $oneOfMatch = $false
+        $oneOfMatchCount = 0
+        $oneOfFailureMessages = New-Object System.Collections.Generic.List[string]
         foreach ($candidateSchema in @($oneOf)) {
             $candidateErrors = @(Test-KntSchemaNode -Data $Data -Schema $candidateSchema -Path $Path)
-            if ($candidateErrors.Count -eq 0) { $oneOfMatch = $true }
+            if ($candidateErrors.Count -eq 0) {
+                $oneOfMatchCount++
+            }
+            else {
+                foreach ($candidateError in $candidateErrors) {
+                    [void]$oneOfFailureMessages.Add($candidateError)
+                }
+            }
         }
-        if (-not $oneOfMatch) { [void]$errors.Add("$Path does not match any oneOf schema") }
+        if ($oneOfMatchCount -ne 1) {
+            $detail = ""
+            if ($oneOfMatchCount -eq 0 -and $oneOfFailureMessages.Count -gt 0) {
+                $detail = ": " + (($oneOfFailureMessages | Select-Object -Unique) -join "; ")
+            }
+            [void]$errors.Add("$Path does not match exactly one oneOf schema (matched $oneOfMatchCount)$detail")
+        }
     }
 
     $actualType = Get-KntJsonType $Data
@@ -119,6 +133,11 @@ function Test-KntSchemaNode {
             }
             elseif ($additionalProperties -eq $false) {
                 [void]$errors.Add("$Path has unknown property '$($property.Name)'")
+            }
+            elseif ((Get-KntJsonType $additionalProperties) -eq "object") {
+                foreach ($errorText in @(Test-KntSchemaNode -Data $property.Value -Schema $additionalProperties -Path "$Path.$($property.Name)")) {
+                    [void]$errors.Add($errorText)
+                }
             }
         }
     }

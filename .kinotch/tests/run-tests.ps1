@@ -8,6 +8,7 @@ if ([string]::IsNullOrWhiteSpace($PowerShellExecutable)) {
     $PowerShellExecutable = (Get-Command powershell -ErrorAction Stop | Select-Object -First 1).Source
 }
 . (Join-Path $RepoRoot ".kinotch/scripts/update-base-index.ps1")
+. (Join-Path $RepoRoot ".kinotch/scripts/knt-validation.ps1")
 $Passed = 0
 $Failed = 0
 
@@ -19,6 +20,37 @@ function Assert-Equal($Expected, $Actual, [string]$Message) {
     if ($Expected -ne $Actual) {
         throw "$Message expected=[$Expected] actual=[$Actual]"
     }
+}
+
+function Get-SchemaKeywordNames {
+    param($Schema)
+
+    $names = New-Object System.Collections.Generic.List[string]
+    if ((Get-KntJsonType $Schema) -ne "object") { return @() }
+    foreach ($property in $Schema.PSObject.Properties) {
+        [void]$names.Add([string]$property.Name)
+        switch ([string]$property.Name) {
+            "properties" {
+                foreach ($child in @($property.Value.PSObject.Properties)) {
+                    foreach ($name in @(Get-SchemaKeywordNames $child.Value)) { [void]$names.Add($name) }
+                }
+            }
+            "additionalProperties" {
+                if ((Get-KntJsonType $property.Value) -eq "object") {
+                    foreach ($name in @(Get-SchemaKeywordNames $property.Value)) { [void]$names.Add($name) }
+                }
+            }
+            "oneOf" {
+                foreach ($candidate in @($property.Value)) {
+                    foreach ($name in @(Get-SchemaKeywordNames $candidate)) { [void]$names.Add($name) }
+                }
+            }
+            "items" {
+                foreach ($name in @(Get-SchemaKeywordNames $property.Value)) { [void]$names.Add($name) }
+            }
+        }
+    }
+    return @($names | Select-Object -Unique)
 }
 
 function Get-FixtureProtectedPaths([string]$Root) {
@@ -127,6 +159,75 @@ Invoke-TestCase "Protected paths and Base index use canonical separators" {
 
 Invoke-TestCase "valid minimal project passes doctor" {
     Invoke-KntFixture -Name "valid-minimal" -Command "doctor" -ExpectedExit 0
+}
+Invoke-TestCase "valid command string remains accepted" {
+    Invoke-KntFixture -Name "valid-minimal" -Command "doctor" -ExpectedExit 0
+}
+Invoke-TestCase "valid command object remains accepted" {
+    Invoke-KntFixture -Name "valid-minimal" -Command "doctor" -ExpectedExit 0 -Prepare {
+        param($root)
+        $manifestPath = Join-Path $root "project/project.json"
+        $manifest = Get-Content -Raw -Encoding UTF8 $manifestPath | ConvertFrom-Json
+        $manifest.commands.test = [pscustomobject]@{ run = "Write-Output valid"; cwd = "." }
+        [IO.File]::WriteAllText($manifestPath, (ConvertTo-Json $manifest -Depth 20) + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
+    }
+}
+Invoke-TestCase "schema-valued additional command property is validated" {
+    Invoke-KntFixture -Name "valid-minimal" -Command "doctor" -ExpectedExit 1 -Prepare {
+        param($root)
+        $manifestPath = Join-Path $root "project/project.json"
+        $manifest = Get-Content -Raw -Encoding UTF8 $manifestPath | ConvertFrom-Json
+        $manifest.commands.test = 123
+        [IO.File]::WriteAllText($manifestPath, (ConvertTo-Json $manifest -Depth 20) + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
+    } -AssertOutput {
+        param($root, $output)
+        Assert-True ($output -match "project/project.json.commands.test") "command schema path was not reported"
+        Assert-True ($output -match "commands.test has type integer") "command type error was not reported"
+    }
+}
+Invoke-TestCase "schema-valued additional path property is validated" {
+    Invoke-KntFixture -Name "valid-minimal" -Command "doctor" -ExpectedExit 1 -Prepare {
+        param($root)
+        $manifestPath = Join-Path $root "project/project.json"
+        $manifest = Get-Content -Raw -Encoding UTF8 $manifestPath | ConvertFrom-Json
+        $manifest.paths.docs = 123
+        [IO.File]::WriteAllText($manifestPath, (ConvertTo-Json $manifest -Depth 20) + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
+    } -AssertOutput {
+        param($root, $output)
+        Assert-True ($output -match "project/project.json.paths.docs") "path schema path was not reported"
+    }
+}
+Invoke-TestCase "oneOf requires exactly one matching schema" {
+    $schema = [pscustomobject]@{
+        oneOf = @(
+            [pscustomobject]@{ type = "string" },
+            [pscustomobject]@{ type = "string"; minLength = 1 }
+        )
+    }
+    $multipleMatches = @(Test-KntSchema -Data "abc" -Schema $schema -Path "fixture.value")
+    Assert-Equal 1 $multipleMatches.Count "overlapping oneOf schema count"
+    Assert-True ($multipleMatches[0] -match "exactly one.*matched 2") "multiple oneOf matches were not rejected"
+
+    $zeroMatches = @(Test-KntSchema -Data 123 -Schema $schema -Path "fixture.value")
+    Assert-Equal 1 $zeroMatches.Count "zero-match oneOf schema count"
+    Assert-True ($zeroMatches[0] -match "exactly one.*matched 0") "zero oneOf matches were not rejected"
+}
+Invoke-TestCase "Base schemas use the declared validator keyword subset" {
+    $supported = @(
+        "type", "required", "properties", "additionalProperties", "items", "oneOf",
+        "enum", "const", "pattern", "minLength", "uniqueItems", '$schema', '$id', "title"
+    )
+    $explicitlyExcluded = @('$ref')
+    $unsupported = New-Object System.Collections.Generic.List[string]
+    foreach ($schemaFile in Get-ChildItem (Join-Path $RepoRoot ".kinotch/schemas") -Filter "*.json" -File) {
+        $schema = Get-Content -Raw -Encoding UTF8 $schemaFile.FullName | ConvertFrom-Json
+        foreach ($keyword in @(Get-SchemaKeywordNames $schema)) {
+            if ($keyword -notin $supported -and $keyword -notin $explicitlyExcluded) {
+                [void]$unsupported.Add("$($schemaFile.Name):$keyword")
+            }
+        }
+    }
+    Assert-Equal 0 $unsupported.Count ("unsupported schema keywords: " + ($unsupported -join ", "))
 }
 Invoke-TestCase "invalid manifest is rejected by schema" {
     Invoke-KntFixture -Name "invalid-manifest" -Command "doctor" -ExpectedExit 1 -AssertOutput {

@@ -51,6 +51,12 @@ PowerShell:
 
 `base-refresh` は `repository-base` 自身でのみ使用するBase index再生成入口である。通常の個別Repositoryから共通ファイルを勝手に更新するためのコマンドではない。
 
+## Validatorの対応範囲
+
+依存なしの `knt-validation.ps1` が実行するJSON Schema subsetは、`type`、`required`、`properties`、`additionalProperties`、`items`、`oneOf`、`enum`、`const`、`pattern`、`minLength`、`uniqueItems`である。`additionalProperties`へSchema Objectを指定した場合は未知propertyへそのSchemaを適用し、`oneOf`は候補へちょうど1つ一致した場合だけ成功する。
+
+`$schema`、`$id`、`title`はSchema metadataとして扱う。Runtime契約定義の`result.schema.json`にある`$ref`は、現時点では明示的なsubset外であり、`knt doctor`の検証対象ではない。今後Schemaへ新しい実行keywordを追加する場合は、validator実装とSelf Testを追加するか、subset外として理由を文書化する。Self TestはBase Schema群に未対応keywordが混入していないかを監査する。
+
 ## verify
 
 `project/project.json.commands.verify` があればそれを実行する。

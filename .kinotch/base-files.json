@@ -40,7 +40,7 @@
     },
     {
       "path": ".kinotch/README_BASE.md",
-      "sha256": "559d770aa7d28e643f83ff829513d637ecd08da0ce06a6adf878e517c01c979f"
+      "sha256": "b550bbb049a9ce2a8a3a93a1f16dc6f28e77c2cede4bcb1df25ff52b8374720c"
     },
     {
       "path": ".kinotch/REPOSITORY_STANDARD.md",
@@ -148,7 +148,7 @@
     },
     {
       "path": ".kinotch/scripts/knt-validation.ps1",
-      "sha256": "278a496329ff4ecc175cd8783ed0732a65a47364dcbff95b787636f61c72f709"
+      "sha256": "0efbf20f3f7ef34010f924b21b4799b8182e2e9917431b201a1b2007fc108a6a"
     },
     {
       "path": ".kinotch/scripts/knt.ps1",
@@ -296,7 +296,7 @@
     },
     {
       "path": ".kinotch/tests/run-tests.ps1",
-      "sha256": "964531e6af58e9ba6dca5a6238f15777c0fc146f15cba2cad0469052eeec749d"
+      "sha256": "744155522a9bac42c12d45843f4731f9fe1c2fc9fbeadf16ae6fc8fa40c337b5"
     },
     {
       "path": "AGENTS.md",
