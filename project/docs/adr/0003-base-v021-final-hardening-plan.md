@@ -14,6 +14,7 @@
 
 - Runtime implementation remains out of scope.
 - Canonical protected paths use repository-relative `/` separators on every OS.
+- Protected-file discovery includes dotfiles, and protected-file hashes normalize text line endings to LF so the Index is independent of checkout EOL.
 - The validator supports only `type`, `required`, `properties`, `additionalProperties`, `items`, `oneOf`, `enum`, `const`, `pattern`, `minLength`, and `uniqueItems`, plus schema metadata.
 - `additionalProperties` schema objects validate unknown properties; `oneOf` requires exactly one matching candidate.
 - Base version changes to `0.2.1` only after all tests and final gates pass.
@@ -41,6 +42,7 @@
 - [ ] Add explicit Windows-style, Unix-style, no-leading-separator, and slash-only index assertions to the self-test.
 - [ ] Run the new tests and observe the expected failures against the current Windows-only implementation.
 - [ ] Add `ConvertTo-BaseRelativePath` with separator normalization, root-prefix validation, and canonical `/` output; use it from `Get-BaseProtectedPaths` and the fixture helper.
+- [ ] Include hidden files in protected-file discovery and hash protected text through the same LF-normalized helper in refresh, base-check, and fixtures.
 - [ ] Run the focused and full self-test suites.
 - [ ] Refresh the Base index, run `base-check`, commit `fix: normalize Base paths across platforms`, and push.
 
@@ -60,4 +62,3 @@
 - [ ] Run Windows gates, self-tests, whitespace checks, and local/remote SHA checks.
 - [ ] Confirm the pushed Ubuntu GitHub Actions workflow succeeds.
 - [ ] Commit `chore: align Base v0.2.1 repository state` and push.
-

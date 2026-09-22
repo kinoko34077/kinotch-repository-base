@@ -24,6 +24,22 @@ function ConvertTo-BaseRelativePath {
     return $pathValue.Substring($prefix.Length).TrimStart('/')
 }
 
+function Get-BaseFileHash {
+    param([Parameter(Mandatory=$true)][string]$Path)
+
+    $content = [IO.File]::ReadAllText($Path)
+    $canonical = $content.Replace("`r`n", "`n").Replace("`r", "`n")
+    $encoding = New-Object System.Text.UTF8Encoding($false)
+    $bytes = $encoding.GetBytes($canonical)
+    $sha256 = [Security.Cryptography.SHA256]::Create()
+    try {
+        return (($sha256.ComputeHash($bytes) | ForEach-Object { $_.ToString("x2") }) -join "")
+    }
+    finally {
+        $sha256.Dispose()
+    }
+}
+
 function Get-BaseProtectedPaths {
     param([Parameter(Mandatory=$true)][string]$Root)
 
@@ -35,7 +51,7 @@ function Get-BaseProtectedPaths {
         "AGENTS.md",
         "knt.cmd"
     )
-    $common = @(Get-ChildItem -LiteralPath (Join-Path $Root ".kinotch") -Recurse -File | ForEach-Object {
+    $common = @(Get-ChildItem -LiteralPath (Join-Path $Root ".kinotch") -Recurse -File -Force | ForEach-Object {
         $relative = ConvertTo-BaseRelativePath -Root $Root -AbsolutePath $_.FullName
         if ($relative -ne ".kinotch/base-files.json") { $relative }
     })
@@ -72,7 +88,7 @@ function Update-BaseIndex {
         }
         [void]$entries.Add([pscustomobject]@{
             path = $relative
-            sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $path).Hash.ToLowerInvariant()
+            sha256 = Get-BaseFileHash -Path $path
         })
     }
 

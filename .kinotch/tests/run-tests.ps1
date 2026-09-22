@@ -62,7 +62,7 @@ function Get-FixtureProtectedPaths([string]$Root) {
         "AGENTS.md",
         "knt.cmd"
     )
-    $common = @(Get-ChildItem -LiteralPath (Join-Path $Root ".kinotch") -Recurse -File | ForEach-Object {
+    $common = @(Get-ChildItem -LiteralPath (Join-Path $Root ".kinotch") -Recurse -File -Force | ForEach-Object {
         $relative = ConvertTo-BaseRelativePath -Root $Root -AbsolutePath $_.FullName
         if ($relative -ne ".kinotch/base-files.json") { $relative }
     })
@@ -73,7 +73,7 @@ function Set-FixtureBaseIndex([string]$Root) {
     $entries = @(Get-FixtureProtectedPaths $Root | ForEach-Object {
         [pscustomobject]@{
             path = $_
-            sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $Root $_)).Hash.ToLowerInvariant()
+            sha256 = Get-BaseFileHash -Path (Join-Path $Root $_)
         }
     })
     $index = [pscustomobject]@{
@@ -146,6 +146,27 @@ Invoke-TestCase "Unix-style repository path is canonicalized" {
 Invoke-TestCase "Protected paths never begin with a separator" {
     $paths = @(Get-BaseProtectedPaths -Root $RepoRoot)
     Assert-True (@($paths | Where-Object { $_ -match "^[\\/]" }).Count -eq 0) "protected path has a leading separator"
+}
+
+Invoke-TestCase "Protected paths include hidden Base files" {
+    $paths = @(Get-BaseProtectedPaths -Root $RepoRoot)
+    Assert-True ($paths -contains ".kinotch/templates/project/.gitignore") "hidden template file is not protected"
+}
+
+Invoke-TestCase "Base file hash is line-ending stable" {
+    $tempRoot = Join-Path ([IO.Path]::GetTempPath()) ("kinotch-hash-test-" + [guid]::NewGuid().ToString("N"))
+    New-Item -ItemType Directory -Path $tempRoot -Force | Out-Null
+    try {
+        $utf8 = New-Object System.Text.UTF8Encoding($false)
+        $crlfPath = Join-Path $tempRoot "crlf.txt"
+        $lfPath = Join-Path $tempRoot "lf.txt"
+        [IO.File]::WriteAllText($crlfPath, "alpha`r`nbeta`r`n", $utf8)
+        [IO.File]::WriteAllText($lfPath, "alpha`nbeta`n", $utf8)
+        Assert-Equal (Get-BaseFileHash $lfPath) (Get-BaseFileHash $crlfPath) "line-ending stable Base hash"
+    }
+    finally {
+        Remove-Item -LiteralPath $tempRoot -Recurse -Force -ErrorAction SilentlyContinue
+    }
 }
 
 Invoke-TestCase "Protected paths and Base index use canonical separators" {

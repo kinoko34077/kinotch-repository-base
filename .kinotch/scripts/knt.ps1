@@ -73,7 +73,7 @@ function Test-BaseFiles {
             $ok = $false
             continue
         }
-        $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $path).Hash.ToLowerInvariant()
+        $hash = Get-BaseFileHash -Path $path
         if ($hash -ne $entry.sha256) {
             Write-Host "[base-check] CHANGED  $($entry.path)" -ForegroundColor Yellow
             $ok = $false

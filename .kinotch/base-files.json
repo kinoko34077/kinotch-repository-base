@@ -32,7 +32,7 @@
     },
     {
       "path": ".kinotch/FILE_INVENTORY.txt",
-      "sha256": "923713664a9155efc1af51ac01f0a47db1c149357ceb4393eff712c5e1e8d090"
+      "sha256": "614229d2e365a3da2f5639a85a5017d40971f81c0966b682d135a528b7e0279c"
     },
     {
       "path": ".kinotch/PROJECT_BOUNDARY.md",
@@ -152,11 +152,11 @@
     },
     {
       "path": ".kinotch/scripts/knt.ps1",
-      "sha256": "2037f12f6f495f3b8d0fc614f0881f63930540224644e9dae3a1470af294ef4e"
+      "sha256": "f03278ff04c7c67ea44b47a79ddf9591b586cbdc60e87b8714c81179fa5dce01"
     },
     {
       "path": ".kinotch/scripts/update-base-index.ps1",
-      "sha256": "dcd9ac0c29094dd006cf7df52a216eb7464f58b0634c5fbe602bb6c1c9723ca2"
+      "sha256": "5858db57c1994f9ce350b7b701a375fbd0a8a9dcec6dbcbd1facae9711429485"
     },
     {
       "path": ".kinotch/templates/ADR.md",
@@ -296,7 +296,7 @@
     },
     {
       "path": ".kinotch/tests/run-tests.ps1",
-      "sha256": "f963b9bfdc3b6e8304a0273f257005a93b429e2754a13f3205e3bf2a1fcc07de"
+      "sha256": "355da75bb2a47c26f36b7fe9fc291374244fe5e9d28ffb069c5835c3a05cda35"
     },
     {
       "path": "AGENTS.md",
