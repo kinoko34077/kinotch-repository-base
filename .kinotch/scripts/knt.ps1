@@ -1,4 +1,6 @@
 param(
+    [string]$RootOverride,
+
     [Parameter(Position=0)]
     [string]$Command = "help",
 
@@ -7,37 +9,48 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$BaseDir = Split-Path -Parent $PSScriptRoot
-$Root = Split-Path -Parent $BaseDir
+
+if ($RootOverride) {
+    $Root = (Resolve-Path -LiteralPath $RootOverride).Path
+    $BaseDir = Join-Path $Root ".kinotch"
+}
+else {
+    $BaseDir = Split-Path -Parent $PSScriptRoot
+    $Root = Split-Path -Parent $BaseDir
+}
+
 $ManifestPath = Join-Path $Root "project/project.json"
 $BaseFilesPath = Join-Path $BaseDir "base-files.json"
+$ValidationPath = Join-Path $BaseDir "scripts/knt-validation.ps1"
+
+if (-not (Test-Path -LiteralPath $ValidationPath -PathType Leaf)) {
+    throw "Validation script not found: $ValidationPath"
+}
+. $ValidationPath
 
 function Write-Knt([string]$Message) {
     Write-Host "[knt] $Message"
 }
 
 function Get-Manifest {
-    if (-not (Test-Path $ManifestPath)) {
-        throw "project/project.json not found: $ManifestPath"
-    }
-    return Get-Content -Raw -Encoding UTF8 $ManifestPath | ConvertFrom-Json
+    return Get-KntJson -Path $ManifestPath
 }
 
 function Test-BaseFiles {
-    if (-not (Test-Path $BaseFilesPath)) {
+    if (-not (Test-Path -LiteralPath $BaseFilesPath -PathType Leaf)) {
         Write-Knt "base-files.json is missing."
         return $false
     }
-    $index = Get-Content -Raw -Encoding UTF8 $BaseFilesPath | ConvertFrom-Json
+    $index = Get-KntJson -Path $BaseFilesPath
     $ok = $true
-    foreach ($entry in $index.files) {
+    foreach ($entry in @($index.files)) {
         $path = Join-Path $Root $entry.path
-        if (-not (Test-Path $path)) {
+        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
             Write-Host "[base-check] MISSING  $($entry.path)" -ForegroundColor Red
             $ok = $false
             continue
         }
-        $hash = (Get-FileHash -Algorithm SHA256 $path).Hash.ToLowerInvariant()
+        $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $path).Hash.ToLowerInvariant()
         if ($hash -ne $entry.sha256) {
             Write-Host "[base-check] CHANGED  $($entry.path)" -ForegroundColor Yellow
             $ok = $false
@@ -60,6 +73,12 @@ function Resolve-Command($Manifest, [string]$Name) {
     return [pscustomobject]@{ run = [string]$value.run; cwd = $cwd }
 }
 
+function Get-ManifestPathValue($Manifest, [string]$Name, [string]$Default) {
+    $value = Get-KntJsonProperty $Manifest.paths $Name
+    if ([string]::IsNullOrWhiteSpace([string]$value)) { return $Default }
+    return [string]$value
+}
+
 function Invoke-ProjectCommand($Manifest, [string]$Name) {
     $spec = Resolve-Command $Manifest $Name
     if (-not $spec) {
@@ -67,8 +86,14 @@ function Invoke-ProjectCommand($Manifest, [string]$Name) {
         return 0
     }
     $cwd = Join-Path $Root $spec.cwd
-    if (-not (Test-Path $cwd)) { throw "Command cwd not found: $($spec.cwd)" }
-    $argText = if ($RemainingArgs) { " " + (($RemainingArgs | ForEach-Object { '"' + ($_ -replace '"','\"') + '"' }) -join ' ') } else { "" }
+    if (-not (Test-Path -LiteralPath $cwd -PathType Container)) {
+        Write-Host "[doctor] MISSING command cwd: $($spec.cwd)" -ForegroundColor Red
+        return 1
+    }
+    $argText = if ($RemainingArgs) {
+        " " + (($RemainingArgs | ForEach-Object { '"' + ($_ -replace '"','\"') + '"' }) -join ' ')
+    }
+    else { "" }
     Write-Knt "$Name -> $($spec.run)"
     Push-Location $cwd
     try {
@@ -76,7 +101,16 @@ function Invoke-ProjectCommand($Manifest, [string]$Name) {
         if ($null -ne $LASTEXITCODE) { return $LASTEXITCODE }
         return 0
     }
-    finally { Pop-Location }
+    finally {
+        Pop-Location
+    }
+}
+
+function Add-DoctorSchemaErrors {
+    param([System.Collections.Generic.List[string]]$Errors, $Data, $Schema, [string]$Path)
+    foreach ($errorText in @(Test-KntSchema -Data $Data -Schema $Schema -Path $Path)) {
+        [void]$Errors.Add($errorText)
+    }
 }
 
 function Invoke-Doctor($Manifest) {
@@ -84,22 +118,105 @@ function Invoke-Doctor($Manifest) {
     Write-Knt "Repository root: $Root"
     Write-Knt "Project: $($Manifest.project.name) [$($Manifest.project.type)]"
     Write-Knt "Profile: $($Manifest.profile)"
-    $baseVersion = (Get-Content -Raw -Encoding UTF8 (Join-Path $BaseDir "BASE_VERSION")).Trim()
+    $baseVersion = (Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $BaseDir "BASE_VERSION")).Trim()
     Write-Knt "Base version: $baseVersion"
 
-    if (-not (Test-BaseFiles)) { $ok = $false }
+    if (-not $RootOverride -and -not (Test-BaseFiles)) { $ok = $false }
 
-    foreach ($required in @("project/docs/INDEX.md", "project/docs/CURRENT_STATE.md", "project/contracts/actions.json", "project/contracts/surfaces.json")) {
-        if (-not (Test-Path (Join-Path $Root $required))) {
-            Write-Host "[doctor] MISSING $required" -ForegroundColor Red
+    $required = @(
+        "project/docs/INDEX.md",
+        "project/docs/CURRENT_STATE.md",
+        "project/contracts/actions.json",
+        "project/contracts/surfaces.json"
+    )
+    foreach ($requiredPath in $required) {
+        if (-not (Test-Path -LiteralPath (Join-Path $Root $requiredPath) -PathType Leaf)) {
+            Write-Host "[doctor] MISSING $requiredPath" -ForegroundColor Red
             $ok = $false
         }
+    }
+
+    $schemaErrors = New-Object System.Collections.Generic.List[string]
+    $manifestSchema = Get-KntJson -Path (Join-Path $BaseDir "schemas/project.schema.json")
+    $actionSchema = Get-KntJson -Path (Join-Path $BaseDir "schemas/action.schema.json")
+    $surfaceSchema = Get-KntJson -Path (Join-Path $BaseDir "schemas/surface.schema.json")
+    Add-DoctorSchemaErrors $schemaErrors $Manifest $manifestSchema "project/project.json"
+
+    $projectRoot = Join-Path $Root "project"
+    $actionRelative = Get-ManifestPathValue $Manifest "actions" "contracts/actions.json"
+    $surfaceRelative = Get-ManifestPathValue $Manifest "surfaces" "contracts/surfaces.json"
+    $actionPath = Join-Path $projectRoot $actionRelative
+    $surfacePath = Join-Path $projectRoot $surfaceRelative
+    if (Test-Path -LiteralPath $actionPath -PathType Leaf) {
+        Add-DoctorSchemaErrors $schemaErrors (Get-KntJson -Path $actionPath) $actionSchema $actionRelative
+    }
+    if (Test-Path -LiteralPath $surfacePath -PathType Leaf) {
+        Add-DoctorSchemaErrors $schemaErrors (Get-KntJson -Path $surfacePath) $surfaceSchema $surfaceRelative
+    }
+
+    if ($schemaErrors.Count -gt 0) {
+        Write-Host "[doctor] Schema validation failed" -ForegroundColor Red
+        foreach ($errorText in $schemaErrors) {
+            Write-Host "[doctor] $errorText" -ForegroundColor Red
+        }
+        $ok = $false
+    }
+
+    $profilePath = Join-Path $BaseDir ("profiles/" + [string]$Manifest.profile + ".json")
+    $profile = $null
+    if (-not (Test-Path -LiteralPath $profilePath -PathType Leaf)) {
+        Write-Host "[doctor] MISSING profile: $($Manifest.profile)" -ForegroundColor Red
+        $ok = $false
+    }
+    else {
+        $profile = Get-KntJson -Path $profilePath
     }
 
     $modules = @($Manifest.runtime.modules)
     Write-Knt ("Runtime modules: " + ($(if ($modules.Count) { $modules -join ", " } else { "(none)" })))
     $enabled = @($Manifest.surfaces.PSObject.Properties | Where-Object { $_.Value -eq $true } | ForEach-Object { $_.Name })
     Write-Knt ("Surfaces: " + ($(if ($enabled.Count) { $enabled -join ", " } else { "(none)" })))
+
+    if ($null -ne $profile) {
+        $recommendedModules = @($profile.runtime_modules)
+        $missingModules = @($recommendedModules | Where-Object { $_ -notin $modules })
+        $extraModules = @($modules | Where-Object { $_ -notin $recommendedModules })
+        if ($missingModules.Count -or $extraModules.Count) {
+            Write-Host "[doctor] WARN profile runtime module recommendation differs from manifest." -ForegroundColor Yellow
+        }
+
+        $profileSurfaces = Get-KntJsonProperty $profile "surfaces"
+        foreach ($profileSurface in @($profileSurfaces.PSObject.Properties | Where-Object { $_.Value -eq $true })) {
+            $manifestValue = Get-KntJsonProperty $Manifest.surfaces $profileSurface.Name
+            if ($manifestValue -ne $true) {
+                Write-Host "[doctor] CONTRADICTION profile surface '$($profileSurface.Name)' is not enabled in manifest." -ForegroundColor Red
+                $ok = $false
+            }
+        }
+        foreach ($manifestSurface in @($Manifest.surfaces.PSObject.Properties | Where-Object { $_.Value -eq $true })) {
+            $profileValue = Get-KntJsonProperty $profileSurfaces $manifestSurface.Name
+            if ($profileValue -ne $true) {
+                Write-Host "[doctor] WARN manifest surface '$($manifestSurface.Name)' is not recommended by profile." -ForegroundColor Yellow
+            }
+        }
+    }
+
+    foreach ($pathProperty in @($Manifest.paths.PSObject.Properties)) {
+        if ([string]::IsNullOrWhiteSpace([string]$pathProperty.Value)) { continue }
+        $candidate = Join-Path $projectRoot ([string]$pathProperty.Value)
+        if (-not (Test-Path -LiteralPath $candidate)) {
+            Write-Host "[doctor] MISSING path: $($pathProperty.Value) ($($pathProperty.Name))" -ForegroundColor Red
+            $ok = $false
+        }
+    }
+
+    foreach ($commandProperty in @($Manifest.commands.PSObject.Properties)) {
+        $spec = Resolve-Command $Manifest $commandProperty.Name
+        if ($spec -and -not (Test-Path -LiteralPath (Join-Path $Root $spec.cwd) -PathType Container)) {
+            Write-Host "[doctor] MISSING command cwd: $($spec.cwd) ($($commandProperty.Name))" -ForegroundColor Red
+            $ok = $false
+        }
+    }
 
     $configured = @($Manifest.commands.PSObject.Properties | Where-Object { $null -ne (Resolve-Command $Manifest $_.Name) } | ForEach-Object { $_.Name })
     Write-Knt ("Commands: " + ($(if ($configured.Count) { $configured -join ", " } else { "(none configured yet)" })))
@@ -121,8 +238,9 @@ Usage:
   .kinotch/scripts/knt.ps1 <command>
 
 Common commands:
-  doctor      Base/project structure diagnostics
+  doctor      Base/project structure and schema diagnostics
   base-check  Detect modifications in common Base files
+  base-refresh Regenerate Base file hashes (repository-base only)
   setup       Project setup command
   dev         Project development command
   test        Project tests

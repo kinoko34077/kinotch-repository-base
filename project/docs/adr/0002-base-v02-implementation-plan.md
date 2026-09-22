@@ -105,7 +105,7 @@ Files:
 Interfaces:
 - Test-KntSchema -Data object -Schema object -Path string returns string errors and supports type, required, properties, additionalProperties, items, oneOf, enum, const, pattern, minLength, and uniqueItems.
 - Get-KntJson -Path string parses UTF-8 JSON and throws a path-specific error.
-- knt.ps1 -RootOverride path command uses the override for tests; normal invocation derives root from script location.
+- knt.ps1 -RootOverride path command uses the override for tests and skips only the Base hash check during fixture doctor runs; normal invocation derives root from script location and always checks Base drift.
 
 - [ ] Run the red Task 2 suite and record the first expected missing behavior.
 - [ ] Implement recursive stable schema validation with paths such as project.name and actions[0].summary. Load the project, action, and surface schemas from the active root. Preserve parse failures as doctor failures with exit code 2.
@@ -119,7 +119,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .kinotch/tests/run-tests.ps1
 .\knt.cmd verify
 ~~~
 
-Expected: fixtures pass, Base doctor passes, and verify runs the Base self-tests through the test command.
+Expected: fixtures pass and verify runs the Base self-tests through the test command. Normal Base doctor may remain failed on stale Base hashes until Task 4 refreshes the index.
 - [ ] Commit and push:
 
 ~~~powershell

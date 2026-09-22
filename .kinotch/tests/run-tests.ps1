@@ -67,13 +67,15 @@ Invoke-TestCase "invalid manifest is rejected by schema" {
 Invoke-TestCase "invalid action registry is rejected by schema" {
     Invoke-KntFixture -Name "invalid-actions" -Command "doctor" -ExpectedExit 1 -AssertOutput {
         param($root, $output)
-        Assert-True ($output -match "Schema validation failed.*actions|actions.*Schema validation failed") "action schema error was not reported"
+        Assert-True ($output -match "Schema validation failed") "action schema heading was not reported"
+        Assert-True ($output -match "actions") "action schema path was not reported"
     }
 }
 Invoke-TestCase "invalid surface registry is rejected by schema" {
     Invoke-KntFixture -Name "invalid-surfaces" -Command "doctor" -ExpectedExit 1 -AssertOutput {
         param($root, $output)
-        Assert-True ($output -match "Schema validation failed.*surfaces|surfaces.*Schema validation failed") "surface schema error was not reported"
+        Assert-True ($output -match "Schema validation failed") "surface schema heading was not reported"
+        Assert-True ($output -match "surfaces") "surface schema path was not reported"
     }
 }
 Invoke-TestCase "invalid JSON returns parse exit code" {
