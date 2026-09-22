@@ -10,6 +10,7 @@
 .kinotch/README_BASE.md
 .kinotch/REPOSITORY_STANDARD.md
 .kinotch/RUNTIME_INTEGRATION.md
+.kinotch/defaults/catalog.json
 .kinotch/docs/BASE_ROADMAP.md
 .kinotch/meta/00_CONTEXT.md
 .kinotch/meta/01_TARGET_STATE.md
@@ -29,6 +30,7 @@
 .kinotch/profiles/windows-gui.json
 .kinotch/schemas/action.schema.json
 .kinotch/schemas/artifact.schema.json
+.kinotch/schemas/default-catalog.schema.json
 .kinotch/schemas/defaults.schema.json
 .kinotch/schemas/error.schema.json
 .kinotch/schemas/progress.schema.json

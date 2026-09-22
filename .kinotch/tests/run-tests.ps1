@@ -126,6 +126,8 @@ function Invoke-KntFixture {
 function Invoke-KntInitFixture {
     param(
         [string[]]$Profiles,
+        [string[]]$Defaults,
+        [int]$ExpectedExit = 0,
         [scriptblock]$AssertOutput
     )
     $tempRoot = Join-Path ([IO.Path]::GetTempPath()) ("kinotch-init-test-" + [guid]::NewGuid().ToString("N"))
@@ -138,9 +140,16 @@ function Invoke-KntInitFixture {
         $router = Join-Path $tempRoot ".kinotch/scripts/knt.ps1"
         $invokeArgs = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $router, "-RootOverride", $tempRoot, "init")
         foreach ($profile in $Profiles) { $invokeArgs += @("--profile", $profile) }
+        if ($Defaults) {
+            foreach ($default in $Defaults) { $invokeArgs += @("--default", $default) }
+        }
         $initOutput = @(& $PowerShellExecutable @invokeArgs 2>&1)
         $initExit = $LASTEXITCODE
-        Assert-Equal 0 $initExit "init exit code"
+        Assert-Equal $ExpectedExit $initExit "init exit code"
+        if ($ExpectedExit -ne 0) {
+            if ($AssertOutput) { & $AssertOutput $tempRoot ($initOutput -join [Environment]::NewLine) }
+            return
+        }
 
         $doctorOutput = @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $router -RootOverride $tempRoot doctor 2>&1)
         $doctorExit = $LASTEXITCODE
@@ -282,6 +291,35 @@ Invoke-TestCase "init creates a doctor-valid multi-profile Project" {
         Assert-True (Test-Path (Join-Path $root "project/tests/README.md")) "project test placeholder was not generated"
     }
 }
+Invoke-TestCase "init accepts all catalog surface profiles without Runtime injection" {
+    Invoke-KntInitFixture -Profiles @("minimal", "web-app", "cli", "windows-gui", "mcp", "api", "agent", "library") -AssertOutput {
+        param($root, $output)
+        $manifest = Get-Content -Raw -Encoding UTF8 (Join-Path $root "project/project.json") | ConvertFrom-Json
+        Assert-Equal 8 @($manifest.profiles).Count "all selected profile count"
+        Assert-Equal 0 @($manifest.runtime.modules).Count "Runtime modules were injected by profile selection"
+        Assert-True ($manifest.profiles -contains "web-app") "web-app profile was not recorded"
+        Assert-True ($manifest.surfaces.web -eq $true) "web surface was not enabled"
+        $defaults = Get-Content -Raw -Encoding UTF8 (Join-Path $root "project/defaults.json") | ConvertFrom-Json
+        Assert-Equal "DEFAULT" $defaults.packs.PSObject.Properties["web-app"].Value.state "web-app Default state"
+        Assert-Equal "DEFAULT" $defaults.packs.windows.state "windows Default state"
+    }
+}
+Invoke-TestCase "init records selected Tool Defaults from the catalog" {
+    Invoke-KntInitFixture -Profiles @("web-app") -Defaults @("verify", "pwa") -AssertOutput {
+        param($root, $output)
+        $defaults = Get-Content -Raw -Encoding UTF8 (Join-Path $root "project/defaults.json") | ConvertFrom-Json
+        Assert-Equal "DEFAULT" $defaults.packs.verify.state "verify Default state"
+        Assert-Equal "DEFAULT" $defaults.packs.pwa.state "pwa Default state"
+        $manifest = Get-Content -Raw -Encoding UTF8 (Join-Path $root "project/project.json") | ConvertFrom-Json
+        Assert-Equal 0 @($manifest.runtime.modules).Count "Tool Default injected Runtime modules"
+    }
+}
+Invoke-TestCase "unknown catalog Default is rejected" {
+    Invoke-KntInitFixture -Profiles @("web-app") -Defaults @("not-a-default") -ExpectedExit 2 -AssertOutput {
+        param($root, $output)
+        Assert-True ($output -match "Unknown.*Default|catalog") "unknown Default was not reported"
+    }
+}
 Invoke-TestCase "init refuses to overwrite an existing Project" {
     $router = Join-Path $RepoRoot ".kinotch/scripts/knt.ps1"
     $output = @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $router init --profile cli 2>&1)
@@ -297,6 +335,13 @@ Invoke-TestCase "migrate dry-run reports candidates without writing" {
         Assert-True (-not (Test-Path (Join-Path $root "project/defaults.json"))) "migrate dry-run wrote a file"
     }
 }
+Invoke-TestCase "migrate dry-run accepts a Tool Default from the catalog" {
+    Invoke-KntFixture -Name "valid-minimal" -Command "migrate" -Arguments @("--default", "verify") -ExpectedExit 0 -AssertOutput {
+        param($root, $output)
+        Assert-True ($output -match "Candidate Default Pack.*verify") "Tool Default candidate was not reported"
+        Assert-True (-not (Test-Path (Join-Path $root "project/defaults.json"))) "Tool Default dry-run wrote a file"
+    }
+}
 Invoke-TestCase "migrate apply preserves Project override and adds missing pack" {
     Invoke-KntFixture -Name "valid-minimal" -Command "migrate" -Arguments @("--apply", "--profile", "cli", "--profile", "mcp") -ExpectedExit 0 -Prepare {
         param($root)
@@ -306,15 +351,35 @@ Invoke-TestCase "migrate apply preserves Project override and adds missing pack"
         [IO.File]::WriteAllText($manifestPath, (ConvertTo-Json $manifest -Depth 20) + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
         $defaults = [pscustomobject]@{
             schema_version = 1
-            packs = [pscustomobject]@{ cli = [pscustomobject]@{ state = "OVERRIDE"; notes = "Project-owned CLI" } }
+            packs = [pscustomobject]@{
+                cli = [pscustomobject]@{ state = "OVERRIDE"; notes = "Project-owned CLI" }
+                mcp = [pscustomobject]@{ state = "DISABLED"; notes = "Project does not expose MCP" }
+            }
         }
         [IO.File]::WriteAllText((Join-Path $root "project/defaults.json"), (ConvertTo-Json $defaults -Depth 10) + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
     } -AssertOutput {
         param($root, $output)
         $defaults = Get-Content -Raw -Encoding UTF8 (Join-Path $root "project/defaults.json") | ConvertFrom-Json
         Assert-Equal "OVERRIDE" $defaults.packs.cli.state "existing override state"
-        Assert-Equal "DEFAULT" $defaults.packs.mcp.state "new Default state"
+        Assert-Equal "DISABLED" $defaults.packs.mcp.state "existing disabled state"
         Assert-True ($output -match "preserved.*OVERRIDE") "override preservation was not reported"
+    }
+}
+Invoke-TestCase "doctor rejects an unknown Default catalog id" {
+    Invoke-KntFixture -Name "valid-minimal" -Command "doctor" -ExpectedExit 1 -Prepare {
+        param($root)
+        $manifestPath = Join-Path $root "project/project.json"
+        $manifest = Get-Content -Raw -Encoding UTF8 $manifestPath | ConvertFrom-Json
+        $manifest.paths | Add-Member -NotePropertyName defaults -NotePropertyValue "defaults.json" -Force
+        [IO.File]::WriteAllText($manifestPath, (ConvertTo-Json $manifest -Depth 20) + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
+        $defaults = [pscustomobject]@{
+            schema_version = 1
+            packs = [pscustomobject]@{ not_a_default = [pscustomobject]@{ state = "DEFAULT" } }
+        }
+        [IO.File]::WriteAllText((Join-Path $root "project/defaults.json"), (ConvertTo-Json $defaults -Depth 10) + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
+    } -AssertOutput {
+        param($root, $output)
+        Assert-True ($output -match "Unknown.*Default|catalog") "unknown catalog Default was not reported by doctor"
     }
 }
 Invoke-TestCase "oneOf requires exactly one matching schema" {
@@ -439,6 +504,7 @@ Invoke-TestCase "Base documentation and profile status are finalized" {
     $state = Get-Content -Raw (Join-Path $RepoRoot "project/docs/CURRENT_STATE.md")
     $runtime = Get-Content -Raw (Join-Path $RepoRoot ".kinotch/RUNTIME_INTEGRATION.md")
     $surfaceRegistry = Get-Content -Raw (Join-Path $RepoRoot "project/contracts/surfaces.json") | ConvertFrom-Json
+    $catalog = Get-Content -Raw (Join-Path $RepoRoot ".kinotch/defaults/catalog.json") | ConvertFrom-Json
     $baseVersion = (Get-Content -Raw (Join-Path $RepoRoot ".kinotch/BASE_VERSION")).Trim()
     Assert-True (([regex]::Matches($spec, "(?m)^\d+\. ")).Count -ge 10) "SPEC acceptance criteria are incomplete"
     Assert-True ($state -notmatch "Project-specific definition has not been filled") "CURRENT_STATE still contains a template placeholder"
@@ -448,6 +514,8 @@ Invoke-TestCase "Base documentation and profile status are finalized" {
     Assert-True ($runtime -match "ActionRequest") "Runtime candidate-contract content is missing"
     Assert-Equal 0 @($surfaceRegistry.surfaces.PSObject.Properties).Count "Base Surface Registry should be empty"
     Assert-Equal "0.2.1" $baseVersion "Base version"
+    Assert-True (@($catalog.defaults | Where-Object { $_.kind -eq "surface" }).Count -ge 8) "Surface Default catalog entries are incomplete"
+    Assert-True (@($catalog.defaults | Where-Object { $_.kind -eq "tool" }).Count -ge 8) "Tool Default catalog entries are incomplete"
     foreach ($profileFile in Get-ChildItem (Join-Path $RepoRoot ".kinotch/profiles") -File) {
         $profile = Get-Content -Raw -Encoding UTF8 $profileFile.FullName | ConvertFrom-Json
         Assert-Equal "planned" $profile.status "$($profileFile.Name) profile status"

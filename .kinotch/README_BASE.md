@@ -17,7 +17,7 @@ Base-wide Metaは `.kinotch/meta/` に置き、新規Repository用の生成元�
 
 共通要素はHard Base、Surface / Tool Default、Portable Semantic Contract、Project Overlay / Domainの4層へ分類する。低リスクで安全に外せる標準便利機能はDefaultとして先に提供し、Domain意味・公開互換性・永続形式・権限境界を持つものだけRuntimeのPortable Contract候補として検証する。正本と判断規則は [Default-first標準化方針](meta/06_DEFAULT_FIRST_STANDARD.md) に置く。
 
-ProjectのDefault状態は `DEFAULT`、`OVERRIDE`、`DISABLED` のいずれかで表現する。`knt init --profile <profile>` は選択したDefault Packを生成するが、既存の `project/project.json` を上書きしない。
+ProjectのDefault状態は `DEFAULT`、`OVERRIDE`、`DISABLED` のいずれかで表現する。Defaultの一覧と互換Surfaceは [Default Catalog](defaults/catalog.json) を正本とする。`knt init --profile <surface> --default <tool-default>` はCatalogから選択したPackを生成するが、既存の `project/project.json` を上書きしない。Surface選択はRuntime moduleを自動追加しない。
 
 ## 共通コマンド
 
@@ -30,8 +30,9 @@ knt.cmd dev
 knt.cmd test
 knt.cmd build
 knt.cmd verify
-knt.cmd init --profile cli --profile mcp
-knt.cmd migrate --profile cli
+knt.cmd init --profile web-app --default pwa
+knt.cmd init --profile cli --profile mcp --default verify
+knt.cmd migrate --profile cli --default verify
 knt.cmd smoke
 ```
 
@@ -52,7 +53,7 @@ PowerShell:
 - Action Registry / Surface RegistryがSchemaに適合するか
 - 選択Profileが存在し、Profile / Surfaceに明らかな矛盾がないか
 - Manifest pathsとcommand cwdが存在するか
-- 推奨Profile / Runtime Moduleとの差分を警告する
+- Default Catalogが正しく、Default stateが `DEFAULT` / `OVERRIDE` / `DISABLED` のいずれかであるか
 - 定義済み共通コマンド
 
 環境固有診断は、後からKiNoTch. Runtimeのdoctor moduleとして追加可能とする。
@@ -61,9 +62,9 @@ PowerShell:
 
 ## init / migrate
 
-`knt init --profile <profile>` は `cli`、`windows`、`mcp`、`api` のDefault Packを複数選択し、TemplateからProject Overlayを生成する。既存の `project/project.json` または既存Projectファイルは上書きしない。
+`knt init --profile <surface>` は `minimal`、`web-app`、`cli`、`windows-gui`（`windows` alias）、`mcp`、`api`、`agent`、`library` を複数選択し、TemplateからProject Overlayを生成する。`--default <tool-default>` で `verify`、`ci-test`、`generated-integrity`、`file-io`、`pwa`、`pages`、`secrets`、`local-app` 等のTool Defaultも選択できる。選択ProfileはSurface宣言だけを生成し、`runtime.modules` は空のまま保持する。既存の `project/project.json` または既存Projectファイルは上書きしない。
 
-`knt migrate` は既存Projectの候補を表示するだけで、既定ではファイルを変更しない。`--apply` を明示した場合だけ `project/defaults.json` と必要なManifest pathを更新し、既存の `OVERRIDE` / `DISABLED` 状態は保持する。Domain fileは変更しない。
+`knt migrate` は既存ProjectのSurface / Tool Default候補を表示するだけで、既定ではファイルを変更しない。`--apply` を明示した場合だけ `project/defaults.json` と必要なManifest pathを更新し、既存の `OVERRIDE` / `DISABLED` 状態は保持する。Domain fileは変更しない。
 
 ## Validatorの対応範囲
 

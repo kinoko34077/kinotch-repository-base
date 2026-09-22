@@ -1,5 +1,9 @@
 # 02 — Roadmap
 
+Current position: Phase 3 Default Pack implementation. Phase 2A Portable
+Contract validation remains independent and provisional; Default adoption does
+not wait for Portable Contract maturity.
+
 ## Phase 0 — Repository Base v0.1系
 
 目的: 個別差分と共通基盤の境界を実物として固定する。
@@ -68,13 +72,40 @@ Project単位で選択できるDefaultとして定義する。
 - CLI / Windows / MCP / APIのDefault候補整理
 - 既存Framework・Project実装との二重化確認
 - `knt init`の生成境界と非破壊条件
+- Surface DefaultとTool Defaultを別軸で管理するDefault Catalog
 
 DefaultはDomain処理、公開互換性、永続形式、provider policyを所有しない。
 
-## Phase 3 — KiNoTch. Default Surface Pack
+## Phase 3 — KiNoTch. Default Pack implementation
 
 複数repoで厳密なPortable Contract証明を待たず、Default条件を満たすものを
-profile単位で提供する。Projectからoverride / disableできることを必須とする。
+Surface Default / Tool Defaultとして提供する。Projectからoverride / disable
+できることを必須とする。Surface選択はRuntime module選択と独立させる。
+
+### Surface Defaults
+
+- `minimal`
+- `web-app`
+- `cli`
+- `windows` (`windows-gui` profile alias)
+- `mcp`
+- `api`
+- `agent`
+- `library`
+
+### Tool Defaults
+
+- `verify`
+- `ci-test`
+- `generated-integrity`
+- `file-io`
+- `pwa`
+- `pages`
+- `secrets`
+- `local-app`
+
+Default identifier・互換Surface・説明の正本は
+`.kinotch/defaults/catalog.json` とする。
 
 ### CLI
 
@@ -111,19 +142,20 @@ profile単位で提供する。Projectからoverride / disableできることを
 - rate-limit hook
 - smoke / health
 
-## Phase 4 — Tooling
+## Phase 4 — init / migrate and existing repository adoption
 
-- `knt init`
-- profile選択による初期化
-- `knt migrate`
+- `knt init --profile <surface> --default <tool-default>`
+- 複数Surface / Tool Default選択による初期化
+- `knt migrate` dry-runと明示的`--apply`
 - generated artifact管理
 - stale check
 - より詳細なdoctor
 - Base conformance report
 
-`knt init` は選択profileのDefault構成とProject Overlayを生成する。
-`knt migrate` は差分を表示し、明示選択されたものだけ適用する。Domain fileは
-自動書換えしない。
+`knt init` はCatalogを参照して選択SurfaceとTool Defaultの構成、Project
+Overlayを生成する。Surface選択からRuntime moduleを自動注入しない。
+`knt migrate` は差分を表示し、明示選択されたものだけ適用する。Domain
+fileは自動書換えしない。
 
 ## Phase 5 — 既存repoへの段階導入
 
@@ -133,6 +165,10 @@ profile単位で提供する。Projectからoverride / disableできることを
 - project固有ロジックは無理に移動しない
 - 複数repoで反復確認できた知識だけBase / Runtimeへ昇格
 - 既存互換性を壊してまで形式統一しない
+- まず全所有repoへdry-runし、`DEFAULT` / `OVERRIDE` / `DISABLED` / `N/A`
+  を分類する
+- CanaryはWeb / Verify、Generated Integrity、CLI / MCP、File I/O / Windows、
+  APIの各系統から段階的に確認する
 
 ## Phase 6 — 安定化
 

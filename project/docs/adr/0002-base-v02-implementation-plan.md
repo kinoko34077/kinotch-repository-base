@@ -167,7 +167,7 @@ Files:
 Interfaces:
 - Documentation states Base-defined contracts: Action Registry, Result, Error, Progress, Resource, Artifact.
 - Documentation states Runtime Phase 1 candidates: ActionRequest, ActionContext, Cancellation, Config execution semantics.
-- Documentation states profile runtime_modules are logical/planned until Runtime Phase 1.
+- Surface Profile selection is independent from Runtime modules; Runtime module declarations remain explicit Project data.
 
 - [ ] Add self-test assertions for ten SPEC acceptance criteria, no template placeholder in CURRENT_STATE, both Runtime contract status headings, and planned status in every profile.
 - [ ] Run the suite and confirm it fails for the current template documents.

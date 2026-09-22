@@ -37,11 +37,22 @@ Repository Base source of truth.
 
 Defaults are common conveniences that do not own Domain meaning, public
 compatibility, persistent data, or authority. They must be safe to remove and
-must be overrideable or disableable per Project. Initial Default Pack
-candidates are CLI, Windows, MCP, and API common options and hooks.
+must be overrideable or disableable per Project. Surface Defaults answer
+where a Project is used; Tool Defaults answer which reusable convenience is
+provided. They are separate axes and are not Runtime module selections.
 
-These are defaults, not mandatory universal libraries. Existing Framework
-dispatch remains authoritative where it already exists.
+Surface Default identifiers are `minimal`, `web-app`, `cli`, `windows`,
+`mcp`, `api`, `agent`, and `library`. The `windows-gui` profile is the
+canonical profile name for the `windows` Default alias.
+
+Tool Default identifiers are `verify`, `ci-test`, `generated-integrity`,
+`file-io`, `pwa`, `pages`, `secrets`, and `local-app`. The machine-readable
+catalog at `.kinotch/defaults/catalog.json` is the single source for these
+identifiers, descriptions, compatibility, aliases, and default state.
+
+These are Defaults, not mandatory universal libraries. Existing Framework
+dispatch remains authoritative where it already exists. A Surface Profile
+never injects `runtime.modules`; Runtime selection is explicit Project data.
 
 ### L3 — Portable Semantic Contracts
 
@@ -56,8 +67,9 @@ labels apply only to this layer.
 
 Project owns Domain algorithms and models, Project UI and state machines,
 persistent formats, provider/deploy/auth policy, Project resource authority,
-Project error meaning, and Default overrides or disablement. Domain code must
-not be changed merely to fit a Default or Portable Contract.
+Project error meaning, explicit Runtime modules, and Default overrides or
+disablement. Domain code must not be changed merely to fit a Default or
+Portable Contract.
 
 ## Default states
 
@@ -91,21 +103,39 @@ Default retirement requires the same problem to repeat across Projects.
 
 ## Initialization and migration
 
-`knt init --profile <profile>` selects one or more Default Packs and creates a
-Project overlay from the Base templates. Repeated profiles are allowed. The
-initializer must not overwrite an existing `project/project.json`.
+`knt init --profile <surface> [--profile <surface> ...]` accepts all Surface
+Profiles listed in the catalog. `windows` remains an alias for the
+`windows-gui` profile. `--default <tool-default>` may be repeated to select
+Tool Defaults independently:
 
-`knt migrate` is opt-in and non-destructive: detect differences, show
-candidates, apply only after explicit selection, and preserve Project
-overrides. It must never rewrite Domain files automatically.
+```text
+knt init --profile web-app
+knt init --profile web-app --default pwa
+knt init --profile cli --profile mcp --default verify
+```
 
-Default Pack distribution remains language- and Surface-appropriate. It does
-not imply one universal Runtime library, and it does not promote a Default to
-Portable Contract merely because it is used by more than one Project.
+Initialization creates a Project overlay from the Base templates, records the
+selected Default states, and leaves `runtime.modules` empty. A Project that
+uses Runtime declares its modules explicitly. The initializer must not
+overwrite an existing `project/project.json` or existing Project files.
+
+`knt migrate` is dry-run by default. It detects Surface and Tool Default
+candidates from the catalog, reports the recommended state, and changes
+nothing. Only `knt migrate --apply` records candidates. Existing `OVERRIDE` and
+`DISABLED` states are always preserved. Domain files are never rewritten.
+
+## Default eligibility
+
+A candidate may be a Default when it is likely reusable, reduces repeated
+setup, owns no Domain meaning, can be removed without changing Domain models or
+public data, supports Project override/disable, and adds little branching or
+dependency cost. Do not Defaultize Domain algorithms, public error systems,
+persistent schemas, provider authority, deployment policy, trainer/model
+state, or other project-owned semantics.
 
 ## Ownership
 
-Repository Base owns this policy, L1 structure, Default metadata, and the
+Repository Base owns this policy, L1 structure, the Default Catalog, and the
 initialization safety boundary. Runtime owns execution semantics and Portable
-Contract definitions. Project owns Domain behavior and the selected
-Default/Override/Disabled state.
+Contract definitions. Project owns Domain behavior, explicit Runtime module
+selection, and the selected Default/Override/Disabled state.

@@ -41,69 +41,177 @@ function Get-Manifest {
     return Get-KntJson -Path $ManifestPath
 }
 
-function Get-SelectedInitProfiles {
-    $selected = New-Object System.Collections.Generic.List[string]
-    $values = @($RemainingArgs)
-    for ($index = 0; $index -lt $values.Count; $index++) {
-        $value = [string]$values[$index]
-        if ($value -eq "--profile") {
-            if ($index + 1 -ge $values.Count -or [string]::IsNullOrWhiteSpace([string]$values[$index + 1])) {
-                throw "init requires a value after --profile"
-            }
-            $value = [string]$values[++$index]
-        }
-        elseif ($value -like "--profile=*") {
-            $value = $value.Substring("--profile=".Length)
-        }
-        else {
-            throw "Unknown init option: $value"
-        }
-
-        if ($value -eq "windows") { $value = "windows-gui" }
-        if ($value -notin @("cli", "windows-gui", "mcp", "api")) {
-            throw "Unsupported Default Pack profile: $value"
-        }
-        if ($value -notin $selected) { [void]$selected.Add($value) }
+function Get-DefaultCatalog {
+    $catalogPath = Join-Path $BaseDir "defaults/catalog.json"
+    $schemaPath = Join-Path $BaseDir "schemas/default-catalog.schema.json"
+    if (-not (Test-Path -LiteralPath $catalogPath -PathType Leaf)) {
+        throw "Default catalog not found: $catalogPath"
     }
-    if ($selected.Count -eq 0) { throw "init requires at least one --profile" }
-    return @($selected)
+    if (-not (Test-Path -LiteralPath $schemaPath -PathType Leaf)) {
+        throw "Default catalog schema not found: $schemaPath"
+    }
+    $catalog = Get-KntJson -Path $catalogPath
+    $schema = Get-KntJson -Path $schemaPath
+    $errors = @(Test-KntSchema -Data $catalog -Schema $schema -Path ".kinotch/defaults/catalog.json")
+    if ($errors.Count -gt 0) {
+        throw "Default catalog validation failed: " + ($errors -join "; ")
+    }
+    return $catalog
 }
 
-function Get-DefaultPackName([string]$ProfileName) {
-    if ($ProfileName -eq "windows-gui") { return "windows" }
-    return $ProfileName
+function Find-DefaultCatalogEntry($Catalog, [string]$Identifier, [string]$Kind) {
+    $matches = @($Catalog.defaults | Where-Object {
+        ([string]$_.id -eq $Identifier) -or (@($_.aliases) -contains $Identifier)
+    })
+    if ($matches.Count -eq 0) {
+        throw "Unknown $Kind Default '$Identifier' in Default catalog"
+    }
+    $entry = $matches[0]
+    if ([string]$entry.kind -ne $Kind) {
+        throw "Default '$Identifier' is kind '$($entry.kind)' and cannot be used as a $Kind Default"
+    }
+    return $entry
 }
 
-function Get-MigrateOptions {
-    $selected = New-Object System.Collections.Generic.List[string]
+function Find-AnyDefaultCatalogEntry($Catalog, [string]$Identifier) {
+    $matches = @($Catalog.defaults | Where-Object {
+        ([string]$_.id -eq $Identifier) -or (@($_.aliases) -contains $Identifier)
+    })
+    if ($matches.Count -eq 0) {
+        throw "Unknown Default Pack '$Identifier' in Default catalog"
+    }
+    return $matches[0]
+}
+
+function Get-DefaultProfileName($Entry) {
+    if ($Entry.PSObject.Properties["profile"] -and -not [string]::IsNullOrWhiteSpace([string]$Entry.profile)) {
+        return [string]$Entry.profile
+    }
+    return [string]$Entry.id
+}
+
+function Get-DefaultOptions([string]$CommandName) {
+    $profiles = New-Object System.Collections.Generic.List[string]
+    $defaults = New-Object System.Collections.Generic.List[string]
     $apply = $false
     $values = @($RemainingArgs)
     for ($index = 0; $index -lt $values.Count; $index++) {
         $value = [string]$values[$index]
         if ($value -eq "--apply") {
+            if ($CommandName -ne "migrate") { throw "Unknown $CommandName option: $value" }
             $apply = $true
             continue
         }
-        if ($value -eq "--profile") {
+        if ($value -eq "--profile" -or $value -eq "--default") {
             if ($index + 1 -ge $values.Count -or [string]::IsNullOrWhiteSpace([string]$values[$index + 1])) {
-                throw "migrate requires a value after --profile"
+                throw "$CommandName requires a value after $value"
             }
+            $optionName = $value
             $value = [string]$values[++$index]
         }
         elseif ($value -like "--profile=*") {
+            $optionName = "--profile"
             $value = $value.Substring("--profile=".Length)
         }
+        elseif ($value -like "--default=*") {
+            $optionName = "--default"
+            $value = $value.Substring("--default=".Length)
+        }
         else {
-            throw "Unknown migrate option: $value"
+            throw "Unknown $CommandName option: $value"
         }
 
-        if ($value -eq "windows") { $value = "windows-gui" }
-        if ($value -notin @("cli", "windows-gui", "mcp", "api")) {
-            throw "Unsupported Default Pack profile: $value"
+        if ($optionName -eq "--profile") {
+            if ($value -notin $profiles) { [void]$profiles.Add($value) }
         }
-        if ($value -notin $selected) { [void]$selected.Add($value) }
+        else {
+            if ($value -notin $defaults) { [void]$defaults.Add($value) }
+        }
     }
-    return [pscustomobject]@{ profiles = @($selected); apply = $apply }
+    return [pscustomobject]@{ profiles = @($profiles); defaults = @($defaults); apply = $apply }
+}
+
+function Resolve-DefaultSelections($Options, $Catalog, [bool]$RequireProfile) {
+    $profileEntries = @()
+    foreach ($profileName in @($Options.profiles)) {
+        $profileEntries += Find-DefaultCatalogEntry -Catalog $Catalog -Identifier ([string]$profileName) -Kind "surface"
+    }
+    if ($RequireProfile -and $profileEntries.Count -eq 0) {
+        throw "init requires at least one --profile"
+    }
+
+    $toolEntries = @()
+    foreach ($defaultName in @($Options.defaults)) {
+        $toolEntries += Find-DefaultCatalogEntry -Catalog $Catalog -Identifier ([string]$defaultName) -Kind "tool"
+    }
+    $selectedSurfaces = @($profileEntries | ForEach-Object { @($_.compatible_surfaces) } | Select-Object -Unique)
+    foreach ($tool in $toolEntries) {
+        $compatible = @($tool.compatible_surfaces)
+        if ($selectedSurfaces.Count -gt 0 -and $compatible.Count -gt 0) {
+            $overlap = @($selectedSurfaces | Where-Object { $_ -in $compatible })
+            if ($overlap.Count -eq 0) {
+                throw "Default '$($tool.id)' is not compatible with the selected Surface profile(s)"
+            }
+        }
+    }
+    return [pscustomobject]@{ profileEntries = @($profileEntries); toolEntries = @($toolEntries); options = $Options }
+}
+
+function Get-SelectedInitProfiles {
+    $catalog = Get-DefaultCatalog
+    $selection = Resolve-DefaultSelections -Options (Get-DefaultOptions "init") -Catalog $catalog -RequireProfile $true
+    return $selection
+}
+
+function Get-DefaultStateEntry($State) {
+    return [pscustomobject]@{ state = $State }
+}
+
+function Get-MigrateProfileEntries($Manifest, $Catalog, $Options) {
+    $requested = @($Options.profiles)
+    if ($requested.Count -eq 0) {
+        if ($Manifest.PSObject.Properties["profiles"] -and @($Manifest.profiles).Count -gt 0) {
+            $requested = @($Manifest.profiles | ForEach-Object { [string]$_ })
+        }
+        elseif (-not [string]::IsNullOrWhiteSpace([string]$Manifest.profile)) {
+            $requested = @([string]$Manifest.profile)
+        }
+    }
+    $entries = @()
+    foreach ($profileName in @($requested | Select-Object -Unique)) {
+        try {
+            $entries += Find-DefaultCatalogEntry -Catalog $Catalog -Identifier $profileName -Kind "surface"
+        }
+        catch {
+            if (@($Options.profiles) -contains $profileName) { throw }
+            Write-Host "[migrate] WARN profile '$profileName' is not in the Default catalog; skipped" -ForegroundColor Yellow
+        }
+    }
+    return @($entries)
+}
+
+function Get-MigrateToolEntries($Manifest, $Catalog, $Options) {
+    if (@($Options.defaults).Count -gt 0) {
+        return @(Resolve-DefaultSelections -Options $Options -Catalog $Catalog -RequireProfile $false).toolEntries
+    }
+
+    $candidateIds = New-Object System.Collections.Generic.List[string]
+    if (Resolve-Command $Manifest "verify" -or Resolve-Command $Manifest "test" -or Resolve-Command $Manifest "build") {
+        [void]$candidateIds.Add("verify")
+    }
+    if (Test-Path -LiteralPath (Join-Path $Root ".github/workflows/verify.yml") -PathType Leaf) {
+        [void]$candidateIds.Add("ci-test")
+    }
+    $generatedCandidates = @(Get-ChildItem -LiteralPath (Join-Path $Root "project") -Recurse -File -Force -ErrorAction SilentlyContinue | Where-Object {
+        $_.Name -match "(^generated|\.generated\.|generated\.)"
+    })
+    if ($generatedCandidates.Count -gt 0) { [void]$candidateIds.Add("generated-integrity") }
+
+    $entries = @()
+    foreach ($candidateId in @($candidateIds | Select-Object -Unique)) {
+        $entries += Find-DefaultCatalogEntry -Catalog $Catalog -Identifier $candidateId -Kind "tool"
+    }
+    return @($entries)
 }
 
 function Write-KntJsonFile([string]$Path, $Value) {
@@ -117,7 +225,11 @@ function Invoke-Init {
         return 1
     }
 
-    $profiles = @(Get-SelectedInitProfiles)
+    $catalog = Get-DefaultCatalog
+    $selection = Get-SelectedInitProfiles
+    $profileEntries = @($selection.profileEntries)
+    $toolEntries = @($selection.toolEntries)
+    $profiles = @($profileEntries | ForEach-Object { Get-DefaultProfileName $_ })
     $projectRoot = Join-Path $Root "project"
     if (Test-Path -LiteralPath $projectRoot -PathType Container) {
         $existing = @(Get-ChildItem -LiteralPath $projectRoot -Force)
@@ -154,49 +266,44 @@ function Invoke-Init {
     $manifest = Get-KntJson -Path $ManifestPath
     $manifest.project.name = (Split-Path -Leaf $Root.TrimEnd([char[]]@("/", "\")))
     if ([string]::IsNullOrWhiteSpace($manifest.project.name)) { $manifest.project.name = "kinotch-project" }
-    $manifest.project.description = "KiNoTch. Project initialized with Default Packs: " + ($profiles -join ", ")
+    $defaultIds = @($profileEntries + $toolEntries | ForEach-Object { [string]$_.id })
+    $manifest.project.description = "KiNoTch. Project initialized with Default Packs: " + ($defaultIds -join ", ")
     $manifest.profile = $profiles[0]
     $manifest | Add-Member -NotePropertyName profiles -NotePropertyValue $profiles -Force
     $manifest.paths | Add-Member -NotePropertyName defaults -NotePropertyValue "defaults.json" -Force
 
-    $moduleNames = New-Object System.Collections.Generic.List[string]
     $surfaceNames = New-Object System.Collections.Generic.List[string]
     $defaults = [pscustomobject]@{ schema_version = 1; packs = [pscustomobject]@{} }
-    foreach ($profileName in $profiles) {
+    foreach ($profileEntry in $profileEntries) {
+        $profileName = Get-DefaultProfileName $profileEntry
         $profilePath = Join-Path $BaseDir ("profiles/" + $profileName + ".json")
         $profile = Get-KntJson -Path $profilePath
-        foreach ($module in @($profile.runtime_modules)) {
-            if ($module -notin $moduleNames) { [void]$moduleNames.Add([string]$module) }
-        }
         foreach ($surface in @($profile.surfaces.PSObject.Properties | Where-Object { $_.Value -eq $true })) {
             if ($surface.Name -notin $surfaceNames) { [void]$surfaceNames.Add([string]$surface.Name) }
         }
-        $defaults.packs | Add-Member -NotePropertyName (Get-DefaultPackName $profileName) -NotePropertyValue ([pscustomobject]@{ state = "DEFAULT" }) -Force
+        $defaults.packs | Add-Member -NotePropertyName ([string]$profileEntry.id) -NotePropertyValue (Get-DefaultStateEntry "DEFAULT") -Force
     }
-    $manifest.runtime.modules = @($moduleNames)
+    foreach ($toolEntry in $toolEntries) {
+        $defaults.packs | Add-Member -NotePropertyName ([string]$toolEntry.id) -NotePropertyValue (Get-DefaultStateEntry "DEFAULT") -Force
+    }
+    $manifest.runtime.modules = @()
     foreach ($surface in @($manifest.surfaces.PSObject.Properties)) {
         $surface.Value = ($surface.Name -in $surfaceNames)
     }
     Write-KntJsonFile -Path $ManifestPath -Value $manifest
     Write-KntJsonFile -Path (Join-Path $projectRoot "defaults.json") -Value $defaults
-    Write-Knt "Initialized Project with Default Packs: $($profiles -join ', ')"
+    Write-Knt "Initialized Project with Default Packs: $($defaultIds -join ', ')"
     return 0
 }
 
 function Invoke-Migrate($Manifest) {
-    $options = Get-MigrateOptions
-    $profileNames = @($options.profiles)
-    if ($profileNames.Count -eq 0) {
-        if ($Manifest.PSObject.Properties["profiles"] -and @($Manifest.profiles).Count -gt 0) {
-            $profileNames = @($Manifest.profiles | ForEach-Object { [string]$_ })
-        }
-        else {
-            $profileNames = @([string]$Manifest.profile)
-        }
-    }
-    $profileNames = @($profileNames | Where-Object { $_ -in @("cli", "windows-gui", "mcp", "api") } | Select-Object -Unique)
-    if ($profileNames.Count -eq 0) {
-        Write-Knt "No Default Pack profile selected; use --profile cli, --profile windows, --profile mcp, or --profile api."
+    $options = Get-DefaultOptions "migrate"
+    $catalog = Get-DefaultCatalog
+    $profileEntries = @(Get-MigrateProfileEntries -Manifest $Manifest -Catalog $catalog -Options $options)
+    $toolEntries = @(Get-MigrateToolEntries -Manifest $Manifest -Catalog $catalog -Options $options)
+    $selectedEntries = @($profileEntries + $toolEntries)
+    if ($selectedEntries.Count -eq 0) {
+        Write-Knt "No Default candidates detected. Use --profile <surface> or --default <tool-default>."
         return 0
     }
 
@@ -212,6 +319,9 @@ function Invoke-Migrate($Manifest) {
         if ($defaultErrors.Count -gt 0) {
             throw "Default state validation failed: " + ($defaultErrors -join "; ")
         }
+        foreach ($packProperty in @($defaults.packs.PSObject.Properties)) {
+            [void](Find-AnyDefaultCatalogEntry -Catalog $catalog -Identifier ([string]$packProperty.Name))
+        }
     }
     else {
         $defaults = [pscustomobject]@{ schema_version = 1; packs = [pscustomobject]@{} }
@@ -219,8 +329,8 @@ function Invoke-Migrate($Manifest) {
     }
 
     $changedDefaults = $false
-    foreach ($profileName in $profileNames) {
-        $packName = Get-DefaultPackName $profileName
+    foreach ($entry in $selectedEntries) {
+        $packName = [string]$entry.id
         $packProperty = $defaults.packs.PSObject.Properties[$packName]
         if ($packProperty) {
             $state = [string](Get-KntJsonProperty $packProperty.Value "state")
@@ -387,6 +497,7 @@ function Invoke-Doctor($Manifest) {
     $actionSchema = Get-KntJson -Path (Join-Path $BaseDir "schemas/action.schema.json")
     $surfaceSchema = Get-KntJson -Path (Join-Path $BaseDir "schemas/surface.schema.json")
     $defaultsSchema = Get-KntJson -Path (Join-Path $BaseDir "schemas/defaults.schema.json")
+    $catalog = Get-DefaultCatalog
     Add-DoctorSchemaErrors $schemaErrors $Manifest $manifestSchema "project/project.json"
 
     $projectRoot = Join-Path $Root "project"
@@ -404,9 +515,21 @@ function Invoke-Doctor($Manifest) {
     if (-not [string]::IsNullOrWhiteSpace($defaultsRelative)) {
         $defaultsPath = Join-Path $projectRoot $defaultsRelative
         if (Test-Path -LiteralPath $defaultsPath -PathType Leaf) {
-            Add-DoctorSchemaErrors $schemaErrors (Get-KntJson -Path $defaultsPath) $defaultsSchema $defaultsRelative
+            $defaultsData = Get-KntJson -Path $defaultsPath
+            Add-DoctorSchemaErrors $schemaErrors $defaultsData $defaultsSchema $defaultsRelative
+            foreach ($packProperty in @($defaultsData.packs.PSObject.Properties)) {
+                try {
+                    [void](Find-AnyDefaultCatalogEntry -Catalog $catalog -Identifier ([string]$packProperty.Name))
+                }
+                catch {
+                    [void]$schemaErrors.Add("$defaultsRelative.packs.$($packProperty.Name) references an unknown Default catalog id")
+                }
+            }
         }
     }
+
+    $catalogErrors = @(Test-KntSchema -Data $catalog -Schema (Get-KntJson -Path (Join-Path $BaseDir "schemas/default-catalog.schema.json")) -Path ".kinotch/defaults/catalog.json")
+    foreach ($catalogError in $catalogErrors) { [void]$schemaErrors.Add($catalogError) }
 
     if ($schemaErrors.Count -gt 0) {
         Write-Host "[doctor] Schema validation failed" -ForegroundColor Red
@@ -418,7 +541,15 @@ function Invoke-Doctor($Manifest) {
 
     $profiles = New-Object System.Collections.Generic.List[object]
     foreach ($selectedProfile in $selectedProfiles) {
-        $profilePath = Join-Path $BaseDir ("profiles/" + $selectedProfile + ".json")
+        $profileFileName = $selectedProfile
+        try {
+            $profileEntry = Find-DefaultCatalogEntry -Catalog $catalog -Identifier $selectedProfile -Kind "surface"
+            $profileFileName = Get-DefaultProfileName $profileEntry
+        }
+        catch {
+            # Existing custom profile names remain diagnosable by their profile file.
+        }
+        $profilePath = Join-Path $BaseDir ("profiles/" + $profileFileName + ".json")
         if (-not (Test-Path -LiteralPath $profilePath -PathType Leaf)) {
             Write-Host "[doctor] MISSING profile: $selectedProfile" -ForegroundColor Red
             $ok = $false
@@ -434,13 +565,6 @@ function Invoke-Doctor($Manifest) {
     Write-Knt ("Surfaces: " + ($(if ($enabled.Count) { $enabled -join ", " } else { "(none)" })))
 
     if ($profiles.Count -gt 0) {
-        $recommendedModules = @($profiles | ForEach-Object { $_.runtime_modules } | Select-Object -Unique)
-        $missingModules = @($recommendedModules | Where-Object { $_ -notin $modules })
-        $extraModules = @($modules | Where-Object { $_ -notin $recommendedModules })
-        if ($missingModules.Count -or $extraModules.Count) {
-            Write-Host "[doctor] WARN profile runtime module recommendation differs from manifest." -ForegroundColor Yellow
-        }
-
         $recommendedSurfaces = @($profiles | ForEach-Object {
             $profileSurfaces = Get-KntJsonProperty $_ "surfaces"
             @($profileSurfaces.PSObject.Properties | Where-Object { $_.Value -eq $true } | ForEach-Object { $_.Name })
@@ -497,8 +621,10 @@ Usage:
 
 Common commands:
   doctor      Base/project structure and schema diagnostics
-  init        Create a Project from selected Default Pack profiles
-  migrate     Show or explicitly record Default Pack candidates
+  init        Create a Project from catalog Surface/Tool Defaults
+              --profile minimal|web-app|cli|windows-gui|mcp|api|agent|library
+              --default verify|ci-test|generated-integrity|file-io|pwa|pages|secrets|local-app
+  migrate     Show or explicitly record catalog Default candidates
   base-check  Detect modifications in common Base files
   base-refresh Regenerate Base file hashes (repository-base only)
   setup       Project setup command

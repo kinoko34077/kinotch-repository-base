@@ -10,11 +10,7 @@
     "minimal"
   ],
   "runtime": {
-    "modules": [
-      "kernel",
-      "errors",
-      "config"
-    ]
+    "modules": []
   },
   "surfaces": {
     "cli": false,

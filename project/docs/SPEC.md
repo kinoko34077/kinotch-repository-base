@@ -22,6 +22,9 @@ The Base reduces the effort to create, read, repair, and verify a repository wit
 10. Common knowledge other than the human-facing README is not duplicated in each repository.
 11. Low-risk shared conveniences can be recorded as Project-level `DEFAULT`, `OVERRIDE`, or `DISABLED` states without changing Domain code.
 12. `knt init` can generate a selected multi-profile Project and `knt migrate` is dry-run by default with explicit, non-destructive apply.
+13. Surface Profiles and Runtime module selection are independent; `knt init` leaves `runtime.modules` empty unless a Project explicitly declares modules.
+14. Surface Defaults and Tool Defaults are defined by one machine-readable Default Catalog and can be selected without router hard-coded lists.
+15. `minimal`, `web-app`, `cli`, `windows-gui`, `mcp`, `api`, `agent`, and `library` are valid Surface Profiles, with `windows` retained as an alias.
 
 ## Fixed read order
 
@@ -44,7 +47,8 @@ Inputs are the repository files, project/project.json, contract registries, Base
 ## Constraints
 
 - Runtime packages are not required for Base use.
-- Profile runtime_modules are logical recommendations until Runtime Phase 1.
+- Surface Profiles do not imply Runtime modules. Existing explicit Runtime module declarations remain Project-owned.
+- Default Catalog entries are low-risk, removable Surface or Tool conveniences; they do not define Runtime execution semantics.
 - Production deployment policy remains Project-owned.
 - Surface adapters must not duplicate Domain Core behavior.
 - Generated artifacts must be regenerated from their canonical source.
