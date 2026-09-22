@@ -26,7 +26,7 @@
     "setup": "",
     "dev": "",
     "test": {
-      "run": "powershell -NoProfile -ExecutionPolicy Bypass -File .kinotch/tests/run-tests.ps1",
+      "run": "if (Get-Command pwsh -ErrorAction SilentlyContinue) { & pwsh -NoProfile -ExecutionPolicy Bypass -File .kinotch/tests/run-tests.ps1 } else { & powershell -NoProfile -ExecutionPolicy Bypass -File .kinotch/tests/run-tests.ps1 }",
       "cwd": "."
     },
     "build": "",

@@ -204,7 +204,7 @@
     },
     {
       "path": ".kinotch/tests/fixtures/command-cwd/project.json",
-      "sha256": "e4feeffed8d7cd9268a5b583e148714021e976c08c30c9627fc781cb0428fae3"
+      "sha256": "8caaf96a84c4f75caafd89f6e4cd0ef581ddca5a3c1a0fa1072cfb82ed89ef71"
     },
     {
       "path": ".kinotch/tests/fixtures/command-cwd/scripts/record-cwd.ps1",
@@ -212,7 +212,7 @@
     },
     {
       "path": ".kinotch/tests/fixtures/command-failure/project.json",
-      "sha256": "bbf09ca445297910b697f80692312dcaf728f54f61137700b677100d3f5ca3b7"
+      "sha256": "6f7569ef2faf00ac514be6c200c009ae6963be6553ae13533b1ebc7de65ed9ef"
     },
     {
       "path": ".kinotch/tests/fixtures/command-failure/scripts/exit-seven.ps1",
@@ -220,7 +220,7 @@
     },
     {
       "path": ".kinotch/tests/fixtures/command-success/project.json",
-      "sha256": "e66e6ca1ca89177b2e754844735026580c5251ecf5c0b0924c09ca40affb8b40"
+      "sha256": "6b9ebfe52959b531a73decbb6b488be13f9ee82c416cd4baa4a9e9b3b86edac3"
     },
     {
       "path": ".kinotch/tests/fixtures/command-success/scripts/write-success.ps1",
@@ -288,7 +288,7 @@
     },
     {
       "path": ".kinotch/tests/fixtures/verify-fallback/project.json",
-      "sha256": "97e5967994742c31d0baf11d72bcb8b7948a8eb039677e7c531f1a267d80b2b8"
+      "sha256": "958d7eea0b75f01edb700bb02df70fc3532d75f7494edb6454db2a14ba18c1dd"
     },
     {
       "path": ".kinotch/tests/fixtures/verify-fallback/scripts/record-order.ps1",
@@ -296,7 +296,7 @@
     },
     {
       "path": ".kinotch/tests/run-tests.ps1",
-      "sha256": "26d7bcff18d6c17dee72a33c3459d0497fd084fec0cfd2713af1d459f54516d8"
+      "sha256": "b8f52cb32afcfb0b646ab4874be02eb5cebace697ffdad608d684d1513efbe35"
     },
     {
       "path": "AGENTS.md",

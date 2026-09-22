@@ -3,6 +3,10 @@ $ErrorActionPreference = "Stop"
 $TestDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $RepoRoot = Split-Path -Parent (Split-Path -Parent $TestDir)
 $FixtureRoot = Join-Path $RepoRoot ".kinotch/tests/fixtures"
+$PowerShellExecutable = (Get-Command pwsh -ErrorAction SilentlyContinue | Select-Object -First 1).Source
+if ([string]::IsNullOrWhiteSpace($PowerShellExecutable)) {
+    $PowerShellExecutable = (Get-Command powershell -ErrorAction Stop | Select-Object -First 1).Source
+}
 $Passed = 0
 $Failed = 0
 
@@ -73,7 +77,7 @@ function Invoke-KntFixture {
         Copy-Item -LiteralPath (Join-Path $FixtureRoot $Name) -Destination (Join-Path $tempRoot "project") -Recurse -Force
         if ($Prepare) { & $Prepare $tempRoot }
         $router = Join-Path $tempRoot ".kinotch/scripts/knt.ps1"
-        $outputLines = @(& powershell -NoProfile -ExecutionPolicy Bypass -File $router -RootOverride $tempRoot $Command 2>&1)
+        $outputLines = @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $router -RootOverride $tempRoot $Command 2>&1)
         $exitCode = $LASTEXITCODE
         $output = $outputLines -join [Environment]::NewLine
         Assert-Equal $ExpectedExit $exitCode "$Name $Command exit code"
@@ -174,12 +178,12 @@ Invoke-TestCase "base-refresh indexes new common file" {
         Set-FixtureBaseIndex $root
         Set-Content -LiteralPath (Join-Path $root ".kinotch/new-common.txt") -Value "new common file" -NoNewline
         $router = Join-Path $root ".kinotch/scripts/knt.ps1"
-        $before = @(& powershell -NoProfile -ExecutionPolicy Bypass -File $router -RootOverride $root base-check 2>&1)
+        $before = @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $router -RootOverride $root base-check 2>&1)
         if ($LASTEXITCODE -eq 0) { throw "unindexed Base file was not rejected: $($before -join ' ')" }
     } -AssertOutput {
         param($root, $output)
         $router = Join-Path $root ".kinotch/scripts/knt.ps1"
-        @(& powershell -NoProfile -ExecutionPolicy Bypass -File $router -RootOverride $root base-check 2>&1) | Out-Null
+        @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $router -RootOverride $root base-check 2>&1) | Out-Null
         Assert-Equal 0 $LASTEXITCODE "base-check after refresh"
     }
 }
@@ -195,6 +199,26 @@ Invoke-TestCase "Base documentation and profile status are finalized" {
     foreach ($profileFile in Get-ChildItem (Join-Path $RepoRoot ".kinotch/profiles") -File) {
         $profile = Get-Content -Raw -Encoding UTF8 $profileFile.FullName | ConvertFrom-Json
         Assert-Equal "planned" $profile.status "$($profileFile.Name) profile status"
+    }
+}
+
+Invoke-TestCase "profile surface contradiction fails doctor" {
+    Invoke-KntFixture -Name "valid-minimal" -Command "doctor" -ExpectedExit 1 -Prepare {
+        param($root)
+        $manifestPath = Join-Path $root "project/project.json"
+        $manifest = Get-Content -Raw -Encoding UTF8 $manifestPath | ConvertFrom-Json
+        $manifest.profile = "cli"
+        [IO.File]::WriteAllText($manifestPath, (ConvertTo-Json $manifest -Depth 20) + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
+    } -AssertOutput {
+        param($root, $output)
+        Assert-True ($output -match "CONTRADICTION") "profile surface contradiction was not reported"
+    }
+}
+
+Invoke-TestCase "base-refresh is restricted to repository-base" {
+    Invoke-KntFixture -Name "valid-minimal" -Command "base-refresh" -ExpectedExit 2 -AssertOutput {
+        param($root, $output)
+        Assert-True ($output -match "only available.*repository-base") "base-refresh restriction was not reported"
     }
 }
 

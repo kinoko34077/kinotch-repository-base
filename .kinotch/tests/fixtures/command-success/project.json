@@ -4,6 +4,6 @@
   "profile": "minimal",
   "runtime": { "modules": [] },
   "surfaces": {},
-  "commands": { "test": { "run": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/write-success.ps1", "cwd": "project" } },
+  "commands": { "test": { "run": "if (Get-Command pwsh -ErrorAction SilentlyContinue) { & pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/write-success.ps1 } else { & powershell -NoProfile -ExecutionPolicy Bypass -File scripts/write-success.ps1 }", "cwd": "project" } },
   "paths": {}
 }
