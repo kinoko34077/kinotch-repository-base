@@ -54,6 +54,8 @@ Last verified: 2026-09-23 — KiNoTch. Repository Base v0.2.1 complete
 - The canonical four-layer policy is `.kinotch/meta/06_DEFAULT_FIRST_STANDARD.md`.
 - The Default Catalog is `.kinotch/defaults/catalog.json`; it is the single
   source for supported Surface / Tool Default identifiers and aliases.
+- A read-only local adoption classification is recorded in
+  `project/docs/DEFAULT_ROLLOUT_DRY_RUN.md`; no existing Project was changed.
 - `knt init` now generates a safe multi-profile Project Overlay, and `knt migrate`
   reports Default Pack candidates by default and applies them only with explicit
   `--apply`, preserving existing `OVERRIDE` / `DISABLED` states.
