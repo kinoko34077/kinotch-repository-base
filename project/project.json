@@ -25,7 +25,10 @@
   "commands": {
     "setup": "",
     "dev": "",
-    "test": "",
+    "test": {
+      "run": "powershell -NoProfile -ExecutionPolicy Bypass -File .kinotch/tests/run-tests.ps1",
+      "cwd": "."
+    },
     "build": "",
     "verify": "",
     "smoke": "",
