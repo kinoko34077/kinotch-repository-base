@@ -32,7 +32,7 @@
     },
     {
       "path": ".kinotch/FILE_INVENTORY.txt",
-      "sha256": "cb18481dc31c8c8fcd100db9bcacc31af5029c13cae92dfbe96877bbd13cce6e"
+      "sha256": "9371fa6168c25ea5898173a47db3cadd94687fe977a67e480458a7bf04ad7a87"
     },
     {
       "path": ".kinotch/PROJECT_BOUNDARY.md",
@@ -40,7 +40,7 @@
     },
     {
       "path": ".kinotch/README_BASE.md",
-      "sha256": "3c16edfea3a3f832737c298ce2111264b0e9f08751ef1b16a2a463cae092c9cb"
+      "sha256": "e58d12a81586b8a2eb582d14c83eef6c1c183204321602cd20d98b46f102d809"
     },
     {
       "path": ".kinotch/REPOSITORY_STANDARD.md",
@@ -56,7 +56,7 @@
     },
     {
       "path": ".kinotch/docs/BASE_ROADMAP.md",
-      "sha256": "cf0b0749bf42fcf6dce1efc3c44e15c7817bb2a237b01d758f6d5c0ae92c3c88"
+      "sha256": "cd4fb887737442f835707e8f6716bdd3e0bfcfc98a91592efdf6d003654171b1"
     },
     {
       "path": ".kinotch/meta/00_CONTEXT.md",
@@ -68,7 +68,7 @@
     },
     {
       "path": ".kinotch/meta/02_ROADMAP.md",
-      "sha256": "e537b5f069cf249e6a5129af72d14d1ad562a5cb003b17ffc747578d16efd445"
+      "sha256": "7524d2ac29d8f4d7521546790dea630edcff566afd3e6d986b6316db2c363827"
     },
     {
       "path": ".kinotch/meta/03_GUARDRAILS.md",
@@ -84,7 +84,7 @@
     },
     {
       "path": ".kinotch/meta/06_DEFAULT_FIRST_STANDARD.md",
-      "sha256": "18536278e52a27a0ab24366dbe17ce56d4dfbcaec9cd83d108f627e23ea219ed"
+      "sha256": "9280f1d5b1113214c5859345d86effed14d3c4c683681ae96138fe18ca227173"
     },
     {
       "path": ".kinotch/meta/README.md",
@@ -168,7 +168,7 @@
     },
     {
       "path": ".kinotch/scripts/knt.ps1",
-      "sha256": "8bc7cf2360d1b864d8bb185d9ecbaecab02f5cb34055cfe056b62c372bcd89bb"
+      "sha256": "8b8b531731585f077d42c4853d69df54219db510f39f00c5f5dfa0f16dd31d7f"
     },
     {
       "path": ".kinotch/scripts/update-base-index.ps1",
@@ -185,6 +185,46 @@
     {
       "path": ".kinotch/templates/SPEC.md",
       "sha256": "5837c762f930b57b648ab6ea6e9e3a6e4180abaeaee25722a065b23d15f19532"
+    },
+    {
+      "path": ".kinotch/templates/defaults/ci-test/.github/workflows/verify.yml",
+      "sha256": "c795ffbd5e95f2635b886fc8a858957836555e409e77ac3673d49ffff206ae5a"
+    },
+    {
+      "path": ".kinotch/templates/defaults/file-io/contracts/file-io.json",
+      "sha256": "aafc379dd4c684993329c7adc03873b2370692102b47db566a6c6ddc9fe4e7c7"
+    },
+    {
+      "path": ".kinotch/templates/defaults/file-io/tools/file-io.ps1",
+      "sha256": "aa801438acaf98a4e23b9cd38420c37a12b9d9c963d6a5159c7b1a45fb04d9d5"
+    },
+    {
+      "path": ".kinotch/templates/defaults/generated-integrity/generated-integrity.json",
+      "sha256": "770546b40fbb3fd0918acbeef378c9e997fe053eecdf5cf6bcea4d76d6bbcbd7"
+    },
+    {
+      "path": ".kinotch/templates/defaults/generated-integrity/tools/check-generated.ps1",
+      "sha256": "b6e20439bce4defb1a1fbc1c4d3cf7e9c25380be9ab7a3e30d49f23b690b02d5"
+    },
+    {
+      "path": ".kinotch/templates/defaults/generated-integrity/tools/update-generated-integrity.ps1",
+      "sha256": "935abde014d8f52d8a502fef5c4b28ee73f233546e48fc2a744011e0e4fec329"
+    },
+    {
+      "path": ".kinotch/templates/defaults/pwa/public/manifest.webmanifest",
+      "sha256": "0f59e0bc1adb8b3e53948e3b25dd7b950cbfa9c8384d1214a7769d7ef67ad6c3"
+    },
+    {
+      "path": ".kinotch/templates/defaults/pwa/public/service-worker.js",
+      "sha256": "c890924e707aa8950415ce8ef2db1edf1a8979f47af2abedb6ddb7401b46fa26"
+    },
+    {
+      "path": ".kinotch/templates/defaults/pwa/src/pwa/register.js",
+      "sha256": "d4df6b297b03001e7b56f1038832fcc6a0a4501b2957455cc19d2b2c96b64896"
+    },
+    {
+      "path": ".kinotch/templates/defaults/pwa/tools/pwa-check.ps1",
+      "sha256": "a3d31e878474c6bc9d3c352ecb9a9c0462ee545df631655cb96604fb4e47ea6a"
     },
     {
       "path": ".kinotch/templates/project/.gitignore",
@@ -324,7 +364,7 @@
     },
     {
       "path": ".kinotch/tests/run-tests.ps1",
-      "sha256": "b5475ace8c075995fc5132fcba006d2b57caeac5cee03a409272ad540e05cb07"
+      "sha256": "2babf2d0841906f07f1390375722174628cd38c3796974c1b4af57a7ee1d23e7"
     },
     {
       "path": "AGENTS.md",

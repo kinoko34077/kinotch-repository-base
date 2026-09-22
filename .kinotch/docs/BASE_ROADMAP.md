@@ -43,17 +43,27 @@
 - Surface DefaultとTool Defaultを分離する。
 - 正本は `.kinotch/defaults/catalog.json` とする。
 
-## Phase 3 — KiNoTch. Default Pack
+## Phase 3A — KiNoTch. Default Catalog
 
 - Surface: `minimal`, `web-app`, `cli`, `windows`, `mcp`, `api`, `agent`, `library`
 - Tool: `verify`, `ci-test`, `generated-integrity`, `file-io`, `pwa`, `pages`, `secrets`, `local-app`
 - `knt init`はProfile選択からRuntime moduleを自動注入しない。
 - 既存Framework・Project実装はOverrideとして保持できる。
 
+## Phase 3B — Actual Default behavior
+
+- `verify` common router and fallback gate
+- `ci-test` non-deploy workflow template
+- `generated-integrity` SHA-256 check/update templates
+- `web-app` / `pwa` manifest, service worker, registration, and check templates
+- `file-io` format-independent boundary and safe helper
+- No Domain format, deploy policy, or Runtime module is generated.
+
 ## Phase 4 — init / migrate and existing repository adoption
 
 - `knt init --profile <surface> --default <tool-default>`
 - `knt migrate` dry-run / explicit `--apply`
+- Manifest-less repository-shape probe via a Base source override
 - generated artifact / stale check
 - 詳細doctor / conformance report
 

@@ -76,7 +76,7 @@ Project単位で選択できるDefaultとして定義する。
 
 DefaultはDomain処理、公開互換性、永続形式、provider policyを所有しない。
 
-## Phase 3 — KiNoTch. Default Pack implementation
+## Phase 3A — Default Catalog / state / selection
 
 複数repoで厳密なPortable Contract証明を待たず、Default条件を満たすものを
 Surface Default / Tool Defaultとして提供する。Projectからoverride / disable
@@ -106,6 +106,31 @@ Surface Default / Tool Defaultとして提供する。Projectからoverride / di
 
 Default identifier・互換Surface・説明の正本は
 `.kinotch/defaults/catalog.json` とする。
+
+完了:
+
+- Surface / Tool Defaultの分離
+- 8 Surface profileと`windows` alias
+- Runtime module自動注入の廃止
+- Catalog駆動`init` / `migrate`
+- `DEFAULT` / `OVERRIDE` / `DISABLED` state管理
+
+## Phase 3B — Actual Default behavior
+
+現在位置。Catalogで選択したDefaultへ、Domainを拘束しない実装を与える。
+
+- `verify`: common router、direct verifyまたはtest→build fallback
+- `ci-test`: non-deploy GitHub Actions verify workflow
+- `generated-integrity`: SHA-256 metadata、check、update helper
+- `web-app` / `pwa`: manifest、pass-through service worker、registration helper、check
+- `file-io`: format-independent open/save boundary and safe helper
+- `secrets` / `local-app`: templateのsecret hygieneと共通command vocabulary
+
+未実装・Project-owned:
+
+- Pages deploy
+- Domain-specific file format、GUI picker、D&D、provider retry
+- Runtime module、ActionResult、Artifact domain object
 
 ### CLI
 
@@ -151,6 +176,7 @@ Default identifier・互換Surface・説明の正本は
 - stale check
 - より詳細なdoctor
 - Base conformance report
+- ManifestなしRepositoryのread-only shape probe
 
 `knt init` はCatalogを参照して選択SurfaceとTool Defaultの構成、Project
 Overlayを生成する。Surface選択からRuntime moduleを自動注入しない。

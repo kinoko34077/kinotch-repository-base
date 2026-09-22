@@ -1,5 +1,6 @@
 param(
     [string]$RootOverride,
+    [string]$BaseOverride,
 
     [Parameter(Position=0)]
     [string]$Command = "help",
@@ -12,7 +13,12 @@ $ErrorActionPreference = "Stop"
 
 if ($RootOverride) {
     $Root = (Resolve-Path -LiteralPath $RootOverride).Path
-    $BaseDir = Join-Path $Root ".kinotch"
+    if ($BaseOverride) {
+        $BaseDir = (Resolve-Path -LiteralPath $BaseOverride).Path
+    }
+    else {
+        $BaseDir = Join-Path $Root ".kinotch"
+    }
 }
 else {
     $BaseDir = Split-Path -Parent $PSScriptRoot
@@ -39,6 +45,26 @@ function Write-Knt([string]$Message) {
 
 function Get-Manifest {
     return Get-KntJson -Path $ManifestPath
+}
+
+function Get-ProjectDefaultState($Manifest, [string]$DefaultId) {
+    if (-not $Manifest) { return $null }
+    $relative = Get-ManifestPathValue $Manifest "defaults" "defaults.json"
+    $path = Join-Path (Join-Path $Root "project") $relative
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return $null }
+    $defaults = Get-KntJson -Path $path
+    $property = $defaults.packs.PSObject.Properties[$DefaultId]
+    if (-not $property) {
+        $catalog = Get-DefaultCatalog
+        $entry = Find-AnyDefaultCatalogEntry -Catalog $catalog -Identifier $DefaultId
+        $property = $defaults.packs.PSObject.Properties[[string]$entry.id]
+    }
+    if ($property) { return [string](Get-KntJsonProperty $property.Value "state") }
+    return $null
+}
+
+function Test-ProjectDefaultEnabled($Manifest, [string]$DefaultId) {
+    return ((Get-ProjectDefaultState -Manifest $Manifest -DefaultId $DefaultId) -eq "DEFAULT")
 }
 
 function Get-DefaultCatalog {
@@ -97,6 +123,7 @@ function Get-DefaultOptions([string]$CommandName) {
     $values = @($RemainingArgs)
     for ($index = 0; $index -lt $values.Count; $index++) {
         $value = [string]$values[$index]
+        if ([string]::IsNullOrWhiteSpace($value)) { continue }
         if ($value -eq "--apply") {
             if ($CommandName -ne "migrate") { throw "Unknown $CommandName option: $value" }
             $apply = $true
@@ -167,14 +194,94 @@ function Get-DefaultStateEntry($State) {
     return [pscustomobject]@{ state = $State }
 }
 
-function Get-MigrateProfileEntries($Manifest, $Catalog, $Options) {
+function Get-RepositoryShape($Catalog) {
+    $surfaceIds = New-Object System.Collections.Generic.List[string]
+    $toolIds = New-Object System.Collections.Generic.List[string]
+    $markers = New-Object System.Collections.Generic.List[string]
+    $packagePath = Join-Path $Root "package.json"
+    $packageText = ""
+    $package = $null
+    if (Test-Path -LiteralPath $packagePath -PathType Leaf) {
+        $packageText = Get-Content -Raw -Encoding UTF8 $packagePath
+        try { $package = $packageText | ConvertFrom-Json } catch { }
+        [void]$markers.Add("package.json")
+    }
+    $cargoPath = Join-Path $Root "Cargo.toml"
+    $cargoText = if (Test-Path -LiteralPath $cargoPath -PathType Leaf) { Get-Content -Raw -Encoding UTF8 $cargoPath } else { "" }
+    if ($cargoText) { [void]$markers.Add("Cargo.toml") }
+    $pythonPaths = @((Join-Path $Root "pyproject.toml"), (Join-Path $Root "requirements.txt"))
+    $pythonText = ""
+    foreach ($pythonPath in $pythonPaths) {
+        if (Test-Path -LiteralPath $pythonPath -PathType Leaf) {
+            $pythonText += Get-Content -Raw -Encoding UTF8 $pythonPath
+            [void]$markers.Add((Split-Path -Leaf $pythonPath))
+        }
+    }
+    $workflowPath = Join-Path $Root ".github/workflows"
+    if (Test-Path -LiteralPath $workflowPath -PathType Container) {
+        [void]$markers.Add(".github/workflows")
+        [void]$toolIds.Add("ci-test")
+    }
+    $publicPath = Join-Path $Root "public"
+    $staticPath = Join-Path $Root "static"
+    $hasWebAssets = (Test-Path -LiteralPath $publicPath -PathType Container) -or (Test-Path -LiteralPath $staticPath -PathType Container) -or (Test-Path -LiteralPath (Join-Path $Root "index.html") -PathType Leaf)
+    $scriptsText = if ($package -and $package.scripts) { ($package.scripts | Out-String) } else { "" }
+    $dependencyText = ($packageText + " " + $pythonText + " " + $cargoText).ToLowerInvariant()
+
+    if ($dependencyText -match "hono|cloudflare|wrangler|service binding|worker") {
+        [void]$surfaceIds.Add("api")
+    }
+    if ($hasWebAssets -or $dependencyText -match "vite|react|vue|svelte|astro|next") {
+        [void]$surfaceIds.Add("web-app")
+    }
+    if ($cargoText -or $pythonText -or $scriptsText -match "(^|\s)test|build|lint") {
+        [void]$toolIds.Add("verify")
+    }
+    if ($package -and ($package.bin -or $scriptsText -match "cli|start|run")) { [void]$surfaceIds.Add("cli") }
+    if ($cargoText -match "\[\[bin\]\]|\[package\]" -or $pythonText -match "\[project\.scripts\]") {
+        [void]$surfaceIds.Add("cli")
+    }
+    if ($cargoText -match "egui|tauri|winit|windows|gtk") { [void]$surfaceIds.Add("windows") }
+    if ($pythonText -match "streamlit|gradio") { [void]$surfaceIds.Add("web-app") }
+    if ($pythonText) { [void]$toolIds.Add("local-app") }
+    if ($dependencyText -match "mcp") { [void]$surfaceIds.Add("mcp") }
+    if ($Root -match "dev_agent|agent") { [void]$surfaceIds.Add("agent") }
+
+    $scanDirectories = @("public", "static", "src", "app", "tools", "scripts", "backend", "frontend") | ForEach-Object { Join-Path $Root $_ } | Where-Object { Test-Path -LiteralPath $_ -PathType Container }
+    $scanFiles = @()
+    foreach ($scanDirectory in $scanDirectories) {
+        $scanFiles += @(Get-ChildItem -LiteralPath $scanDirectory -Recurse -File -Force -ErrorAction SilentlyContinue)
+    }
+    $scanFiles += @(Get-ChildItem -LiteralPath $Root -File -Force -ErrorAction SilentlyContinue)
+    $manifestPath = Join-Path $Root "public/manifest.webmanifest"
+    if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) { $manifestPath = Join-Path $Root "manifest.webmanifest" }
+    $workerFiles = @($scanFiles | Where-Object { $_.Name -match "service-worker|sw\.js$" })
+    if ((Test-Path -LiteralPath $manifestPath -PathType Leaf) -and $workerFiles.Count -gt 0) { [void]$toolIds.Add("pwa") }
+    if ($scriptsText -match "pages|deploy-pages" -or (Test-Path -LiteralPath (Join-Path $Root ".github/workflows/pages-deploy.yml") -PathType Leaf)) { [void]$toolIds.Add("pages") }
+    $generatedFiles = @($scanFiles | Where-Object { $_.Name -match "(^generated|\.generated\.|generated\.)" })
+    if ($generatedFiles.Count -gt 0 -or $scriptsText -match "generated|check:.*snapshot") { [void]$toolIds.Add("generated-integrity") }
+    $gitignorePath = Join-Path $Root ".gitignore"
+    $gitignoreText = if (Test-Path -LiteralPath $gitignorePath -PathType Leaf) { Get-Content -Raw -Encoding UTF8 $gitignorePath } else { "" }
+    if ((Test-Path -LiteralPath (Join-Path $Root ".env.example") -PathType Leaf) -or $gitignoreText -match "\.env|secret|credential") { [void]$toolIds.Add("secrets") }
+
+    return [pscustomobject]@{
+        markers = @($markers | Select-Object -Unique)
+        surfaceIds = @($surfaceIds | Select-Object -Unique)
+        toolIds = @($toolIds | Select-Object -Unique)
+    }
+}
+
+function Get-MigrateProfileEntries($Manifest, $Catalog, $Options, $Shape) {
     $requested = @($Options.profiles)
     if ($requested.Count -eq 0) {
-        if ($Manifest.PSObject.Properties["profiles"] -and @($Manifest.profiles).Count -gt 0) {
+        if ($Manifest -and $Manifest.PSObject.Properties["profiles"] -and @($Manifest.profiles).Count -gt 0) {
             $requested = @($Manifest.profiles | ForEach-Object { [string]$_ })
         }
-        elseif (-not [string]::IsNullOrWhiteSpace([string]$Manifest.profile)) {
+        elseif ($Manifest -and -not [string]::IsNullOrWhiteSpace([string]$Manifest.profile)) {
             $requested = @([string]$Manifest.profile)
+        }
+        elseif ($Shape) {
+            $requested = @($Shape.surfaceIds)
         }
     }
     $entries = @()
@@ -190,13 +297,21 @@ function Get-MigrateProfileEntries($Manifest, $Catalog, $Options) {
     return @($entries)
 }
 
-function Get-MigrateToolEntries($Manifest, $Catalog, $Options) {
+function Get-MigrateToolEntries($Manifest, $Catalog, $Options, $Shape) {
     if (@($Options.defaults).Count -gt 0) {
         return @(Resolve-DefaultSelections -Options $Options -Catalog $Catalog -RequireProfile $false).toolEntries
     }
 
+    if (-not $Manifest -and $Shape) {
+        $entries = @()
+        foreach ($candidateId in @($Shape.toolIds)) {
+            $entries += Find-DefaultCatalogEntry -Catalog $Catalog -Identifier $candidateId -Kind "tool"
+        }
+        return @($entries)
+    }
+
     $candidateIds = New-Object System.Collections.Generic.List[string]
-    if (Resolve-Command $Manifest "verify" -or Resolve-Command $Manifest "test" -or Resolve-Command $Manifest "build") {
+    if ($Manifest -and (Resolve-Command $Manifest "verify" -or Resolve-Command $Manifest "test" -or Resolve-Command $Manifest "build")) {
         [void]$candidateIds.Add("verify")
     }
     if (Test-Path -LiteralPath (Join-Path $Root ".github/workflows/verify.yml") -PathType Leaf) {
@@ -217,6 +332,52 @@ function Get-MigrateToolEntries($Manifest, $Catalog, $Options) {
 function Write-KntJsonFile([string]$Path, $Value) {
     $json = ConvertTo-Json $Value -Depth 20
     [IO.File]::WriteAllText($Path, $json + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
+}
+
+function Copy-DefaultImplementation([string]$DefaultId, [string]$ProjectRoot) {
+    $templateRoot = Join-Path $BaseDir ("templates/defaults/" + $DefaultId)
+    if (-not (Test-Path -LiteralPath $templateRoot -PathType Container)) { return }
+    foreach ($templateFile in @(Get-ChildItem -LiteralPath $templateRoot -Recurse -File -Force)) {
+        $relative = ConvertTo-BaseRelativePath -Root $templateRoot -AbsolutePath $templateFile.FullName
+        if ($relative -like ".github/*") {
+            $destination = Join-Path $Root $relative
+        }
+        else {
+            $destination = Join-Path $ProjectRoot $relative
+        }
+        if (Test-Path -LiteralPath $destination) {
+            Write-Knt "Default '$DefaultId' preserved existing path: $relative"
+            continue
+        }
+        $parent = Split-Path -Parent $destination
+        New-Item -ItemType Directory -Path $parent -Force | Out-Null
+        Copy-Item -LiteralPath $templateFile.FullName -Destination $destination -Force
+        Write-Knt "Default '$DefaultId' added: $relative"
+    }
+}
+
+function Invoke-GeneratedDefaultScript([string]$ScriptRelativePath, [string]$CommandLabel) {
+    $projectRoot = Join-Path $Root "project"
+    $scriptPath = Join-Path $projectRoot $ScriptRelativePath
+    if (-not (Test-Path -LiteralPath $scriptPath -PathType Leaf)) {
+        Write-Host "[$CommandLabel] MISSING project/$ScriptRelativePath" -ForegroundColor Red
+        return 1
+    }
+    $powerShell = (Get-Command pwsh -ErrorAction SilentlyContinue | Select-Object -First 1).Source
+    if ([string]::IsNullOrWhiteSpace($powerShell)) {
+        $powerShell = (Get-Command powershell -ErrorAction Stop | Select-Object -First 1).Source
+    }
+    & $powerShell -NoProfile -ExecutionPolicy Bypass -File $scriptPath -Root $projectRoot
+    if ($null -ne $LASTEXITCODE) { return $LASTEXITCODE }
+    return 0
+}
+
+function Invoke-PwaCheck {
+    return Invoke-GeneratedDefaultScript -ScriptRelativePath "tools/pwa-check.ps1" -CommandLabel "pwa-check"
+}
+
+function Invoke-GeneratedIntegrityCheck {
+    return Invoke-GeneratedDefaultScript -ScriptRelativePath "tools/check-generated.ps1" -CommandLabel "generated-integrity"
 }
 
 function Invoke-Init {
@@ -285,10 +446,20 @@ function Invoke-Init {
     }
     foreach ($toolEntry in $toolEntries) {
         $defaults.packs | Add-Member -NotePropertyName ([string]$toolEntry.id) -NotePropertyValue (Get-DefaultStateEntry "DEFAULT") -Force
+        Copy-DefaultImplementation -DefaultId ([string]$toolEntry.id) -ProjectRoot $projectRoot
     }
     $manifest.runtime.modules = @()
     foreach ($surface in @($manifest.surfaces.PSObject.Properties)) {
         $surface.Value = ($surface.Name -in $surfaceNames)
+    }
+    if ($toolEntries.id -contains "pwa") {
+        $pwaManifestPath = Join-Path $projectRoot "public/manifest.webmanifest"
+        if (Test-Path -LiteralPath $pwaManifestPath -PathType Leaf) {
+            $pwaManifest = Get-KntJson -Path $pwaManifestPath
+            $pwaManifest.name = [string]$manifest.project.name
+            $pwaManifest.short_name = [string]$manifest.project.name
+            Write-KntJsonFile -Path $pwaManifestPath -Value $pwaManifest
+        }
     }
     Write-KntJsonFile -Path $ManifestPath -Value $manifest
     Write-KntJsonFile -Path (Join-Path $projectRoot "defaults.json") -Value $defaults
@@ -299,8 +470,15 @@ function Invoke-Init {
 function Invoke-Migrate($Manifest) {
     $options = Get-DefaultOptions "migrate"
     $catalog = Get-DefaultCatalog
-    $profileEntries = @(Get-MigrateProfileEntries -Manifest $Manifest -Catalog $catalog -Options $options)
-    $toolEntries = @(Get-MigrateToolEntries -Manifest $Manifest -Catalog $catalog -Options $options)
+    $shape = $null
+    if (-not $Manifest) {
+        $shape = Get-RepositoryShape -Catalog $catalog
+        Write-Knt ("Detected repository markers: " + ($(if ($shape.markers.Count) { $shape.markers -join ", " } else { "(none)" })))
+        Write-Knt ("Detected Surface candidates: " + ($(if ($shape.surfaceIds.Count) { $shape.surfaceIds -join ", " } else { "(none)" })))
+        Write-Knt ("Detected Tool candidates: " + ($(if ($shape.toolIds.Count) { $shape.toolIds -join ", " } else { "(none)" })))
+    }
+    $profileEntries = @(Get-MigrateProfileEntries -Manifest $Manifest -Catalog $catalog -Options $options -Shape $shape)
+    $toolEntries = @(Get-MigrateToolEntries -Manifest $Manifest -Catalog $catalog -Options $options -Shape $shape)
     $selectedEntries = @($profileEntries + $toolEntries)
     if ($selectedEntries.Count -eq 0) {
         Write-Knt "No Default candidates detected. Use --profile <surface> or --default <tool-default>."
@@ -348,6 +526,10 @@ function Invoke-Migrate($Manifest) {
     if (-not $options.apply) {
         Write-Knt "Dry run: no files changed. Re-run with --apply to record selected Default Pack states."
         return 0
+    }
+
+    if (-not $Manifest) {
+        throw "migrate --apply requires an existing Project Manifest; dry-run completed without changing this repository"
     }
 
     $changedManifest = $false
@@ -457,11 +639,82 @@ function Invoke-ProjectCommand($Manifest, [string]$Name) {
     }
 }
 
+function Invoke-Verify($Manifest) {
+    if (Test-ProjectDefaultEnabled -Manifest $Manifest -DefaultId "generated-integrity") {
+        $integrityCode = Invoke-GeneratedIntegrityCheck
+        if ($integrityCode -ne 0) { return $integrityCode }
+    }
+    if (Test-ProjectDefaultEnabled -Manifest $Manifest -DefaultId "pwa") {
+        $pwaCode = Invoke-PwaCheck
+        if ($pwaCode -ne 0) { return $pwaCode }
+    }
+
+    $direct = Resolve-Command $Manifest "verify"
+    if ($direct) { return (Invoke-ProjectCommand $Manifest "verify") }
+    foreach ($fallback in @("test", "build")) {
+        if (Resolve-Command $Manifest $fallback) {
+            $code = Invoke-ProjectCommand $Manifest $fallback
+            if ($code -ne 0) { return $code }
+        }
+    }
+    return 0
+}
+
 function Add-DoctorSchemaErrors {
     param([System.Collections.Generic.List[string]]$Errors, $Data, $Schema, [string]$Path)
     foreach ($errorText in @(Test-KntSchema -Data $Data -Schema $Schema -Path $Path)) {
         [void]$Errors.Add($errorText)
     }
+}
+
+function Test-SelectedDefaultImplementations($DefaultsData) {
+    $ok = $true
+    if (-not $DefaultsData) { return $true }
+    $projectRoot = Join-Path $Root "project"
+    foreach ($packProperty in @($DefaultsData.packs.PSObject.Properties)) {
+        $state = [string](Get-KntJsonProperty $packProperty.Value "state")
+        if ($state -ne "DEFAULT") { continue }
+        $defaultId = [string]$packProperty.Name
+        switch ($defaultId) {
+            "ci-test" {
+                if (-not (Test-Path -LiteralPath (Join-Path $Root ".github/workflows/verify.yml") -PathType Leaf)) {
+                    Write-Host "[doctor] MISSING implementation for Default 'ci-test'" -ForegroundColor Red
+                    $ok = $false
+                }
+            }
+            "pwa" {
+                foreach ($relative in @("public/manifest.webmanifest", "public/service-worker.js", "src/pwa/register.js", "tools/pwa-check.ps1")) {
+                    if (-not (Test-Path -LiteralPath (Join-Path $projectRoot $relative) -PathType Leaf)) {
+                        Write-Host "[doctor] MISSING implementation for Default 'pwa': project/$relative" -ForegroundColor Red
+                        $ok = $false
+                    }
+                }
+            }
+            "generated-integrity" {
+                foreach ($relative in @("generated-integrity.json", "tools/check-generated.ps1", "tools/update-generated-integrity.ps1")) {
+                    if (-not (Test-Path -LiteralPath (Join-Path $projectRoot $relative) -PathType Leaf)) {
+                        Write-Host "[doctor] MISSING implementation for Default 'generated-integrity': project/$relative" -ForegroundColor Red
+                        $ok = $false
+                    }
+                }
+            }
+            "file-io" {
+                foreach ($relative in @("contracts/file-io.json", "tools/file-io.ps1")) {
+                    if (-not (Test-Path -LiteralPath (Join-Path $projectRoot $relative) -PathType Leaf)) {
+                        Write-Host "[doctor] MISSING implementation for Default 'file-io': project/$relative" -ForegroundColor Red
+                        $ok = $false
+                    }
+                }
+            }
+            "secrets" {
+                if (-not (Test-Path -LiteralPath (Join-Path $projectRoot ".gitignore") -PathType Leaf)) {
+                    Write-Host "[doctor] MISSING implementation for Default 'secrets'" -ForegroundColor Red
+                    $ok = $false
+                }
+            }
+        }
+    }
+    return $ok
 }
 
 function Invoke-Doctor($Manifest) {
@@ -512,10 +765,12 @@ function Invoke-Doctor($Manifest) {
         Add-DoctorSchemaErrors $schemaErrors (Get-KntJson -Path $surfacePath) $surfaceSchema $surfaceRelative
     }
     $defaultsRelative = Get-ManifestPathValue $Manifest "defaults" ""
+    $defaultsDataForImplementation = $null
     if (-not [string]::IsNullOrWhiteSpace($defaultsRelative)) {
         $defaultsPath = Join-Path $projectRoot $defaultsRelative
         if (Test-Path -LiteralPath $defaultsPath -PathType Leaf) {
             $defaultsData = Get-KntJson -Path $defaultsPath
+            $defaultsDataForImplementation = $defaultsData
             Add-DoctorSchemaErrors $schemaErrors $defaultsData $defaultsSchema $defaultsRelative
             foreach ($packProperty in @($defaultsData.packs.PSObject.Properties)) {
                 try {
@@ -538,6 +793,7 @@ function Invoke-Doctor($Manifest) {
         }
         $ok = $false
     }
+    if (-not (Test-SelectedDefaultImplementations -DefaultsData $defaultsDataForImplementation)) { $ok = $false }
 
     $profiles = New-Object System.Collections.Generic.List[object]
     foreach ($selectedProfile in $selectedProfiles) {
@@ -632,6 +888,8 @@ Common commands:
   test        Project tests
   build       Project build
   verify      Project verify command; falls back to test + build
+  generated-integrity  Check selected generated artifacts against SHA-256 metadata
+  pwa-check   Check selected PWA manifest, service worker, and registration helper
   smoke       Project smoke / real-entry check
   help        This help
 "@ | Write-Host
@@ -658,20 +916,18 @@ try {
         exit (Invoke-Init)
     }
 
+    if ($Command -eq "migrate") {
+        $migrationManifest = if (Test-Path -LiteralPath $ManifestPath -PathType Leaf) { Get-Manifest } else { $null }
+        exit (Invoke-Migrate $migrationManifest)
+    }
+
     $manifest = Get-Manifest
     if ($Command -eq "doctor") { exit (Invoke-Doctor $manifest) }
-    if ($Command -eq "migrate") { exit (Invoke-Migrate $manifest) }
+    if ($Command -eq "generated-integrity") { exit (Invoke-GeneratedIntegrityCheck) }
+    if ($Command -eq "pwa-check") { exit (Invoke-PwaCheck) }
 
     if ($Command -eq "verify") {
-        $direct = Resolve-Command $manifest "verify"
-        if ($direct) { exit (Invoke-ProjectCommand $manifest "verify") }
-        foreach ($fallback in @("test", "build")) {
-            if (Resolve-Command $manifest $fallback) {
-                $code = Invoke-ProjectCommand $manifest $fallback
-                if ($code -ne 0) { exit $code }
-            }
-        }
-        exit 0
+        exit (Invoke-Verify $manifest)
     }
 
     if ($Command -in @("setup","dev","test","build","smoke","deploy")) {

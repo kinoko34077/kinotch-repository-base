@@ -13,7 +13,7 @@ Last verified: 2026-09-23 — KiNoTch. Repository Base v0.2.1 complete
 - Profile existence and Profile / Surface contradiction diagnostics
 - Manifest path and command cwd diagnostics
 - Strict Base hash index and deterministic refresh
-- Base self-test runner with 37 passing cases
+- Base self-test runner with 40 passing cases
 - Base and Runtime Meta under .kinotch/meta/
 - New Repository templates under .kinotch/templates/project/
 - Runtime Contractの確定済み / Runtime Phase 1候補の区別
@@ -26,6 +26,10 @@ Last verified: 2026-09-23 — KiNoTch. Repository Base v0.2.1 complete
 - `knt init` support for all eight Surface Profiles and repeated Tool Defaults
 - Surface Profile selection no longer injects Runtime modules; new templates start with an empty module list
 - `knt migrate` catalog-driven dry-run / explicit apply with `OVERRIDE` and `DISABLED` preservation
+- Default implementation templates for `ci-test`, `pwa`, `generated-integrity`, and `file-io`
+- `knt verify` integration for selected PWA and generated-integrity checks
+- Manifest-less read-only `knt migrate` repository-shape probe using package, Cargo,
+  Python, workflow, and web-asset markers
 
 ## In progress
 
@@ -48,13 +52,12 @@ Last verified: 2026-09-23 — KiNoTch. Repository Base v0.2.1 complete
   tooling; AgentBackend remains Agent-owned. Only a narrow artifact-reference
   meaning is a provisional PARTIAL GO candidate. No Surface Pack or production
   integration was added.
-- Default-first standardization is now in Phase 3: low-risk, removable Surface
-  and Tool conveniences are offered as Project-overridable Defaults without
-  waiting for Portable Contract maturity.
+- Default-first standardization is now in Phase 3B: low-risk, removable Surface
+  and Tool conveniences have catalog entries and selected implementations.
 - The canonical four-layer policy is `.kinotch/meta/06_DEFAULT_FIRST_STANDARD.md`.
 - The Default Catalog is `.kinotch/defaults/catalog.json`; it is the single
   source for supported Surface / Tool Default identifiers and aliases.
-- A read-only local adoption classification is recorded in
+- A read-only local/GitHub adoption classification is recorded in
   `project/docs/DEFAULT_ROLLOUT_DRY_RUN.md`; no existing Project was changed.
 - `knt init` now generates a safe multi-profile Project Overlay, and `knt migrate`
   reports Default Pack candidates by default and applies them only with explicit
@@ -82,15 +85,17 @@ Last verified: 2026-09-23 — KiNoTch. Repository Base v0.2.1 complete
 
 ## Next work
 
-1. Apply the Default Catalog to canary repositories by dry-run only first;
+1. Correct and complete all-repository dry-run classifications, including
+   GitHub-only repositories and browser-extension / Streamlit shapes.
+2. Apply the Default Catalog to canary repositories by dry-run only first;
    record `DEFAULT`, `OVERRIDE`, `DISABLED`, or `N/A` without rewriting them.
-2. Keep Default Pack behavior removable and Project-owned; do not add Domain
+3. Keep Default Pack behavior removable and Project-owned; do not add Domain
    behavior or a universal Surface library.
-3. Keep the `kinotch-api` production boundary unchanged unless a pure
+4. Keep the `kinotch-api` production boundary unchanged unless a pure
    application operation appears without Response or Context wrapping.
-4. Keep Runtime provisional until additional heterogeneous repositories
+5. Keep Runtime provisional until additional heterogeneous repositories
    validate the same Portable meanings.
-5. Do not add Runtime modules, Surface Packs, or Domain adapters to Base merely
+6. Do not add Runtime modules, Surface Packs, or Domain adapters to Base merely
    because a Default Catalog entry exists.
 
 ## Verification

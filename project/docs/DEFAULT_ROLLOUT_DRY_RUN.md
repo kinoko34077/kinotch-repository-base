@@ -34,21 +34,27 @@ Project.
 | `IDS-Composit` | Node / source / tests / workflow | `web-app=OVERRIDE`, `library=OVERRIDE` | `verify=OVERRIDE`, `ci-test=OVERRIDE`, `generated-integrity=OVERRIDE`, `pages=OVERRIDE` | OVERRIDE | Vite, calibration, generated data, and Pages policy already have explicit gates. |
 | `jev-audit` | Python / tests / workflow | `cli=OVERRIDE`, `mcp=OVERRIDE` | `verify=OVERRIDE`, `ci-test=OVERRIDE` | OVERRIDE | Existing CLI/MCP and optional Runtime Pilot paths are authoritative. |
 | `kinotch-api` | Node / Hono / source / workflow | `api=OVERRIDE` | `verify=OVERRIDE`, `ci-test=OVERRIDE`, `generated-integrity=OVERRIDE` | OVERRIDE | Worker bindings, error codes, generated snapshots, and deploy gates are Project-owned. |
-| `line-style-viewer` | Git repository, no standard marker detected | `web-app=DEFAULT` | `verify=N/A` | DEFAULT candidate | Likely web-oriented, but exact commands require an active Project review. |
+| `line-style-viewer` | Static Web files (`index.html`, JS, CSS) | `web-app=OVERRIDE` | `verify=N/A` | OVERRIDE | Existing static viewer is already the Project implementation. |
 | `Mapience-prototype` | Git repository, no standard marker detected | N/A | N/A | N/A | Too little local structure for safe adoption. |
-| `memory-game` | Git repository, no standard marker detected | `web-app=DEFAULT` | `verify=N/A` | DEFAULT candidate | Web candidate by repository purpose, pending active Project verification. |
+| `memory-game` | Static Web files (`index.html`, JS, CSS) | `web-app=OVERRIDE` | `verify=N/A` | OVERRIDE | Existing browser game implementation is already the Project boundary. |
 | `obsidian-related-notes-view` | Node / source | `library=OVERRIDE` | `verify=N/A` | OVERRIDE | Host/plugin lifecycle is Project-specific. |
 | `refil-viewer` | Node / web assets / source | `web-app=OVERRIDE` | `verify=OVERRIDE` | OVERRIDE | Existing viewer toolchain is already the natural implementation boundary. |
-| `Structured-Cell-Automaton` | Python | `library=OVERRIDE` | `local-app=OVERRIDE` | OVERRIDE | Existing Python/domain structure should remain authoritative. |
+| `Structured-Cell-Automaton` | Python / Streamlit / GUI scripts | `web-app=OVERRIDE` | `local-app=OVERRIDE` | OVERRIDE | Streamlit GUI and local data flow are Project-owned; it is not a library Surface. |
 | `SynTrail-LM` | Rust / GUI / trainer / tests | `windows=OVERRIDE`, `cli=OVERRIDE` | `file-io=OVERRIDE` | OVERRIDE | Native GUI, trainer state, persistence, and file operations are already Domain-aware. |
-| `txt-auto-replace` | Git repository, no standard marker detected | `cli=DEFAULT` | `local-app=DEFAULT` | DEFAULT candidate | Small local utility candidate; inspect commands before any apply. |
-| `weather-widget` | Git repository, no standard marker detected | `web-app=DEFAULT` | `verify=N/A` | DEFAULT candidate | Web candidate by repository purpose, pending active Project verification. |
+| `txt-auto-replace` | Chrome Manifest V3 browser extension | `browser-extension=N/A` | `N/A` | N/A | Browser-extension is not a current Surface Profile; do not misclassify it as CLI/local-app. |
+| `weather-widget` | Static Web/PWA (`manifest.webmanifest`, service worker) | `web-app=OVERRIDE` | `pwa=OVERRIDE`, `verify=N/A` | OVERRIDE | Existing PWA files are already present; no replacement should be generated. |
 
-## Referenced but not present in the local checkout
+## GitHub-only repositories now inspected
 
-The following names from the rollout instruction were not found under the
-local `Documents/Programs` repository scan, so they remain `N/A` and were not
-modified: `Gomoku-5D`, `Micro-Chordbot`, `microtone-piano`, and `srt2subtitle`.
+These repositories were checked read-only through their GitHub default-branch
+tree because no local checkout was available. They remain unmodified.
+
+| Repository | Detected shape | Surface candidates | Tool candidates | Recommended state | Reason / existing equivalent |
+| --- | --- | --- | --- | --- | --- |
+| `Gomoku-5D` | Vite / React / TypeScript / public assets / tests | `web-app=OVERRIDE` | `verify=OVERRIDE` | OVERRIDE | Existing Vite and game test/build scripts are Project-owned. |
+| `Micro-Chordbot` | Browser-oriented Web/PWA assets / Pages workflows | `web-app=OVERRIDE` | `pages=OVERRIDE`, `ci-test=OVERRIDE` | OVERRIDE | Existing browser assets and Pages workflow define release behavior. |
+| `microtone-piano` | Static Web/PWA assets / Pages workflow / audio data | `web-app=OVERRIDE` | `pwa=OVERRIDE`, `pages=OVERRIDE` | OVERRIDE | Existing manifest, icons, audio format, and Pages deployment are authoritative. |
+| `srt2subtitle` | Python backend / Cloudflare frontend / Pages workflows | `web-app=OVERRIDE`, `local-app=OVERRIDE` | `ci-test=OVERRIDE`, `pages=OVERRIDE` | OVERRIDE | Local transcription and Cloudflare/Pages boundaries are Project-owned. |
 
 ## Canary decision
 

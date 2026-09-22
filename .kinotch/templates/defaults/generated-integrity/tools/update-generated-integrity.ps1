@@ -1,0 +1,24 @@
+param(
+    [Parameter(Mandatory=$true)][string]$Artifact,
+    [Parameter(Mandatory=$true)][string]$Source,
+    [Parameter(Mandatory=$true)][string]$Generator,
+    [string]$Root = (Split-Path -Parent $PSScriptRoot)
+)
+
+$ErrorActionPreference = "Stop"
+$configPath = Join-Path $Root "generated-integrity.json"
+$artifactPath = Join-Path $Root $Artifact
+if (-not (Test-Path -LiteralPath $artifactPath -PathType Leaf)) { throw "Generated artifact not found: $Artifact" }
+if (-not (Test-Path -LiteralPath $configPath -PathType Leaf)) { throw "generated-integrity.json is missing" }
+$config = Get-Content -Raw -Encoding UTF8 $configPath | ConvertFrom-Json
+$hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $artifactPath).Hash.ToLowerInvariant()
+$entry = [pscustomobject]@{
+    source = $Source
+    artifact = $Artifact
+    sha256 = $hash
+    generator = $Generator
+}
+$existing = @($config.entries | Where-Object { [string]$_.artifact -ne $Artifact })
+$config.entries = @($existing + $entry)
+[IO.File]::WriteAllText($configPath, (ConvertTo-Json $config -Depth 10) + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
+Write-Output "Updated generated-integrity entry: $Artifact"

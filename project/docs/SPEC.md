@@ -25,6 +25,8 @@ The Base reduces the effort to create, read, repair, and verify a repository wit
 13. Surface Profiles and Runtime module selection are independent; `knt init` leaves `runtime.modules` empty unless a Project explicitly declares modules.
 14. Surface Defaults and Tool Defaults are defined by one machine-readable Default Catalog and can be selected without router hard-coded lists.
 15. `minimal`, `web-app`, `cli`, `windows-gui`, `mcp`, `api`, `agent`, and `library` are valid Surface Profiles, with `windows` retained as an alias.
+16. Selecting `ci-test`, `pwa`, `generated-integrity`, or `file-io` materializes only removable, Domain-neutral implementation files; `verify` connects to the common router without forcing a toolchain.
+17. `knt migrate` can perform a read-only repository-shape probe without a Project Manifest and refuses `--apply` until a Base Manifest exists.
 
 ## Fixed read order
 
@@ -52,6 +54,7 @@ Inputs are the repository files, project/project.json, contract registries, Base
 - Production deployment policy remains Project-owned.
 - Surface adapters must not duplicate Domain Core behavior.
 - Generated artifacts must be regenerated from their canonical source.
+- Default implementations must remain Surface / Tool conveniences; they must not define Domain formats, deploy policy, Runtime modules, or public API semantics.
 
 ## Exceptions and fallback
 
