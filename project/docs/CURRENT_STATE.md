@@ -27,15 +27,20 @@ Last verified: 2026-09-22 — KiNoTch. Repository Base v0.2.1 complete
 
 - KiNoTch. Runtime v0.1 reference implementation now exists in the separate
   `kinotch-runtime` repository.
+- Runtime v0.1 Execution Contract canonicalization is complete in Runtime.
+- The first `jev-audit` CLI/MCP Pilot is complete; Contract evaluation is
+  pending.
 
 ## Known issues
 
 - Runtime v0.1 exists as a small, provisional Python reference implementation.
-- Runtime Execution Contract validation and the first `jev-audit` Pilot are not
-  complete yet.
+- The first `jev-audit` Pilot is complete, but one Python repo is not enough to
+  declare a stable cross-repository Contract.
 - Runtime module names remain logical declarations until Runtime Phase 1.
 - The dependency-free validator implements the JSON Schema keywords used by this Base, not every future JSON Schema keyword.
-- `result.schema.json` contains a `$ref` for the future Runtime contract; it is an explicitly excluded definition keyword and is not validated by `knt doctor`.
+- Execution schemas under `.kinotch/schemas/` are Base validation compatibility
+  copies. The Runtime canonical source is maintained in the separate Runtime
+  repository and is not independently edited here.
 - The Base smoke command is intentionally unconfigured because Base itself has no production entry point.
 
 ## Current constraints
@@ -47,10 +52,12 @@ Last verified: 2026-09-22 — KiNoTch. Repository Base v0.2.1 complete
 
 ## Next work
 
-1. Validate Runtime v0.1 contracts and keep the reference implementation
-   provisional until Pilot evidence exists.
-2. Pilot the Runtime first in jev-audit without changing its Audit Core.
-3. Add further Surface Packs only after repeated Pilot evidence.
+1. Evaluate `jev-audit` Pilot evidence and classify Runtime Contracts by
+   maturity.
+2. Prepare the limited `kinotch-api` second Pilot without changing Base
+   structure or adding Surface Packs.
+3. Keep Runtime provisional until an additional heterogeneous repository
+   validates the same meanings.
 
 ## Verification
 
