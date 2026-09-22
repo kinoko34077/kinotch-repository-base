@@ -41,6 +41,14 @@
       "type": "string",
       "minLength": 1
     },
+    "profiles": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
     "runtime": {
       "type": "object",
       "required": [

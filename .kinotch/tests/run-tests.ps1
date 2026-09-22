@@ -121,6 +121,35 @@ function Invoke-KntFixture {
     }
 }
 
+function Invoke-KntInitFixture {
+    param(
+        [string[]]$Profiles,
+        [scriptblock]$AssertOutput
+    )
+    $tempRoot = Join-Path ([IO.Path]::GetTempPath()) ("kinotch-init-test-" + [guid]::NewGuid().ToString("N"))
+    New-Item -ItemType Directory -Path $tempRoot -Force | Out-Null
+    try {
+        Get-ChildItem -Force $RepoRoot | Where-Object {
+            $_.Name -notin @(".git", ".superpowers")
+        } | Copy-Item -Destination $tempRoot -Recurse -Force
+        Remove-Item -LiteralPath (Join-Path $tempRoot "project") -Recurse -Force
+        $router = Join-Path $tempRoot ".kinotch/scripts/knt.ps1"
+        $invokeArgs = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $router, "-RootOverride", $tempRoot, "init")
+        foreach ($profile in $Profiles) { $invokeArgs += @("--profile", $profile) }
+        $initOutput = @(& $PowerShellExecutable @invokeArgs 2>&1)
+        $initExit = $LASTEXITCODE
+        Assert-Equal 0 $initExit "init exit code"
+
+        $doctorOutput = @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $router -RootOverride $tempRoot doctor 2>&1)
+        $doctorExit = $LASTEXITCODE
+        Assert-Equal 0 $doctorExit "generated project doctor exit code"
+        if ($AssertOutput) { & $AssertOutput $tempRoot (($initOutput + $doctorOutput) -join [Environment]::NewLine) }
+    }
+    finally {
+        Remove-Item -LiteralPath $tempRoot -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
 function Invoke-TestCase([string]$Name, [scriptblock]$Body) {
     try {
         & $Body
@@ -217,6 +246,46 @@ Invoke-TestCase "schema-valued additional path property is validated" {
         param($root, $output)
         Assert-True ($output -match "project/project.json.paths.docs") "path schema path was not reported"
     }
+}
+Invoke-TestCase "invalid Default state is rejected by doctor" {
+    Invoke-KntFixture -Name "valid-minimal" -Command "doctor" -ExpectedExit 1 -Prepare {
+        param($root)
+        $manifestPath = Join-Path $root "project/project.json"
+        $manifest = Get-Content -Raw -Encoding UTF8 $manifestPath | ConvertFrom-Json
+        $manifest.paths | Add-Member -NotePropertyName defaults -NotePropertyValue "defaults.json" -Force
+        [IO.File]::WriteAllText($manifestPath, (ConvertTo-Json $manifest -Depth 20) + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
+        $defaults = [pscustomobject]@{
+            schema_version = 1
+            packs = [pscustomobject]@{ cli = [pscustomobject]@{ state = "MAYBE" } }
+        }
+        [IO.File]::WriteAllText((Join-Path $root "project/defaults.json"), (ConvertTo-Json $defaults -Depth 10) + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
+    } -AssertOutput {
+        param($root, $output)
+        Assert-True ($output -match "defaults.*state|state.*DEFAULT") "invalid Default state was not reported"
+    }
+}
+Invoke-TestCase "init creates a doctor-valid multi-profile Project" {
+    Invoke-KntInitFixture -Profiles @("cli", "mcp") -AssertOutput {
+        param($root, $output)
+        $manifest = Get-Content -Raw -Encoding UTF8 (Join-Path $root "project/project.json") | ConvertFrom-Json
+        Assert-Equal "cli" $manifest.profile "primary profile"
+        Assert-Equal 2 @($manifest.profiles).Count "selected profile count"
+        Assert-True (@($manifest.profiles) -contains "mcp") "mcp profile was not recorded"
+        Assert-True ($manifest.surfaces.cli -eq $true -and $manifest.surfaces.mcp -eq $true) "selected surfaces were not enabled"
+        $defaults = Get-Content -Raw -Encoding UTF8 (Join-Path $root "project/defaults.json") | ConvertFrom-Json
+        Assert-Equal "DEFAULT" $defaults.packs.cli.state "cli Default state"
+        Assert-Equal "DEFAULT" $defaults.packs.mcp.state "mcp Default state"
+        Assert-True (Test-Path (Join-Path $root "README.md")) "root README was not generated"
+        Assert-True (Test-Path (Join-Path $root "project/src/README.md")) "project source placeholder was not generated"
+        Assert-True (Test-Path (Join-Path $root "project/tests/README.md")) "project test placeholder was not generated"
+    }
+}
+Invoke-TestCase "init refuses to overwrite an existing Project" {
+    $router = Join-Path $RepoRoot ".kinotch/scripts/knt.ps1"
+    $output = @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $router init --profile cli 2>&1)
+    $exitCode = $LASTEXITCODE
+    Assert-Equal 1 $exitCode "init refusal exit code"
+    Assert-True (($output -join [Environment]::NewLine) -match "already initialized|project/project.json") "init refusal was not reported"
 }
 Invoke-TestCase "oneOf requires exactly one matching schema" {
     $schema = [pscustomobject]@{

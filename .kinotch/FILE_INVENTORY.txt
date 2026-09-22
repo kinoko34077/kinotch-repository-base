@@ -17,6 +17,7 @@
 .kinotch/meta/03_GUARDRAILS.md
 .kinotch/meta/04_EXTRACTION_CRITERIA.md
 .kinotch/meta/05_VALIDATION_PLAN.md
+.kinotch/meta/06_DEFAULT_FIRST_STANDARD.md
 .kinotch/meta/README.md
 .kinotch/profiles/agent.json
 .kinotch/profiles/api.json
@@ -28,6 +29,7 @@
 .kinotch/profiles/windows-gui.json
 .kinotch/schemas/action.schema.json
 .kinotch/schemas/artifact.schema.json
+.kinotch/schemas/defaults.schema.json
 .kinotch/schemas/error.schema.json
 .kinotch/schemas/progress.schema.json
 .kinotch/schemas/project.schema.json
@@ -44,10 +46,13 @@
 .kinotch/templates/project/README.md
 .kinotch/templates/project/contracts/actions.json
 .kinotch/templates/project/contracts/surfaces.json
+.kinotch/templates/project/defaults.json
 .kinotch/templates/project/docs/CURRENT_STATE.md
 .kinotch/templates/project/docs/INDEX.md
 .kinotch/templates/project/docs/SPEC.md
 .kinotch/templates/project/project.json
+.kinotch/templates/project/src/README.md
+.kinotch/templates/project/tests/README.md
 .kinotch/tests/fixtures/command-cwd/project.json
 .kinotch/tests/fixtures/command-cwd/scripts/record-cwd.ps1
 .kinotch/tests/fixtures/command-failure/project.json

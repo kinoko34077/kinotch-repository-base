@@ -32,7 +32,7 @@
     },
     {
       "path": ".kinotch/FILE_INVENTORY.txt",
-      "sha256": "614229d2e365a3da2f5639a85a5017d40971f81c0966b682d135a528b7e0279c"
+      "sha256": "9f5b75538ef0678bed2073f7bb98fab44bd61ba4817859509f783f68419cbc94"
     },
     {
       "path": ".kinotch/PROJECT_BOUNDARY.md",
@@ -40,7 +40,7 @@
     },
     {
       "path": ".kinotch/README_BASE.md",
-      "sha256": "b550bbb049a9ce2a8a3a93a1f16dc6f28e77c2cede4bcb1df25ff52b8374720c"
+      "sha256": "748a9080ac20b290ea2f9de9615bceeb5a5050b33507ae4e8fb91f50969f7cdf"
     },
     {
       "path": ".kinotch/REPOSITORY_STANDARD.md",
@@ -64,7 +64,7 @@
     },
     {
       "path": ".kinotch/meta/02_ROADMAP.md",
-      "sha256": "8946009f5876d801178abe47107346dab84395420aa6d89d2c6f9bd48c8db9d0"
+      "sha256": "f74ac62369967867c5165faa9209ff40dc0d1100bd0398cbe435b1b20147e067"
     },
     {
       "path": ".kinotch/meta/03_GUARDRAILS.md",
@@ -79,8 +79,12 @@
       "sha256": "6b2bd6f65f61936ecd5ddb0f1c3f8e29a47856a01fe7200a0821037f90cad00f"
     },
     {
+      "path": ".kinotch/meta/06_DEFAULT_FIRST_STANDARD.md",
+      "sha256": "745c80444376fff35819e0ac6b008e8bbba9b3f79ce353bd2856d066445d9c72"
+    },
+    {
       "path": ".kinotch/meta/README.md",
-      "sha256": "991ae391e38627e646d0ae113961fb91035f81423062966428e97d0e67f1b549"
+      "sha256": "8b9a6e4cd0708ac2cf2f52c888ebcad021da288d1b6af52dea43b9de44e313ae"
     },
     {
       "path": ".kinotch/profiles/agent.json",
@@ -123,6 +127,10 @@
       "sha256": "7954fceccfc5262fa1080a69a1eb6b2d7384af23b624e3faed0ea09897b84873"
     },
     {
+      "path": ".kinotch/schemas/defaults.schema.json",
+      "sha256": "34aa0e96e7d0428d333584d9db70ce330ba1988f1b7b04168d6233d426c115da"
+    },
+    {
       "path": ".kinotch/schemas/error.schema.json",
       "sha256": "23a43d823d5dbbc3c459bdc6c21caa22771728072b4208b12fc01865f333746e"
     },
@@ -132,7 +140,7 @@
     },
     {
       "path": ".kinotch/schemas/project.schema.json",
-      "sha256": "7264d8b933705bf0f3671ded3d9ad31297440b44745d35680e7be73c32381765"
+      "sha256": "e73c01b66ba4c97c2e6326bad7d4b67d5faecf26df78f21f5e1cd87ca2225cd9"
     },
     {
       "path": ".kinotch/schemas/resource.schema.json",
@@ -152,7 +160,7 @@
     },
     {
       "path": ".kinotch/scripts/knt.ps1",
-      "sha256": "f03278ff04c7c67ea44b47a79ddf9591b586cbdc60e87b8714c81179fa5dce01"
+      "sha256": "a24d9d283c24a02dc9517bfb4cf80ced3521619695daee6f3e6bfba5d6477a2c"
     },
     {
       "path": ".kinotch/scripts/update-base-index.ps1",
@@ -187,6 +195,10 @@
       "sha256": "99134612c03369f1c408c816ef37907008b538413f810ac43a4e5b6c547ecc95"
     },
     {
+      "path": ".kinotch/templates/project/defaults.json",
+      "sha256": "232849c47f58fcbd268929a5e579d750c53d432d86e2f0db13c491e072576246"
+    },
+    {
       "path": ".kinotch/templates/project/docs/CURRENT_STATE.md",
       "sha256": "864d021dff92e34996e536eefbd128e31bd80c722bd061ceb9c42d7c028efcca"
     },
@@ -200,7 +212,15 @@
     },
     {
       "path": ".kinotch/templates/project/project.json",
-      "sha256": "0651bd4e1184af3847cfea560e285f1b581120e3f0f62d3400a46a948a682932"
+      "sha256": "6702637c42cb926600d8bb5f5d5749de33d72cb5597e16b7bf7f4b89f5eef5c8"
+    },
+    {
+      "path": ".kinotch/templates/project/src/README.md",
+      "sha256": "a441d67d34283e2669139a9606f9ad6c2600e95298b0d0ec7678f44d8cc7cdf5"
+    },
+    {
+      "path": ".kinotch/templates/project/tests/README.md",
+      "sha256": "35a7db404e46c1cf7cb18d0d0d95ae5649afe58e20ac740f6ffe96b2d9c62768"
     },
     {
       "path": ".kinotch/tests/fixtures/command-cwd/project.json",
@@ -296,7 +316,7 @@
     },
     {
       "path": ".kinotch/tests/run-tests.ps1",
-      "sha256": "355da75bb2a47c26f36b7fe9fc291374244fe5e9d28ffb069c5835c3a05cda35"
+      "sha256": "c416d12037ceb819807c36e7d00705846f07b74dbebce08f4f5934d0256d583a"
     },
     {
       "path": "AGENTS.md",
