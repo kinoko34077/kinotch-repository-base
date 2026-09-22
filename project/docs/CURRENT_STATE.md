@@ -1,6 +1,6 @@
 # Current State
 
-Last verified: 2026-09-22 — KiNoTch. Repository Base v0.2 complete
+Last verified: 2026-09-22 — KiNoTch. Repository Base v0.2.1 complete
 
 ## Implemented
 
@@ -8,16 +8,20 @@ Last verified: 2026-09-22 — KiNoTch. Repository Base v0.2 complete
 - Base自身のREADME、Project Manifest、SPEC、CURRENT_STATE
 - Common AGENTS and fixed read order
 - knt command router with doctor, verify, base-check, and base-refresh
-- Manifest, Action Registry, Surface Registry, Error, Result, Progress, Resource, and Artifact schema validation
+- Project Manifest / Action Registry / Surface Registry runtime schema validation
+- Error / Result / Progress / Resource / Artifact schema definitions
 - Profile existence and Profile / Surface / Runtime module diagnostics
 - Manifest path and command cwd diagnostics
 - Strict Base hash index and deterministic refresh
-- Base self-test runner with 15 passing cases
+- Base self-test runner with 25 passing cases
 - Base and Runtime Meta under .kinotch/meta/
 - New Repository templates under .kinotch/templates/project/
 - Runtime Contractの確定済み / Runtime Phase 1候補の区別
 - .ai-guidelinesとの責任分離
 - PowerShell 7 / Windows PowerShell fallback for Base verification commands
+- Cross-platform repository-relative Base path normalization
+- Exact-one `oneOf` and schema-valued `additionalProperties` validation
+- Base Schema keyword subset audit
 
 ## In progress
 
@@ -28,6 +32,7 @@ Last verified: 2026-09-22 — KiNoTch. Repository Base v0.2 complete
 - KiNoTch. Runtime implementation does not exist yet by design.
 - Runtime module names remain logical declarations until Runtime Phase 1.
 - The dependency-free validator implements the JSON Schema keywords used by this Base, not every future JSON Schema keyword.
+- `result.schema.json` contains a `$ref` for the future Runtime contract; it is an explicitly excluded definition keyword and is not validated by `knt doctor`.
 - The Base smoke command is intentionally unconfigured because Base itself has no production entry point.
 
 ## Current constraints

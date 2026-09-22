@@ -318,10 +318,16 @@ Invoke-TestCase "Base documentation and profile status are finalized" {
     $spec = Get-Content -Raw (Join-Path $RepoRoot "project/docs/SPEC.md")
     $state = Get-Content -Raw (Join-Path $RepoRoot "project/docs/CURRENT_STATE.md")
     $runtime = Get-Content -Raw (Join-Path $RepoRoot ".kinotch/RUNTIME_INTEGRATION.md")
+    $surfaceRegistry = Get-Content -Raw (Join-Path $RepoRoot "project/contracts/surfaces.json") | ConvertFrom-Json
+    $baseVersion = (Get-Content -Raw (Join-Path $RepoRoot ".kinotch/BASE_VERSION")).Trim()
     Assert-True (([regex]::Matches($spec, "(?m)^\d+\. ")).Count -ge 10) "SPEC acceptance criteria are incomplete"
     Assert-True ($state -notmatch "Project-specific definition has not been filled") "CURRENT_STATE still contains a template placeholder"
+    Assert-True ($state -match "Project Manifest / Action Registry / Surface Registry runtime schema validation") "CURRENT_STATE runtime validation wording is stale"
+    Assert-True ($state -match "Error / Result / Progress / Resource / Artifact schema definitions") "CURRENT_STATE schema-definition wording is missing"
     Assert-True ($runtime -match "Action Result") "Runtime defined-contract content is missing"
     Assert-True ($runtime -match "ActionRequest") "Runtime candidate-contract content is missing"
+    Assert-Equal 0 @($surfaceRegistry.surfaces.PSObject.Properties).Count "Base Surface Registry should be empty"
+    Assert-Equal "0.2.1" $baseVersion "Base version"
     foreach ($profileFile in Get-ChildItem (Join-Path $RepoRoot ".kinotch/profiles") -File) {
         $profile = Get-Content -Raw -Encoding UTF8 $profileFile.FullName | ConvertFrom-Json
         Assert-Equal "planned" $profile.status "$($profileFile.Name) profile status"

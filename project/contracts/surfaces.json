@@ -1,10 +1,4 @@
 {
   "schema_version": 1,
-  "surfaces": {
-    "cli": {},
-    "gui_windows": {},
-    "mcp": {},
-    "api": {},
-    "agent": {}
-  }
+  "surfaces": {}
 }
