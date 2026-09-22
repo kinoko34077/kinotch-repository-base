@@ -22,11 +22,16 @@ else {
 $ManifestPath = Join-Path $Root "project/project.json"
 $BaseFilesPath = Join-Path $BaseDir "base-files.json"
 $ValidationPath = Join-Path $BaseDir "scripts/knt-validation.ps1"
+$BaseIndexScriptPath = Join-Path $BaseDir "scripts/update-base-index.ps1"
 
 if (-not (Test-Path -LiteralPath $ValidationPath -PathType Leaf)) {
     throw "Validation script not found: $ValidationPath"
 }
 . $ValidationPath
+if (-not (Test-Path -LiteralPath $BaseIndexScriptPath -PathType Leaf)) {
+    throw "Base index script not found: $BaseIndexScriptPath"
+}
+. $BaseIndexScriptPath
 
 function Write-Knt([string]$Message) {
     Write-Host "[knt] $Message"
@@ -43,6 +48,24 @@ function Test-BaseFiles {
     }
     $index = Get-KntJson -Path $BaseFilesPath
     $ok = $true
+    $currentVersion = (Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $BaseDir "BASE_VERSION")).Trim()
+    if ([string]$index.base_version -ne $currentVersion) {
+        Write-Host "[base-check] VERSION  index=$($index.base_version) current=$currentVersion" -ForegroundColor Yellow
+        $ok = $false
+    }
+    $indexedPaths = @($index.files | ForEach-Object { [string]$_.path })
+    foreach ($expectedPath in @(Get-BaseProtectedPaths -Root $Root)) {
+        if ($expectedPath -notin $indexedPaths) {
+            Write-Host "[base-check] UNINDEXED  $expectedPath" -ForegroundColor Yellow
+            $ok = $false
+        }
+    }
+    foreach ($indexedPath in $indexedPaths) {
+        if ($indexedPath -notin @(Get-BaseProtectedPaths -Root $Root)) {
+            Write-Host "[base-check] ORPHANED  $indexedPath" -ForegroundColor Yellow
+            $ok = $false
+        }
+    }
     foreach ($entry in @($index.files)) {
         $path = Join-Path $Root $entry.path
         if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
@@ -258,6 +281,15 @@ try {
     }
     if ($Command -eq "base-check") {
         if (Test-BaseFiles) { exit 0 } else { exit 1 }
+    }
+    if ($Command -eq "base-refresh") {
+        $refreshManifest = Get-Manifest
+        if ($refreshManifest.project.type -ne "repository-base") {
+            throw "base-refresh is only available for project.type repository-base"
+        }
+        Update-BaseIndex -Root $Root
+        Write-Knt "Base index refreshed"
+        exit 0
     }
 
     $manifest = Get-Manifest

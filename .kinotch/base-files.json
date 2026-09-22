@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "base_version": "0.1.1",
+  "base_version": "0.2.0",
   "files": [
     {
       "path": ".editorconfig",
@@ -16,7 +16,7 @@
     },
     {
       "path": ".gitignore",
-      "sha256": "28f682cd8a642515414f74528730c0db05e46cb8e55d2c3b298f9c6e5413c8d1"
+      "sha256": "d61aaaabe9a8c805bff3982baf2874b7109e13173c7b5250485ce4a6fd0a1777"
     },
     {
       "path": ".kinotch/AGENT_RULES.md",
@@ -24,11 +24,15 @@
     },
     {
       "path": ".kinotch/BASE_VERSION",
-      "sha256": "80447316529fc62014fbaa047fb67c51ac30e32830cda370405349d8d66d196c"
+      "sha256": "1f930dd1f133c1f97a94fe3acb8db34372cf4c01ffdb2b3ff4ca72f9494121e9"
     },
     {
       "path": ".kinotch/DEVELOPMENT_FLOW.md",
       "sha256": "8e323451171073bbecdc2e3af0692c32cb94d3b55a21648ce6fa3f9163ada7bc"
+    },
+    {
+      "path": ".kinotch/FILE_INVENTORY.txt",
+      "sha256": "923713664a9155efc1af51ac01f0a47db1c149357ceb4393eff712c5e1e8d090"
     },
     {
       "path": ".kinotch/PROJECT_BOUNDARY.md",
@@ -36,7 +40,7 @@
     },
     {
       "path": ".kinotch/README_BASE.md",
-      "sha256": "a29b97a31e3763e82a6a3f5cd2279ceea95db381dbf4930e7120d68de716cc8e"
+      "sha256": "559d770aa7d28e643f83ff829513d637ecd08da0ce06a6adf878e517c01c979f"
     },
     {
       "path": ".kinotch/REPOSITORY_STANDARD.md",
@@ -44,43 +48,71 @@
     },
     {
       "path": ".kinotch/RUNTIME_INTEGRATION.md",
-      "sha256": "d4d359f7b6b860b55e0603cc0563d74ff06bf333e0db39b0eef6ed57100efa21"
+      "sha256": "3981108ca35ea4ac7cbb2dd4015b2dd0865cd303b1889f8c76f02088e9adda1c"
     },
     {
       "path": ".kinotch/docs/BASE_ROADMAP.md",
-      "sha256": "53bf656f6d78dcb5fcd37d265fc06f2dfd23c98187c799dab65c302da7b01bec"
+      "sha256": "54cb40fce80da3fccb2e986d14b50b8a6ed525b4a551592f20b4264ced2704e6"
+    },
+    {
+      "path": ".kinotch/meta/00_CONTEXT.md",
+      "sha256": "730102977ea3ac04a3ba2a72b3ea32167e022cf3a00849a0e9f95a6d18a9be94"
+    },
+    {
+      "path": ".kinotch/meta/01_TARGET_STATE.md",
+      "sha256": "a22669cb7212d8df0731c0fb36d2754e46843ef71de20a92e0767df44416feca"
+    },
+    {
+      "path": ".kinotch/meta/02_ROADMAP.md",
+      "sha256": "8946009f5876d801178abe47107346dab84395420aa6d89d2c6f9bd48c8db9d0"
+    },
+    {
+      "path": ".kinotch/meta/03_GUARDRAILS.md",
+      "sha256": "574f5ad957a636ff53d78cc12393f211f52c11eebab88471d975ec13b880a491"
+    },
+    {
+      "path": ".kinotch/meta/04_EXTRACTION_CRITERIA.md",
+      "sha256": "cb51d5192d190f78d5e63ea2d39937c206c72bb304442fe5121c648be383aded"
+    },
+    {
+      "path": ".kinotch/meta/05_VALIDATION_PLAN.md",
+      "sha256": "6b2bd6f65f61936ecd5ddb0f1c3f8e29a47856a01fe7200a0821037f90cad00f"
+    },
+    {
+      "path": ".kinotch/meta/README.md",
+      "sha256": "991ae391e38627e646d0ae113961fb91035f81423062966428e97d0e67f1b549"
     },
     {
       "path": ".kinotch/profiles/agent.json",
-      "sha256": "3247a1bd102a07f8bffe274c29acadf4462317c1a0c3044f1c9bceca1a2584ee"
+      "sha256": "1225190b7c8b7136d285244db751dea88e0617e270724b976409adebbc500b9b"
     },
     {
       "path": ".kinotch/profiles/api.json",
-      "sha256": "ad447996e2d74170366fa71c0a8b6fa5e6b4c7e81008dbef7ef30a109e08cf9b"
+      "sha256": "8bac778ecf465b89f5e1b84139cd72fb17a63a4a17f88843733fe28220e5dc69"
     },
     {
       "path": ".kinotch/profiles/cli.json",
-      "sha256": "40750be9cb97c27660169850ea56c62065a5665919bb83722bd62925ef185639"
+      "sha256": "c7a4635fdf01854fb5eda77a1c9d6b8249188757a0d6fedc3469017ac74f54f4"
     },
     {
       "path": ".kinotch/profiles/library.json",
-      "sha256": "45b47b49fc87e86c8db564ccee6aa1b7391867a221a0113377bd2ac3daea448e"
+      "sha256": "085f0f5ab28af23882b43790e09d39da09b82fcbe041960b31e1390e6ebb525b"
     },
     {
       "path": ".kinotch/profiles/mcp.json",
-      "sha256": "c0e82c0923f32974d40c448ad8dc99aa4dc364153d398482049b9fac3d3dfc57"
+      "sha256": "b78139809924d68bd62690c739c9bfa313b3b4edf755f323e323d86c9cde19f1"
     },
     {
       "path": ".kinotch/profiles/minimal.json",
-      "sha256": "25276e4bdef4bbb8f37bc3bb56281df0d356c5d1b6b1b97ef7854b9f9e5a18ab"
+      "sha256": "5621301a87b37dc27e822bf543a22b34376bc1fe76388c29beee10a3a475d344"
     },
     {
       "path": ".kinotch/profiles/web-app.json",
-      "sha256": "201b3d2a25df1a1d8089f39264a6a1cd965ec4dff5297d81856e91efedf4c4c9"
+      "sha256": "fb66aa87ab0cae87b54b8757458c55901b606aa92f167fa6d082d9ad6cefb38a"
     },
     {
       "path": ".kinotch/profiles/windows-gui.json",
-      "sha256": "6ff2e9ad6f8bd99fc7aaef53bc0eb5a0d89bd452b29156a07bdeca7fb964fb72"
+      "sha256": "31ddfd34bbd4bb82f5926f023a5d0f5ef526b1b132de541e5cea924e0ed4192e"
     },
     {
       "path": ".kinotch/schemas/action.schema.json",
@@ -92,7 +124,7 @@
     },
     {
       "path": ".kinotch/schemas/error.schema.json",
-      "sha256": "48255fd6c2124434223944d53a8a1d804f410c04cb9cb8d7161d1fbb8b740590"
+      "sha256": "23a43d823d5dbbc3c459bdc6c21caa22771728072b4208b12fc01865f333746e"
     },
     {
       "path": ".kinotch/schemas/progress.schema.json",
@@ -100,7 +132,7 @@
     },
     {
       "path": ".kinotch/schemas/project.schema.json",
-      "sha256": "3adaf68fc00405e185c7a251b3b205d0a56cc82563045d7c0bf3b4300327888f"
+      "sha256": "7264d8b933705bf0f3671ded3d9ad31297440b44745d35680e7be73c32381765"
     },
     {
       "path": ".kinotch/schemas/resource.schema.json",
@@ -112,11 +144,19 @@
     },
     {
       "path": ".kinotch/schemas/surface.schema.json",
-      "sha256": "ab165b43591c01b7e5841ae3ab89f1ec5159a2d907338095d21679686894bf5b"
+      "sha256": "63653de9ff4241fbec9193d18d167cc5f291695d6bb7144ea99eae249e8a2080"
+    },
+    {
+      "path": ".kinotch/scripts/knt-validation.ps1",
+      "sha256": "278a496329ff4ecc175cd8783ed0732a65a47364dcbff95b787636f61c72f709"
     },
     {
       "path": ".kinotch/scripts/knt.ps1",
-      "sha256": "ab9ccaa78adb78ab206082c722e442174c8a05267e291842bafc77a07de5d7ef"
+      "sha256": "2037f12f6f495f3b8d0fc614f0881f63930540224644e9dae3a1470af294ef4e"
+    },
+    {
+      "path": ".kinotch/scripts/update-base-index.ps1",
+      "sha256": "0af222c1e8c0365b6b76f97fdef6e21b1ad7270c3241e867c1b947e17e02bba8"
     },
     {
       "path": ".kinotch/templates/ADR.md",
@@ -131,8 +171,136 @@
       "sha256": "5837c762f930b57b648ab6ea6e9e3a6e4180abaeaee25722a065b23d15f19532"
     },
     {
+      "path": ".kinotch/templates/project/.gitignore",
+      "sha256": "e91b7206b4a76d4f660e1d69521a62981584710e76ebe822b0857a0889d87954"
+    },
+    {
+      "path": ".kinotch/templates/project/README.md",
+      "sha256": "9dadbfb2dcfc665b6c551b89dfea0ecdea4c233db1b54d33224745321bcb9456"
+    },
+    {
+      "path": ".kinotch/templates/project/contracts/actions.json",
+      "sha256": "a75374163b483819e53e01954505bf6d7e97ceb5558499c35ec02fc088f86f8a"
+    },
+    {
+      "path": ".kinotch/templates/project/contracts/surfaces.json",
+      "sha256": "99134612c03369f1c408c816ef37907008b538413f810ac43a4e5b6c547ecc95"
+    },
+    {
+      "path": ".kinotch/templates/project/docs/CURRENT_STATE.md",
+      "sha256": "864d021dff92e34996e536eefbd128e31bd80c722bd061ceb9c42d7c028efcca"
+    },
+    {
+      "path": ".kinotch/templates/project/docs/INDEX.md",
+      "sha256": "e4c9d998e65920b0cf0910b00805214c91bedacd5007c328d8c5df2c06f90836"
+    },
+    {
+      "path": ".kinotch/templates/project/docs/SPEC.md",
+      "sha256": "7c8d9d1d34146c55c1a745f7093a60d53f129779c9e411afec7696ba8dedd317"
+    },
+    {
+      "path": ".kinotch/templates/project/project.json",
+      "sha256": "0651bd4e1184af3847cfea560e285f1b581120e3f0f62d3400a46a948a682932"
+    },
+    {
+      "path": ".kinotch/tests/fixtures/command-cwd/project.json",
+      "sha256": "e4feeffed8d7cd9268a5b583e148714021e976c08c30c9627fc781cb0428fae3"
+    },
+    {
+      "path": ".kinotch/tests/fixtures/command-cwd/scripts/record-cwd.ps1",
+      "sha256": "85d159eb437c43b0e34656ae7ea3de17b54cc3a5f8a4254a07bc1c07c9603e9e"
+    },
+    {
+      "path": ".kinotch/tests/fixtures/command-failure/project.json",
+      "sha256": "bbf09ca445297910b697f80692312dcaf728f54f61137700b677100d3f5ca3b7"
+    },
+    {
+      "path": ".kinotch/tests/fixtures/command-failure/scripts/exit-seven.ps1",
+      "sha256": "93ec7e6bb64d42c07dc67df1366ba9e497de17ebf4185495e2080ca6dddc4a52"
+    },
+    {
+      "path": ".kinotch/tests/fixtures/command-success/project.json",
+      "sha256": "e66e6ca1ca89177b2e754844735026580c5251ecf5c0b0924c09ca40affb8b40"
+    },
+    {
+      "path": ".kinotch/tests/fixtures/command-success/scripts/write-success.ps1",
+      "sha256": "bb5ee74476ee221f9f5a3900b2f6ccaf6130e9d7238abeb5b4bded2536e73f4d"
+    },
+    {
+      "path": ".kinotch/tests/fixtures/invalid-actions/contracts/actions.json",
+      "sha256": "49fcf5c91a33d48abbd20cada58fe870f16616b16fdbbab98be5af04ba0daf03"
+    },
+    {
+      "path": ".kinotch/tests/fixtures/invalid-actions/project.json",
+      "sha256": "f21ab9ab6100623abda72de25baf361aabfaa02842c4e88bccae776c2f0e354c"
+    },
+    {
+      "path": ".kinotch/tests/fixtures/invalid-json/project.json",
+      "sha256": "bfbfc4e8b0e1786ab5daabdd9d4dfc2ac6d54b3cec4b438dbddfdb7ec327683c"
+    },
+    {
+      "path": ".kinotch/tests/fixtures/invalid-manifest/project.json",
+      "sha256": "c674944099f265be9ca723b7620d9662816ff00afa8fcc8fb4c45b252541aa30"
+    },
+    {
+      "path": ".kinotch/tests/fixtures/invalid-surfaces/contracts/surfaces.json",
+      "sha256": "7084dfb16e5f1e6444087d9229f8c201522970037fd13ec9452949f51d751e27"
+    },
+    {
+      "path": ".kinotch/tests/fixtures/invalid-surfaces/project.json",
+      "sha256": "448000814b2a75268e0a119f9226979e8e2ee88b97c07dc5b076c247eef0562a"
+    },
+    {
+      "path": ".kinotch/tests/fixtures/missing-files/project.json",
+      "sha256": "f90a6169c85315928040efa7ba328b122eb025573a4775537e960c03f6e55999"
+    },
+    {
+      "path": ".kinotch/tests/fixtures/valid-minimal/contracts/actions.json",
+      "sha256": "a75374163b483819e53e01954505bf6d7e97ceb5558499c35ec02fc088f86f8a"
+    },
+    {
+      "path": ".kinotch/tests/fixtures/valid-minimal/contracts/surfaces.json",
+      "sha256": "ea2498025d73a34d483e5995732e675b76a046daa018a5e35efdef2f4384bf93"
+    },
+    {
+      "path": ".kinotch/tests/fixtures/valid-minimal/docs/CURRENT_STATE.md",
+      "sha256": "021145c2e4725abf505e9117ce88a84ed99e699aacf21b065057975af865e637"
+    },
+    {
+      "path": ".kinotch/tests/fixtures/valid-minimal/docs/INDEX.md",
+      "sha256": "6aec1a60f3b107d67bc22e50a172a86e68820410a4f114ae0544bf54f419ac78"
+    },
+    {
+      "path": ".kinotch/tests/fixtures/valid-minimal/docs/SPEC.md",
+      "sha256": "e10310a37d3bedb3885175a345c28a4e12921d47ce29910407f1acbd9709d76f"
+    },
+    {
+      "path": ".kinotch/tests/fixtures/valid-minimal/project.json",
+      "sha256": "959e1fc86decede30bf970bd67e87ea6e17f569080583442ef069e4912d60343"
+    },
+    {
+      "path": ".kinotch/tests/fixtures/valid-minimal/src/README.md",
+      "sha256": "8960f43a5373c1fc5bd939fe3dc63cb09a26658003c17ee4bee210ec5ce8aa75"
+    },
+    {
+      "path": ".kinotch/tests/fixtures/valid-minimal/tests/README.md",
+      "sha256": "d2ac917364eb7fb0594eba45513d755dd76d42916c9ab8fc5a43f6e066cde675"
+    },
+    {
+      "path": ".kinotch/tests/fixtures/verify-fallback/project.json",
+      "sha256": "97e5967994742c31d0baf11d72bcb8b7948a8eb039677e7c531f1a267d80b2b8"
+    },
+    {
+      "path": ".kinotch/tests/fixtures/verify-fallback/scripts/record-order.ps1",
+      "sha256": "ca923969c5e56ba427ee751774879a458ca9ac1e8476f4cc746c6914127217b0"
+    },
+    {
+      "path": ".kinotch/tests/run-tests.ps1",
+      "sha256": "f30b1f5e768170de46110c975af50d4f7d6d752f47a385c9c1b1f5c217728484"
+    },
+    {
       "path": "AGENTS.md",
-      "sha256": "1cc7ff80f522d6dcdddb0e683e0dcfcf5581be618dd08166f0cd0e896289f9c3"
+      "sha256": "a4b001a29927748a81203649fddb85fa957292cd850b7c9b38b1f047db9f2965"
     },
     {
       "path": "knt.cmd",

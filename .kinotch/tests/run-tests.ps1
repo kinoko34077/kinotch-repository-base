@@ -16,12 +16,52 @@ function Assert-Equal($Expected, $Actual, [string]$Message) {
     }
 }
 
+function Get-FixtureProtectedPaths([string]$Root) {
+    $fixed = @(
+        ".editorconfig",
+        ".gitattributes",
+        ".gitignore",
+        ".github/workflows/verify.yml",
+        "AGENTS.md",
+        "knt.cmd"
+    )
+    $common = @(Get-ChildItem -LiteralPath (Join-Path $Root ".kinotch") -Recurse -File | ForEach-Object {
+        $relative = $_.FullName.Substring($Root.Length).TrimStart([char]92) -replace "\\", "/"
+        if ($relative -ne ".kinotch/base-files.json") { $relative }
+    })
+    return @($fixed + $common | Sort-Object)
+}
+
+function Set-FixtureBaseIndex([string]$Root) {
+    $entries = @(Get-FixtureProtectedPaths $Root | ForEach-Object {
+        [pscustomobject]@{
+            path = $_
+            sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $Root $_)).Hash.ToLowerInvariant()
+        }
+    })
+    $index = [pscustomobject]@{
+        schema_version = 1
+        base_version = (Get-Content -Raw -LiteralPath (Join-Path $Root ".kinotch/BASE_VERSION")).Trim()
+        files = $entries
+    }
+    $json = ConvertTo-Json $index -Depth 10
+    [IO.File]::WriteAllText((Join-Path $Root ".kinotch/base-files.json"), $json + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
+}
+
+function Set-FixtureAsBase([string]$Root) {
+    $manifestPath = Join-Path $Root "project/project.json"
+    $manifest = Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json
+    $manifest.project.type = "repository-base"
+    [IO.File]::WriteAllText($manifestPath, (ConvertTo-Json $manifest -Depth 20) + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
+}
+
 function Invoke-KntFixture {
     param(
         [string]$Name,
         [string]$Command,
         [int]$ExpectedExit = 0,
-        [scriptblock]$AssertOutput
+        [scriptblock]$AssertOutput,
+        [scriptblock]$Prepare
     )
     $tempRoot = Join-Path ([IO.Path]::GetTempPath()) ("kinotch-base-test-" + [guid]::NewGuid().ToString("N"))
     New-Item -ItemType Directory -Path $tempRoot -Force | Out-Null
@@ -31,6 +71,7 @@ function Invoke-KntFixture {
         } | Copy-Item -Destination $tempRoot -Recurse -Force
         Remove-Item -LiteralPath (Join-Path $tempRoot "project") -Recurse -Force
         Copy-Item -LiteralPath (Join-Path $FixtureRoot $Name) -Destination (Join-Path $tempRoot "project") -Recurse -Force
+        if ($Prepare) { & $Prepare $tempRoot }
         $router = Join-Path $tempRoot ".kinotch/scripts/knt.ps1"
         $outputLines = @(& powershell -NoProfile -ExecutionPolicy Bypass -File $router -RootOverride $tempRoot $Command 2>&1)
         $exitCode = $LASTEXITCODE
@@ -115,6 +156,31 @@ Invoke-TestCase "command runs in declared cwd" {
         $actual = (Get-Content -Raw $marker).Trim()
         $expected = (Resolve-Path (Join-Path $root "project")).Path
         Assert-Equal $expected $actual "command cwd"
+    }
+}
+
+Invoke-TestCase "changed Base file fails base-check" {
+    Invoke-KntFixture -Name "valid-minimal" -Command "base-check" -ExpectedExit 1 -Prepare {
+        param($root)
+        Set-FixtureBaseIndex $root
+        Add-Content -LiteralPath (Join-Path $root ".kinotch/README_BASE.md") -Value "changed for test"
+    }
+}
+
+Invoke-TestCase "base-refresh indexes new common file" {
+    Invoke-KntFixture -Name "valid-minimal" -Command "base-refresh" -ExpectedExit 0 -Prepare {
+        param($root)
+        Set-FixtureAsBase $root
+        Set-FixtureBaseIndex $root
+        Set-Content -LiteralPath (Join-Path $root ".kinotch/new-common.txt") -Value "new common file" -NoNewline
+        $router = Join-Path $root ".kinotch/scripts/knt.ps1"
+        $before = @(& powershell -NoProfile -ExecutionPolicy Bypass -File $router -RootOverride $root base-check 2>&1)
+        if ($LASTEXITCODE -eq 0) { throw "unindexed Base file was not rejected: $($before -join ' ')" }
+    } -AssertOutput {
+        param($root, $output)
+        $router = Join-Path $root ".kinotch/scripts/knt.ps1"
+        @(& powershell -NoProfile -ExecutionPolicy Bypass -File $router -RootOverride $root base-check 2>&1) | Out-Null
+        Assert-Equal 0 $LASTEXITCODE "base-check after refresh"
     }
 }
 
