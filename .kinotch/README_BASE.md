@@ -13,6 +13,12 @@ KiNoTch.Runtime = 複数repoで再利用する共通実装。個別repoへコピ
 
 Base-wide Metaは `.kinotch/meta/` に置き、新規Repository用の生成元は `.kinotch/templates/project/` に置く。Base自身のProject情報は `project/**` に記録し、Templateと混同しない。
 
+## Default-first
+
+共通要素はHard Base、Surface / Tool Default、Portable Semantic Contract、Project Overlay / Domainの4層へ分類する。低リスクで安全に外せる標準便利機能はDefaultとして先に提供し、Domain意味・公開互換性・永続形式・権限境界を持つものだけRuntimeのPortable Contract候補として検証する。正本と判断規則は [Default-first標準化方針](meta/06_DEFAULT_FIRST_STANDARD.md) に置く。
+
+ProjectのDefault状態は `DEFAULT`、`OVERRIDE`、`DISABLED` のいずれかで表現する。`knt init --profile <profile>` は選択したDefault Packを生成するが、既存の `project/project.json` を上書きしない。
+
 ## 共通コマンド
 
 Windows cmd:

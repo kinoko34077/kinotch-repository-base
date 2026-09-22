@@ -41,7 +41,7 @@
 - Domain処理は入れない。
 - 言語横断では契約を優先し、巨大な共通libraryを無理に共有しない。
 
-## Phase 2 — 代表repoで試験導入
+## Phase 2A — 代表repoでPortable Contractを検証
 
 最低3系統で検証する。
 
@@ -55,11 +55,26 @@
 - Local GUI/Web: `srt2subtitle`
 - Library/Web: `IDS-Composit`
 
-目的は「移行すること」ではなく、**Base / Runtimeの抽象が実際に簡素化になるか検証すること**。
+目的は「移行すること」ではなく、**Base / Runtimeの意味を持つ抽象が実際に簡素化になるか検証すること**。
 
-## Phase 3 — Surface Pack
+Phase 2Aでは、Default導入の可否をPortable Contract成熟度でブロックしない。
 
-複数repoで再利用価値が確認できたものだけ追加する。
+## Phase 2B — Default extraction
+
+目的: Portable Contractの安定を待たず、低リスクで外せる共通便利機能を
+Project単位で選択できるDefaultとして定義する。
+
+- Default状態 `DEFAULT` / `OVERRIDE` / `DISABLED`
+- CLI / Windows / MCP / APIのDefault候補整理
+- 既存Framework・Project実装との二重化確認
+- `knt init`の生成境界と非破壊条件
+
+DefaultはDomain処理、公開互換性、永続形式、provider policyを所有しない。
+
+## Phase 3 — KiNoTch. Default Surface Pack
+
+複数repoで厳密なPortable Contract証明を待たず、Default条件を満たすものを
+profile単位で提供する。Projectからoverride / disableできることを必須とする。
 
 ### CLI
 
@@ -105,6 +120,10 @@
 - stale check
 - より詳細なdoctor
 - Base conformance report
+
+`knt init` は選択profileのDefault構成とProject Overlayを生成する。
+`knt migrate` は差分を表示し、明示選択されたものだけ適用する。Domain fileは
+自動書換えしない。
 
 ## Phase 5 — 既存repoへの段階導入
 

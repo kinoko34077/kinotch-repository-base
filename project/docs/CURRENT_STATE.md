@@ -44,6 +44,10 @@ Last verified: 2026-09-23 — KiNoTch. Repository Base v0.2.1 complete
   tooling; AgentBackend remains Agent-owned. Only a narrow artifact-reference
   meaning is a provisional PARTIAL GO candidate. No Surface Pack or production
   integration was added.
+- Default-first standardization is now the next independent path: low-risk,
+  removable CLI / Windows / MCP / API conveniences may be offered as
+  Project-overridable Defaults without waiting for Portable Contract maturity.
+- The canonical four-layer policy is `.kinotch/meta/06_DEFAULT_FIRST_STANDARD.md`.
 
 ## Known issues
 
@@ -66,16 +70,18 @@ Last verified: 2026-09-23 — KiNoTch. Repository Base v0.2.1 complete
 
 ## Next work
 
-1. Keep the `kinotch-api` production boundary unchanged unless a pure
+1. Add the safe Default-state manifest and profile-aware `knt init` foundation;
+   do not add Domain behavior or a universal Surface library.
+2. Keep the `kinotch-api` production boundary unchanged unless a pure
    application operation appears without Response or Context wrapping.
-2. Consider `SynTrail-LM` as the next heterogeneous candidate only for
+3. Consider `SynTrail-LM` as the next heterogeneous candidate only for
    Progress, Cancellation, Resource, or Artifact where existing behavior gives
    those meanings a real need. The design probe was performed against its
    exact `origin/main` without modifying its dirty user worktree; see the
    Runtime Pilot report for the evidence and per-Contract decisions.
-3. Keep Runtime provisional until an additional heterogeneous repository
+4. Keep Runtime provisional until an additional heterogeneous repository
    validates the same meanings.
-4. Do not add Base schemas, Profiles, Surface Packs, or tooling for the
+5. Do not add Base schemas, Profiles, Surface Packs, or tooling for the
    fourth/fifth design observations until the same change reason repeats.
 
 ## Verification
