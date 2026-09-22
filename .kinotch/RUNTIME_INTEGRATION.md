@@ -88,6 +88,12 @@ Contractの成熟度（implemented / unit-tested / pilot-exercised /
 multi-repo-validated / stable）はRuntime側のContract Matrixで管理し、
 Baseは一括してstableとみなさない。
 
+第2Pilotの現時点の境界は、JavaScript / Hono / Cloudflare Workersである
+`kinotch-api`におけるAction IDとError semanticsのtest-only観察までである。
+これはPARTIAL GOであり、GatewayへのRuntime依存、ActionRegistry、
+ActionResultによるHTTP Response包装はHOLDとする。詳細な証拠と次の判断は
+RuntimeのPilot Report / ADRを正本とする。
+
 ## Module候補
 
 ~~~text

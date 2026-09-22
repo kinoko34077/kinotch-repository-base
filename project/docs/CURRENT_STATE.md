@@ -1,6 +1,6 @@
 # Current State
 
-Last verified: 2026-09-22 — KiNoTch. Repository Base v0.2.1 complete
+Last verified: 2026-09-23 — KiNoTch. Repository Base v0.2.1 complete
 
 ## Implemented
 
@@ -30,6 +30,9 @@ Last verified: 2026-09-22 — KiNoTch. Repository Base v0.2.1 complete
 - Runtime v0.1 Execution Contract canonicalization is complete in Runtime.
 - The first `jev-audit` CLI/MCP Pilot evaluation is complete, with a maturity
   matrix and accepted ADR in Runtime.
+- The `kinotch-api` JavaScript design probe is complete: Action ID and error
+  semantics are PARTIAL GO through a test-only probe; production Runtime
+  integration remains HOLD.
 
 ## Known issues
 
@@ -52,10 +55,11 @@ Last verified: 2026-09-22 — KiNoTch. Repository Base v0.2.1 complete
 
 ## Next work
 
-1. Run the limited `kinotch-api` heterogeneous design probe without changing
-   Base structure or adding Surface Packs.
-2. Carry only the evaluated Action ID, ActionRequest, and ActionError
-   meanings into the next Pilot; keep ActionResult as an observation target.
+1. Keep the `kinotch-api` production boundary unchanged unless a pure
+   application operation appears without Response or Context wrapping.
+2. Consider `SynTrail-LM` as the next heterogeneous candidate only for
+   Progress, Cancellation, Resource, or Artifact where existing behavior gives
+   those meanings a real need.
 3. Keep Runtime provisional until an additional heterogeneous repository
    validates the same meanings.
 
