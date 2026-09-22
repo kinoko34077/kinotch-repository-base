@@ -33,6 +33,8 @@ Last verified: 2026-09-23 — KiNoTch. Repository Base v0.2.1 complete
 - The `kinotch-api` JavaScript design probe is complete: Action ID and error
   semantics are PARTIAL GO through a test-only probe; production Runtime
   integration remains HOLD.
+- Runtime Portable Contract semantics are owned by `kinotch-runtime`; Base
+  does not duplicate the portable definitions.
 
 ## Known issues
 
@@ -59,7 +61,8 @@ Last verified: 2026-09-23 — KiNoTch. Repository Base v0.2.1 complete
    application operation appears without Response or Context wrapping.
 2. Consider `SynTrail-LM` as the next heterogeneous candidate only for
    Progress, Cancellation, Resource, or Artifact where existing behavior gives
-   those meanings a real need.
+   those meanings a real need. The design probe is being performed against its
+   exact `origin/main` without modifying its dirty user worktree.
 3. Keep Runtime provisional until an additional heterogeneous repository
    validates the same meanings.
 
