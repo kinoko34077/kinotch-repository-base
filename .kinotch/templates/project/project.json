@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
   "project": {
-    "name": "kinotch-repository-base",
-    "type": "repository-base",
-    "description": "KiNoTch. Repository Base itself: shared repository structure, Agent entry points, schemas, profiles, and verification tooling."
+    "name": "PROJECT_NAME",
+    "type": "minimal",
+    "description": "Replace with the repository-specific purpose."
   },
   "profile": "minimal",
   "runtime": {
@@ -39,7 +39,6 @@
     "surfaces": "contracts/surfaces.json"
   },
   "notes": [
-    "Base自身は共通層を管理するため、通常の個別開発とは異なり、.kinotch/**を変更対象に含める。",
-    "Runtime module名はRuntime Phase 1までは論理Module宣言であり、実在packageを意味しない。"
+    "Only README.md and project/** are normally edited in an individual repository."
   ]
 }

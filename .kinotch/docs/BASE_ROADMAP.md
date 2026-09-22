@@ -1,7 +1,7 @@
 # KiNoTch. Base / Runtime Roadmap
 
 この文書は共通層から参照する短いRoadmap Indexである。
-背景・到達状態・判断基準・検証計画を含む詳細な設計Metaは [`project/meta/README.md`](../../project/meta/README.md) を参照する。
+背景・到達状態・判断基準・検証計画を含む詳細な設計Metaは [`../meta/README.md`](../meta/README.md) を参照する。
 
 ## Phase 0 — Repository Base v0.1系
 

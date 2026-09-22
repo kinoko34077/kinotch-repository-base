@@ -1,27 +1,48 @@
-# PROJECT_NAME
+# KiNoTch. Repository Base
 
-> このREADMEだけは個別リポジトリ用です。プロジェクト名・目的・使い方・画像等を自由に記述してください。
+KiNoTch. Repository Base は、KiNoTch.形式のRepositoryを新しく作り、読み、検証するための共通基盤です。
 
-## 概要
+## このRepositoryの役割
 
-このリポジトリは **KiNoTch. Repository Base v0.1.1** に準拠します。
+- 個別Repositoryの読取順序とAgent入口を標準化する
+- 共通のmanifest、profile、surface、schema、command routerを提供する
+- 個別仕様と共通基盤を物理的に分離する
+- Base自身の変更と検証を再現可能にする
+- KiNoTch. Runtimeへ接続するための宣言境界を定義する
 
-- 個別情報・仕様・実装: [`project/`](project/)
-- 個別プロジェクト定義: [`project/project.json`](project/project.json)
-- 個別仕様索引: [`project/docs/INDEX.md`](project/docs/INDEX.md)
-- 現在状態: [`project/docs/CURRENT_STATE.md`](project/docs/CURRENT_STATE.md)
-- 共通の開発・操作方法: [`.kinotch/README_BASE.md`](.kinotch/README_BASE.md)
+## ディレクトリ境界
 
-## 主な機能
+- README.md: このBase Repository自身のGitHub向け入口
+- project/: Base自身の仕様、設定、契約、自己テスト
+- .kinotch/: 個別Repositoryへ配布する共通Base、schema、profile、tooling
+- KiNoTch. Runtime: 別Repositoryで実装する共有Runtime。ここへコピーしない
 
-- TODO: このプロジェクト固有の機能を記載。
+通常の個別Repositoryでは README.md と project/** を編集し、.kinotch/** や共通Agent規則は編集しません。Base自身を開発する場合のみ共通層を変更します。
 
-## 最短利用方法
+## 新規Repositoryでの使い方
 
-```powershell
+新規RepositoryへBaseを適用する場合は、.kinotch/templates/project/ を生成元としてREADME、project.json、docs、contractsを作成します。個別の目的、入力、出力、Domain Core、必要Surface、必要Runtime moduleだけを project/** に定義します。
+
+共通入口は次のとおりです。
+
+~~~powershell
 .\knt.cmd doctor
 .\knt.cmd setup
 .\knt.cmd dev
-```
+.\knt.cmd test
+.\knt.cmd verify
+~~~
 
-プロジェクト固有の利用方法はここへ記載し、共通操作の説明は `.kinotch/README_BASE.md` を参照してください。
+## Runtimeとの関係
+
+BaseはProject Manifest、Profile、Repository構造、Surface宣言、Runtime version/module参照を所有します。Action実行、Cancellation、Resource利用などのExecution Contractと実装は、Base v0.xでは論理宣言に留め、KiNoTch. Runtime側で検証します。
+
+## 詳細資料
+
+- [BaseのProject定義](project/project.json)
+- [仕様](project/docs/SPEC.md)
+- [現在状態](project/docs/CURRENT_STATE.md)
+- [仕様索引](project/docs/INDEX.md)
+- [共通Baseの説明](.kinotch/README_BASE.md)
+- [Base Meta](.kinotch/meta/README.md)
+- [Base v0.2設計ADR](project/docs/adr/0001-base-v02-hardening.md)

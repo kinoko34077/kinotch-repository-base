@@ -8,17 +8,8 @@
   ],
   "properties": {
     "code": {
-      "enum": [
-        "INVALID_INPUT",
-        "NOT_FOUND",
-        "ALREADY_EXISTS",
-        "PERMISSION_DENIED",
-        "AUTH_REQUIRED",
-        "CONFIG_ERROR",
-        "EXTERNAL_ERROR",
-        "CANCELLED",
-        "INTERNAL_ERROR"
-      ]
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9_]*$"
     },
     "message": {
       "type": "string"

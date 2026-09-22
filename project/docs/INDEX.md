@@ -1,13 +1,16 @@
 # Documentation Index
 
-## Base / Runtime meta
-
-- [Base Project Meta](../meta/README.md) — Base / Runtime自体を変更・評価する場合に参照
-
 ## Start here
 
 - [Current State](CURRENT_STATE.md)
 - [Current Specification](SPEC.md)
+- [Base v0.2 hardening ADR](adr/0001-base-v02-hardening.md)
+- [Base v0.2 implementation plan](adr/0002-base-v02-implementation-plan.md)
+
+## Base-wide Meta
+
+- [Base Meta](../../.kinotch/meta/README.md)
+- [Base Roadmap](../../.kinotch/docs/BASE_ROADMAP.md)
 
 ## Architecture / Decisions
 
@@ -21,4 +24,4 @@
 
 - [Archive](archive/README.md)
 
-文書が肥大化した場合のみ `spec/requirements.md`、`functional.md`、`behavior.md`、`data.md`、`interface.md`、`implementation.md`、`tests.md` 等へ責務分離する。
+Base-wide knowledge belongs under .kinotch/. Project-specific specifications belong under project/docs/.

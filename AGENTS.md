@@ -10,7 +10,7 @@
 4. `project/docs/CURRENT_STATE.md`
 5. 現在タスクに関係する `project/docs/`・コード・テスト
 
-Base / Runtimeそのものの変更、共通化判断、既存repo移行を扱う場合のみ `project/meta/README.md` と関連Metaを追加で読む。
+Base / Runtimeそのものの変更、共通化判断、既存repo移行を扱う場合のみ `.kinotch/meta/README.md` と関連Metaを追加で読む。
 
 共通規則が必要な場合のみ `.kinotch/` を読む。毎回全共通資料やMetaを読み直さない。
 

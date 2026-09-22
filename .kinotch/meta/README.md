@@ -21,9 +21,9 @@
 
 ## 位置づけ
 
-- `.kinotch/` は共通Repository規約・Schema・共通操作の実体。
+- `.kinotch/` は共通Repository規約・Schema・共通操作・Base Metaの実体。
 - `KiNoTch. Runtime` は複数repoが依存して再利用する実装部品。
 - `project/` は通常、各repo固有の仕様・実装・設定を置く領域。
-- この `project/meta/` は、**Baseリポジトリ自身を開発するためのProject-level meta** として例外的に、Base構想の文脈を保持する。
+- この `.kinotch/meta/` は、**Repository Base / Runtime全体を開発するための共通Meta** として、Base構想の文脈を保持する。
 
 個別repoへBaseを流用する際、このMetaは「共通基盤をなぜこの形で使うのか」を理解する参考として残してよいが、個別仕様の正本として扱わない。

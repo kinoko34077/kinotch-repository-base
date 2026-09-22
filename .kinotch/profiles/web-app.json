@@ -1,5 +1,6 @@
 {
   "profile": "web-app",
+  "status": "planned",
   "description": "Web/PWA。",
   "runtime_modules": [
     "kernel",

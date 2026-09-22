@@ -34,3 +34,4 @@ Thumbs.db
 .idea/
 
 # Project-local additions belong in project/.gitignore
+.superpowers/

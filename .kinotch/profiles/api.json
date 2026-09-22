@@ -1,5 +1,6 @@
 {
   "profile": "api",
+  "status": "planned",
   "description": "HTTP API/service。",
   "runtime_modules": [
     "kernel",

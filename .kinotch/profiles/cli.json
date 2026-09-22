@@ -1,5 +1,6 @@
 {
   "profile": "cli",
+  "status": "planned",
   "description": "CLIツール。",
   "runtime_modules": [
     "kernel",

@@ -11,6 +11,8 @@ project/**     = 個別仕様・実装・設定・テスト
 KiNoTch.Runtime = 複数repoで再利用する共通実装。個別repoへコピーしない
 ```
 
+Base-wide Metaは `.kinotch/meta/` に置き、新規Repository用の生成元は `.kinotch/templates/project/` に置く。Base自身のProject情報は `project/**` に記録し、Templateと混同しない。
+
 ## 共通コマンド
 
 Windows cmd:
@@ -38,12 +40,16 @@ PowerShell:
 `doctor` は以下を確認する。
 
 - Base共通ファイルが変更されていないか
-- `project/project.json` が読めるか
-- 基本ディレクトリが存在するか
-- 選択Profile / Surface / Runtime Module
+- `project/project.json` がProject Schemaに適合するか
+- Action Registry / Surface RegistryがSchemaに適合するか
+- 選択Profileが存在し、Profile / Surfaceに明らかな矛盾がないか
+- Manifest pathsとcommand cwdが存在するか
+- 推奨Profile / Runtime Moduleとの差分を警告する
 - 定義済み共通コマンド
 
 環境固有診断は、後からKiNoTch. Runtimeのdoctor moduleとして追加可能とする。
+
+`base-refresh` は `repository-base` 自身でのみ使用するBase index再生成入口である。通常の個別Repositoryから共通ファイルを勝手に更新するためのコマンドではない。
 
 ## verify
 
@@ -76,6 +82,10 @@ project/src/
 - artifact: 利用者へ渡す成果物
 
 保存形式そのものは各projectで定義する。
+
+## .ai-guidelinesとの責任分離
+
+KiNoTch. BaseはRepository構造、Agent入口、実装workflowを所有する。`.ai-guidelines` はUI/UXおよびDomain横断の設計ポリシーを所有する。同じ規則を双方へ全文複製しない。
 
 ## 共通化の判断
 

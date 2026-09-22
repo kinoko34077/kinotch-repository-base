@@ -45,13 +45,13 @@ Spec: project/docs/adr/0001-base-v02-hardening.md
 
 Files:
 - Modify README.md, project/project.json, project/docs/INDEX.md, project/docs/SPEC.md, project/docs/CURRENT_STATE.md, project/contracts/surfaces.json.
-- Move the six project/meta Markdown files to .kinotch/meta/.
+- Move the seven project/meta documents to .kinotch/meta/ (README plus 00 through 05).
 - Create .kinotch/templates/project/README.md, project.json, docs/INDEX.md, docs/CURRENT_STATE.md, docs/SPEC.md, contracts/actions.json, contracts/surfaces.json, and .gitignore.
 - Modify AGENTS.md, .kinotch/README_BASE.md, .kinotch/docs/BASE_ROADMAP.md, .kinotch/RUNTIME_INTEGRATION.md, all profile JSON files, the three schemas, and .kinotch/BASE_VERSION.
 
 Produces: repository-base manifest identity, eight canonical surfaces cli, gui_windows, web, api, mcp, agent, library, .kinotch/meta location, and planned profile status.
 
-- [ ] Write acceptance checks for Base README/manifest identity, missing project/meta, six files under .kinotch/meta, eight surface names, and planned profile status.
+- [ ] Write acceptance checks for Base README/manifest identity, missing project/meta, seven files under .kinotch/meta (README plus 00 through 05), eight surface names, and planned profile status.
 - [ ] Run the pre-change checks:
 
 ~~~powershell
@@ -214,4 +214,3 @@ Expected: all commands return 0, working tree is clean, and local HEAD equals re
 4. feat: add deterministic Base index refresh
 5. docs: finalize Base v0.2 contracts and state
 6. Optional final verification commit only when evidence changes a tracked file.
-
