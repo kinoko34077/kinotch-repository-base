@@ -25,11 +25,14 @@ Last verified: 2026-09-22 — KiNoTch. Repository Base v0.2.1 complete
 
 ## In progress
 
-- KiNoTch. Runtime implementation has intentionally not started.
+- KiNoTch. Runtime v0.1 reference implementation now exists in the separate
+  `kinotch-runtime` repository.
 
 ## Known issues
 
-- KiNoTch. Runtime implementation does not exist yet by design.
+- Runtime v0.1 exists as a small, provisional Python reference implementation.
+- Runtime Execution Contract validation and the first `jev-audit` Pilot are not
+  complete yet.
 - Runtime module names remain logical declarations until Runtime Phase 1.
 - The dependency-free validator implements the JSON Schema keywords used by this Base, not every future JSON Schema keyword.
 - `result.schema.json` contains a `$ref` for the future Runtime contract; it is an explicitly excluded definition keyword and is not validated by `knt doctor`.
@@ -44,8 +47,9 @@ Last verified: 2026-09-22 — KiNoTch. Repository Base v0.2.1 complete
 
 ## Next work
 
-1. Create kinotch-runtime v0.1 after this Base gate.
-2. Pilot the Runtime first in jev-audit.
+1. Validate Runtime v0.1 contracts and keep the reference implementation
+   provisional until Pilot evidence exists.
+2. Pilot the Runtime first in jev-audit without changing its Audit Core.
 3. Add further Surface Packs only after repeated Pilot evidence.
 
 ## Verification
