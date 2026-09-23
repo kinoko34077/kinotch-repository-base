@@ -32,7 +32,7 @@ the shape probe can identify an equivalent boundary.
 | `jev-audit` | `cli`, `mcp`; `ci-test=OVERRIDE` | `python -m unittest discover -s tests`: 52 tests, 1 skipped | Keep CLI/MCP and Runtime Pilot paths Project-owned; do not add a second setup/runtime layer. |
 | `kinotch-api` | `api`; `ci-test=OVERRIDE`, `generated-integrity=OVERRIDE` | `npm test`: 207 passed, 1 skipped | Keep Worker, generated snapshot, error, and deploy boundaries Project-owned. |
 | `SynTrail-LM` | `cli`; no Tool Default candidate | `cargo test`: 237 library tests + 185 integration tests passed | Keep native Windows, trainer, persistence, and file I/O Project-owned. Existing dirty user files were not touched. |
-| `lyric_reader_page` | `web-app`, `cli`; `ci-test=OVERRIDE` | `npm test`: 28 passed | Keep reader/writer and browser quality gates Project-owned. |
+| `lyric_reader_page` | `web-app`; `ci-test=OVERRIDE` | `npm test`: 129 passed | Keep reader/writer and browser quality gates Project-owned. |
 
 The shape probe now distinguishes an existing equivalent from a missing
 convenience in dry-run output, for example `state OVERRIDE (existing
@@ -102,17 +102,18 @@ generated helpers.
 
 ## Phase 4B adoption status
 
-The first two clean Canary adoptions were completed after the v0.3.3 safety
+The first three clean Canary adoptions were completed after the v0.3.4 safety
 hardening. Existing Domain files were not moved, and all detected equivalent
 Surface / Tool implementations were recorded as `OVERRIDE`.
 
 | Repository | Commit | Local verification | Result |
 | --- | --- | --- | --- |
-| `jev-audit` | `041bb87` | `knt setup`, `doctor`, `base-check`, `verify`, 52 unittest tests | Base adoption; CLI/MCP/CI/generated boundaries preserved |
-| `kinotch-api` | `8bf82e8` | `knt setup`, `doctor`, `base-check`, `verify`, 207 passed / 1 skipped | Base adoption; API/MCP/CI/generated boundaries preserved |
+| `jev-audit` | `6e4bac7` | `knt setup`, `doctor`, `base-check`, `verify`, 52 unittest tests | Base adoption plus v0.3.4 alignment; CLI/MCP/CI/generated boundaries preserved |
+| `kinotch-api` | `6d3911f` | `knt setup`, `doctor`, `base-check`, `verify`, 207 passed / 1 skipped | Base adoption plus v0.3.4 alignment; API/MCP/CI/generated boundaries preserved |
+| `lyric_reader_page` | `ac8b0c6` | `knt setup`, `doctor`, `base-check`, `verify`, 129 npm tests | Base adoption; web/reader/writer/browser boundaries preserved |
 
-The Base v0.3.3 root hygiene update was synchronized into both adopters after
-their first local verification. The remaining Canaries (`standby-display`,
-`SynTrail-LM`, and `lyric_reader_page`) remain staged for separate clean-tree
-reviews; `SynTrail-LM` currently has user-owned dirty files and is not eligible
-for automatic adoption.
+The Base v0.3.4 root hygiene update was synchronized into the adopters after
+their first local verification. The remaining Canaries (`standby-display` and
+`SynTrail-LM`) remain staged for separate clean-tree reviews; `SynTrail-LM`
+currently has user-owned dirty files and is not eligible for automatic
+adoption.

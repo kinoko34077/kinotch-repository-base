@@ -30,7 +30,8 @@ Last verified: 2026-09-23 — self-test 60/60; doctor, base-check, and verify pa
 - `knt migrate` catalog-driven dry-run / explicit apply with `OVERRIDE` and `DISABLED` preservation
 - Phase 4 Canary shape validation with existing-equivalent `OVERRIDE` detection
 - Phase 4A read-only verification completed; Phase 4B adoption has now been
-  completed for the first two clean Canaries: `jev-audit` and `kinotch-api`
+  completed for the first three clean Canaries: `jev-audit`, `kinotch-api`, and
+  `lyric_reader_page`
 - Default implementation templates for `ci-test`, `pwa`, `generated-integrity`, and `file-io`
 - Surface Default helpers for `cli`, `windows`, `mcp`, and `api`
 - `knt verify` integration for selected PWA and generated-integrity checks
@@ -77,14 +78,14 @@ Last verified: 2026-09-23 — self-test 60/60; doctor, base-check, and verify pa
 - Default-first standardization has completed the safe Phase 3B implementation
   slice and Phase 4A read-only Canary validation. Phase 4B adoption-safety
   hardening is implemented for Base v0.3.4. Phase 4C adoption is active for
-  `jev-audit` and `kinotch-api`; existing CLI/MCP/API/generated behavior was
-  preserved as `OVERRIDE`.
+  `jev-audit`, `kinotch-api`, and `lyric_reader_page`; existing
+  CLI/MCP/API/generated/browser behavior was preserved as `OVERRIDE`.
 - The canonical four-layer policy is `.kinotch/meta/06_DEFAULT_FIRST_STANDARD.md`.
 - The Default Catalog is `.kinotch/defaults/catalog.json`; it is the single
   source for supported Surface / Tool Default identifiers and aliases.
 - The Phase 4A read-only classification and Phase 4B adoption record are kept
-  in `project/docs/DEFAULT_ROLLOUT_DRY_RUN.md`; remaining Canaries are still
-  staged and have not been changed.
+  in `project/docs/DEFAULT_ROLLOUT_DRY_RUN.md`; `standby-display` and
+  `SynTrail-LM` remain staged for separate clean-tree reviews.
 - `knt init` now generates a safe multi-profile Project Overlay, and `knt migrate`
   reports Default Pack candidates by default and applies them only with explicit
   `--apply`, preserving existing `OVERRIDE` / `DISABLED` states.
