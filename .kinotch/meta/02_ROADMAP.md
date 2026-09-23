@@ -1,8 +1,9 @@
 # 02 — Roadmap
 
 Current position: Phase 3B safe Default behavior and Phase 4A read-only Canary
-validation are complete. Phase 4B adoption-safety hardening is complete; real
-existing-repository `migrate --apply` remains an explicit future adoption step.
+validation are complete. Phase 4B adoption-safety hardening is complete; Phase
+4C has seven clean Canary adoptions, while additional repositories remain
+explicitly staged until their own verification gates are green.
 Phase 2A Portable Contract validation remains independent and provisional;
 Default adoption does not wait for Portable Contract maturity.
 
@@ -184,6 +185,8 @@ native exit code伝播を実装する。Base v0.3.7
 既存repoは一括変更せず、`jev-audit`、`kinotch-api`、
 `lyric_reader_page`、`weather-widget`、`memory-game`、
 `Structured-Cell-Automaton`、`2bit-cell-automaton` の初回適用を完了した。
+`refil-viewer` はBase適用準備まで完了したが、既存Vite build失敗のため
+clean Canaryには数えない。
 残りのrepoは明示判断
 とRepository Manifestが揃ったrepoだけへ段階適用する。
 

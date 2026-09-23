@@ -33,6 +33,9 @@ Last verified: 2026-09-23 — self-test 63/63; doctor, base-check, and verify pa
   completed for seven clean Canaries: `jev-audit`, `kinotch-api`,
   `lyric_reader_page`, `weather-widget`, `memory-game`,
   `Structured-Cell-Automaton`, and `2bit-cell-automaton`
+- `refil-viewer` has a repository-local Base v0.3.7 preparation commit, but its
+  existing Vite build currently fails on a duplicate `pageIndex` declaration;
+  it is not counted as a clean Canary adoption
 - Default implementation templates for `ci-test`, `pwa`, `generated-integrity`, and `file-io`
 - Surface Default helpers for `cli`, `windows`, `mcp`, and `api`
 - `knt verify` integration for selected PWA and generated-integrity checks
@@ -84,6 +87,8 @@ Last verified: 2026-09-23 — self-test 63/63; doctor, base-check, and verify pa
   `memory-game`, `Structured-Cell-Automaton`, and `2bit-cell-automaton`;
   existing CLI/MCP/API/generated/browser/PWA/Streamlit behavior was preserved
   as `OVERRIDE`.
+- `refil-viewer` is prepared but held outside the clean-adoption count until
+  its Project-owned Vite build failure is resolved.
 - The canonical four-layer policy is `.kinotch/meta/06_DEFAULT_FIRST_STANDARD.md`.
 - The Default Catalog is `.kinotch/defaults/catalog.json`; it is the single
   source for supported Surface / Tool Default identifiers and aliases.
