@@ -93,7 +93,7 @@ git push origin main
 - Consumes: file/folder paths, dropped path arrays, optional callbacks, and progress/cancel state.
 - Produces: `Resolve-WindowsShellPath`, `Convert-WindowsDropItems`, `Select-WindowsPath`, `Save-WindowsPath`, `New-WindowsProgressState`, `Update-WindowsProgressState`, `Complete-WindowsProgressState`, `Fail-WindowsProgressState`, `New-WindowsCancelSource`, `Request-WindowsCancel`, `Test-WindowsCancelRequested`, plus the existing Explorer/clipboard functions.
 
-- [ ] **Step 1: Write failing non-GUI Windows helper tests**
+- [x] **Step 1: Write failing non-GUI Windows helper tests**
 
 Read the materialized Windows helper and test the following without opening a dialog:
 
@@ -109,19 +109,19 @@ Assert-True (Test-WindowsCancelRequested $cancel) 'cancel request was not observ
 
 Also assert that progress state transitions are `started`, `progress`, `completed`, and `failed`, and that the source still uses `$env:OS -eq "Windows_NT"`.
 
-- [ ] **Step 2: Run the self-test and verify it fails**
+- [x] **Step 2: Run the self-test and verify it fails**
 
 Expected: missing Windows Kit functions cause the new test to fail before any GUI code is exercised.
 
-- [ ] **Step 3: Implement portable boundary helpers and lazy native dialogs**
+- [x] **Step 3: Implement portable boundary helpers and lazy native dialogs**
 
 Use `Resolve-Path -LiteralPath` for existing paths and return a normalized string. `Convert-WindowsDropItems` must preserve order, remove blank values, and return an empty array for no usable input. Use a mutable PSCustomObject for cancel/progress state. `Select-WindowsPath` and `Save-WindowsPath` may use `System.Windows.Forms` only when explicitly invoked on Windows; return `$null` on user cancellation and keep all reading, writing, encoding, overwrite policy, and Domain validation outside the helper.
 
-- [ ] **Step 4: Run tests and verify no GUI dependency is loaded on non-GUI paths**
+- [x] **Step 4: Run tests and verify no GUI dependency is loaded on non-GUI paths**
 
 Run the full self-test and direct helper tests. Expected: path/drop/state assertions pass on the current host; native dialog functions remain lazy and do not run during Base self-test.
 
-- [ ] **Step 5: Commit the Windows slice**
+- [x] **Step 5: Commit the Windows slice**
 
 ```powershell
 git add .kinotch/templates/defaults/windows/tools/windows-shell.ps1 .kinotch/tests/run-tests.ps1 project/docs/CURRENT_STATE.md

@@ -957,6 +957,48 @@ Invoke-TestCase "Windows helper uses a Windows PowerShell 5.1-compatible host ch
     Assert-True ($helper -match '\$env:OS\s*-eq\s*"Windows_NT"') "Windows helper does not use the Windows_NT environment marker"
     Assert-True ($helper -notmatch '\$IsWindows') "Windows helper relies on the PowerShell Core-only IsWindows variable"
 }
+Invoke-TestCase "Windows Surface Kit provides path, drop, picker, progress, and cancel helpers" {
+    Invoke-KntInitFixture -Profiles @("windows-gui") -AssertOutput {
+        param($root, $output)
+        $helper = Join-Path $root "project/tools/windows-shell.ps1"
+        $probe = Join-Path $root "windows-kit-probe.ps1"
+        $existing = Join-Path $root "project/input.txt"
+        Set-Content -LiteralPath $existing -Value "input" -Encoding UTF8
+        $probeText = @'
+param(
+    [Parameter(Mandatory=$true)][string]$HelperPath,
+    [Parameter(Mandatory=$true)][string]$ExistingPath
+)
+$ErrorActionPreference = "Stop"
+. $HelperPath
+$normalized = Resolve-WindowsShellPath -Path $ExistingPath
+if ($normalized -ne (Resolve-Path -LiteralPath $ExistingPath).Path) { throw "path was not normalized" }
+$drop = @(Convert-WindowsDropItems -Paths @($ExistingPath, "", "  "))
+if ($drop.Count -ne 1 -or $drop[0] -ne $normalized) { throw "drop paths were not normalized" }
+if ($null -ne (Convert-WindowsDropItems -Paths @("", "  "))) { throw "empty drop was not cancelled" }
+if ((Select-WindowsPath -Kind File -SelectedPath "") -ne $null) { throw "cancelled file picker did not return null" }
+if ((Save-WindowsPath -SelectedPath "") -ne $null) { throw "cancelled save picker did not return null" }
+$cancel = New-WindowsCancelSource
+if (Test-WindowsCancelRequested -Source $cancel) { throw "new cancel source is already requested" }
+Request-WindowsCancel -Source $cancel
+if (-not (Test-WindowsCancelRequested -Source $cancel)) { throw "cancel request was not observed" }
+$progress = New-WindowsProgressState -Stage "load" -Total 2
+if ($progress.status -ne "started") { throw "progress did not start" }
+Update-WindowsProgressState -State $progress -Current 1 -Message "half"
+if ($progress.status -ne "progress" -or $progress.current -ne 1 -or $progress.message -ne "half") { throw "progress update was not recorded" }
+Complete-WindowsProgressState -State $progress
+if ($progress.status -ne "completed") { throw "progress did not complete" }
+$failed = New-WindowsProgressState -Stage "save" -Total 1
+Fail-WindowsProgressState -State $failed -Message "failed"
+if ($failed.status -ne "failed" -or $failed.message -ne "failed") { throw "progress failure was not recorded" }
+Write-Output "windows-kit-ok"
+'@
+        Set-Content -LiteralPath $probe -Value $probeText -Encoding UTF8
+        $probeOutput = @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $probe -HelperPath $helper -ExistingPath $existing 2>&1)
+        Assert-Equal 0 $LASTEXITCODE "Windows Surface Kit probe exit code"
+        Assert-True (($probeOutput -join "`n") -match "windows-kit-ok") "Windows Surface Kit probe did not complete"
+    }
+}
 Invoke-TestCase "API Default envelope remains a permissive boundary descriptor" {
     $schema = Get-Content -Raw -Encoding UTF8 (Join-Path $RepoRoot ".kinotch/templates/defaults/api/contracts/api-error-envelope.json") | ConvertFrom-Json
     Assert-True (@($schema.required) -notcontains "details") "API Default made details mandatory"

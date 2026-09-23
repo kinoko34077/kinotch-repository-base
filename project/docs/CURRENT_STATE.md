@@ -2,7 +2,7 @@
 
 Base version: `0.3.9`
 
-Last verified: 2026-09-24 — self-test 72/72; doctor, base-check, and verify passed locally after the Base v0.3.9 index refresh
+Last verified: 2026-09-24 — self-test 73/73; doctor, base-check, and verify passed locally after the Base v0.3.9 index refresh
 
 ## Implemented
 
@@ -39,6 +39,8 @@ Last verified: 2026-09-24 — self-test 72/72; doctor, base-check, and verify pa
 - Default implementation templates for `ci-test`, `pwa`, `generated-integrity`, and `file-io`
 - Surface Default helpers for `cli`, `windows`, `mcp`, and `api`
 - CLI Surface Kit common option parsing, stdout/stderr helpers, generic result rendering, and exit handling; Project-specific arguments remain untouched
+- Windows Surface Kit path/drop normalization, lazy native file/folder/save pickers,
+  progress state, cooperative cancel flag, Explorer/clipboard, and error-dialog boundary
 - `knt verify` integration for selected PWA and generated-integrity checks
 - Manifest-less read-only `knt migrate` repository-shape probe using package, Cargo,
   Python, workflow, and web-asset markers
@@ -96,8 +98,8 @@ Last verified: 2026-09-24 — self-test 72/72; doctor, base-check, and verify pa
   as `OVERRIDE`.
 - Base v0.3.9 is the current maintenance release; existing adopted repositories
   are synchronized only during their normal maintenance cycle.
-- Surface Default Kit expansion has started as a Phase 5 Base feature slice;
-  the CLI Kit is implemented and Windows/MCP/API Kit expansions remain next.
+- Surface Default Kit expansion is a Phase 5 Base feature slice; CLI and Windows
+  Kits are implemented, while MCP and API Kit expansions remain next.
 - `refil-viewer` remains `STAGED`: its Base v0.3.8 files pass doctor and
   base-check, while its existing Vite source still fails on a duplicate
   `pageIndex` declaration. This is a Project bug and is not hidden or fixed by
@@ -152,7 +154,7 @@ Last verified: 2026-09-24 — self-test 72/72; doctor, base-check, and verify pa
 
 ## Next work
 
-1. Complete the Windows, MCP, and API Surface Kit slices without changing
+1. Complete the MCP and API Surface Kit slices without changing
    Runtime semantics or adding fine-grained Catalog entries.
 2. Run `doctor`, `base-check`, and the existing Project verification after
    each Surface Kit slice.

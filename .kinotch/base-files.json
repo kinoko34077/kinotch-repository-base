@@ -248,7 +248,7 @@
     },
     {
       "path": ".kinotch/templates/defaults/windows/tools/windows-shell.ps1",
-      "sha256": "1776699d2c142856f897cf18d008a49804c82e2c4ce205b7d43bf0b060590079"
+      "sha256": "31ef51893252f2085be22a3e8114742862ddae2494060b2b4a4e994ace296502"
     },
     {
       "path": ".kinotch/templates/project/.gitignore",
@@ -388,7 +388,7 @@
     },
     {
       "path": ".kinotch/tests/run-tests.ps1",
-      "sha256": "7560be0ffbd6ca87ac6bf7f6e8a7bf58863bd6742de052517bd00111465cf02f"
+      "sha256": "0a22fc07fce4e223f685409d15743ad9b251280548582d1fac182a6c135de06f"
     },
     {
       "path": "AGENTS.md",
