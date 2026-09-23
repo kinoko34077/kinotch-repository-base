@@ -373,9 +373,16 @@ function Get-RepositoryShape($Catalog) {
     ) | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
     $workerFiles = @($scanFiles | Where-Object { $_.Name -match "service-worker|sw\.js$" })
     if ($manifestPath -and $workerFiles.Count -gt 0) { Add-RepositoryShapeTool -ToolIds $toolIds -ToolStates $toolStates -ToolId "pwa" -State "OVERRIDE" }
-    $generatedFiles = @($scanFiles | Where-Object { $_.Name -match "(^generated|\.generated\.|generated\.)" })
+    $integrityDirectories = @("src", "app", "tools", "scripts", "backend", "frontend") |
+        ForEach-Object { Join-Path $Root $_ } |
+        Where-Object { Test-Path -LiteralPath $_ -PathType Container }
+    $integrityFiles = @()
+    foreach ($integrityDirectory in $integrityDirectories) {
+        $integrityFiles += @(Get-ChildItem -LiteralPath $integrityDirectory -Recurse -File -Force -ErrorAction SilentlyContinue)
+    }
+    $generatedFiles = @($integrityFiles | Where-Object { $_.Name -match "(^generated|\.generated\.|generated\.)" })
     $integrityText = $scriptsText
-    foreach ($scanFile in @($scanFiles | Where-Object { $_.Extension -in @(".ps1", ".mjs", ".js", ".py", ".rs", ".toml", ".yml", ".yaml") })) {
+    foreach ($scanFile in @($integrityFiles | Where-Object { $_.Extension -in @(".ps1", ".mjs", ".js", ".py", ".rs", ".toml", ".yml", ".yaml") })) {
         $integrityText += "`n" + (Get-Content -Raw -Encoding UTF8 -LiteralPath $scanFile.FullName -ErrorAction SilentlyContinue)
     }
     $hasIntegrityEvidence = $integrityText -match "(?i)sha[-_]?256|source[_-]?fingerprint|stale|generated.*check|check.*generated|snapshot.*check"
