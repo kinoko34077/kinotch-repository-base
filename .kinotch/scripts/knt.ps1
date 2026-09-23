@@ -43,8 +43,67 @@ function Write-Knt([string]$Message) {
     Write-Host "[knt] $Message"
 }
 
+function Assert-RepositoryWriteAllowed([string]$Operation) {
+    if (-not [string]::IsNullOrWhiteSpace($BaseOverride)) {
+        throw "$Operation requires repository-local .kinotch; -BaseOverride is read-only"
+    }
+
+    $localBaseDir = Join-Path $Root ".kinotch"
+    if (-not (Test-Path -LiteralPath $localBaseDir -PathType Container)) {
+        throw "$Operation requires a valid repository-local .kinotch/ Base"
+    }
+    foreach ($requiredFile in @("BASE_VERSION", "base-files.json", "scripts/knt.ps1")) {
+        if (-not (Test-Path -LiteralPath (Join-Path $localBaseDir $requiredFile) -PathType Leaf)) {
+            throw "$Operation requires a valid repository-local .kinotch/ Base"
+        }
+    }
+
+    $localResolved = (Resolve-Path -LiteralPath $localBaseDir).Path
+    $activeResolved = (Resolve-Path -LiteralPath $BaseDir).Path
+    if (-not [string]::Equals($localResolved, $activeResolved, [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw "$Operation requires the repository-local .kinotch/ Base"
+    }
+}
+
 function Get-Manifest {
     return Get-KntJson -Path $ManifestPath
+}
+
+function Test-DefaultCatalogSemantics($Catalog) {
+    $errors = New-Object System.Collections.Generic.List[string]
+    $ids = @{}
+    $aliases = @{}
+    foreach ($entry in @($Catalog.defaults)) {
+        $id = [string]$entry.id
+        if ($ids.ContainsKey($id)) {
+            [void]$errors.Add("duplicate Default id '$id'")
+        }
+        else {
+            $ids[$id] = $true
+        }
+        foreach ($aliasValue in @($entry.aliases)) {
+            $alias = [string]$aliasValue
+            if ($aliases.ContainsKey($alias)) {
+                [void]$errors.Add("duplicate Default alias '$alias'")
+            }
+            else {
+                $aliases[$alias] = $true
+            }
+        }
+        if ([string]$entry.kind -eq "surface") {
+            $profileName = Get-DefaultProfileName $entry
+            $profilePath = Join-Path $BaseDir ("profiles/" + $profileName + ".json")
+            if (-not (Test-Path -LiteralPath $profilePath -PathType Leaf)) {
+                [void]$errors.Add("Surface Default '$id' references missing profile '$profileName'")
+            }
+        }
+    }
+    foreach ($id in @($ids.Keys)) {
+        if ($aliases.ContainsKey([string]$id)) {
+            [void]$errors.Add("Default id/alias collision '$id'")
+        }
+    }
+    return @($errors | Select-Object -Unique)
 }
 
 function Get-ProjectDefaultState($Manifest, [string]$DefaultId) {
@@ -82,7 +141,21 @@ function Get-DefaultCatalog {
     if ($errors.Count -gt 0) {
         throw "Default catalog validation failed: " + ($errors -join "; ")
     }
+    $semanticErrors = @(Test-DefaultCatalogSemantics -Catalog $catalog)
+    if ($semanticErrors.Count -gt 0) {
+        throw "Default catalog semantic validation failed: " + ($semanticErrors -join "; ")
+    }
     return $catalog
+}
+
+function Get-DefaultCompatibilityError($Entry, [string[]]$SelectedSurfaces) {
+    $compatible = @($Entry.compatible_surfaces)
+    if ([string]$Entry.kind -ne "tool" -or $compatible.Count -eq 0) { return $null }
+    $overlap = @($SelectedSurfaces | Where-Object { $_ -in $compatible })
+    if ($overlap.Count -eq 0) {
+        return "Default '$($Entry.id)' is not compatible with the selected Surface profile(s)"
+    }
+    return $null
 }
 
 function Find-DefaultCatalogEntry($Catalog, [string]$Identifier, [string]$Kind) {
@@ -176,13 +249,8 @@ function Resolve-DefaultSelections($Options, $Catalog, [bool]$RequireProfile, [s
         $selectedSurfaces = @($selectedSurfaces + @($ExistingSurfaces) | Select-Object -Unique)
     }
     foreach ($tool in $toolEntries) {
-        $compatible = @($tool.compatible_surfaces)
-        if ($selectedSurfaces.Count -gt 0 -and $compatible.Count -gt 0) {
-            $overlap = @($selectedSurfaces | Where-Object { $_ -in $compatible })
-            if ($overlap.Count -eq 0) {
-                throw "Default '$($tool.id)' is not compatible with the selected Surface profile(s)"
-            }
-        }
+        $compatibilityError = Get-DefaultCompatibilityError -Entry $tool -SelectedSurfaces $selectedSurfaces
+        if ($compatibilityError) { throw $compatibilityError }
     }
     return [pscustomobject]@{ profileEntries = @($profileEntries); toolEntries = @($toolEntries); options = $Options }
 }
@@ -204,8 +272,16 @@ function Add-RepositoryShapeTool($ToolIds, $ToolStates, [string]$ToolId, [string
     }
 }
 
+function Add-RepositoryShapeSurface($SurfaceIds, $SurfaceStates, [string]$SurfaceId, [string]$State = "OVERRIDE") {
+    if ($SurfaceId -notin $SurfaceIds) { [void]$SurfaceIds.Add($SurfaceId) }
+    if (-not $SurfaceStates.ContainsKey($SurfaceId) -or $State -eq "OVERRIDE") {
+        $SurfaceStates[$SurfaceId] = $State
+    }
+}
+
 function Get-RepositoryShape($Catalog) {
     $surfaceIds = New-Object System.Collections.Generic.List[string]
+    $surfaceStates = @{}
     $toolIds = New-Object System.Collections.Generic.List[string]
     $toolStates = @{}
     $markers = New-Object System.Collections.Generic.List[string]
@@ -231,7 +307,10 @@ function Get-RepositoryShape($Catalog) {
     $workflowPath = Join-Path $Root ".github/workflows"
     if (Test-Path -LiteralPath $workflowPath -PathType Container) {
         [void]$markers.Add(".github/workflows")
-        Add-RepositoryShapeTool -ToolIds $toolIds -ToolStates $toolStates -ToolId "ci-test" -State "OVERRIDE"
+        $workflowFiles = @(Get-ChildItem -LiteralPath $workflowPath -File -Force -ErrorAction SilentlyContinue | Where-Object { $_.Extension -in @(".yml", ".yaml") })
+        $workflowText = ($workflowFiles | ForEach-Object { Get-Content -Raw -Encoding UTF8 -LiteralPath $_.FullName }) -join "`n"
+        $hasVerificationGate = $workflowText -match "(?im)(npm\s+(?:run\s+)?(?:test|lint|typecheck|build)|pnpm\s+(?:test|lint|typecheck|build)|yarn\s+(?:test|lint|typecheck|build)|pytest|python\s+-m\s+(?:pytest|unittest)|cargo\s+(?:test|check|build)|knt(?:\.cmd)?\s+verify|\.kinotch/scripts/knt\.ps1\s+verify)"
+        Add-RepositoryShapeTool -ToolIds $toolIds -ToolStates $toolStates -ToolId "ci-test" -State $(if ($hasVerificationGate) { "OVERRIDE" } else { "DEFAULT" })
     }
     $publicPath = Join-Path $Root "public"
     $staticPath = Join-Path $Root "static"
@@ -240,22 +319,30 @@ function Get-RepositoryShape($Catalog) {
     $dependencyText = ($packageText + " " + $pythonText + " " + $cargoText).ToLowerInvariant()
 
     if ($dependencyText -match "hono|cloudflare|wrangler|service binding|worker") {
-        [void]$surfaceIds.Add("api")
+        Add-RepositoryShapeSurface -SurfaceIds $surfaceIds -SurfaceStates $surfaceStates -SurfaceId "api"
     }
     if ($hasWebAssets -or $dependencyText -match "vite|react|vue|svelte|astro|next") {
-        [void]$surfaceIds.Add("web-app")
+        Add-RepositoryShapeSurface -SurfaceIds $surfaceIds -SurfaceStates $surfaceStates -SurfaceId "web-app"
     }
     # knt verify is an L1 Hard Base command. Shape detection must not report it
     # as an optional Tool Default; CI remains the independent L2 candidate.
-    if ($package -and ($package.bin -or $scriptsText -match "cli|start|run")) { [void]$surfaceIds.Add("cli") }
-    if ($cargoText -match "\[\[bin\]\]|\[package\]" -or $pythonText -match "\[project\.scripts\]") {
-        [void]$surfaceIds.Add("cli")
+    $packageBin = $false
+    if ($package -and $package.PSObject.Properties["bin"] -and $null -ne $package.bin) {
+        $packageBin = $true
     }
-    if ($cargoText -match "egui|tauri|winit|windows|gtk") { [void]$surfaceIds.Add("windows") }
-    if ($pythonText -match "streamlit|gradio") { [void]$surfaceIds.Add("web-app") }
-    if ($pythonText) { Add-RepositoryShapeTool -ToolIds $toolIds -ToolStates $toolStates -ToolId "local-app" }
-    if ($dependencyText -match "mcp") { [void]$surfaceIds.Add("mcp") }
-    if ($Root -match "dev_agent|agent") { [void]$surfaceIds.Add("agent") }
+    $packageCliScript = $false
+    if ($package -and $package.PSObject.Properties["scripts"] -and $package.scripts) {
+        $packageCliScript = @($package.scripts.PSObject.Properties.Name | Where-Object { $_ -match "(^|[-_:])(cli|command)$" }).Count -gt 0
+    }
+    $hasPythonScripts = $pythonText -match "(?im)^\s*\[(?:project\.scripts|tool\.poetry\.scripts)\]"
+    $hasCargoBin = $cargoText -match "(?im)^\s*\[\[bin\]\]"
+    if ($packageBin -or $packageCliScript -or $hasPythonScripts -or $hasCargoBin) {
+        Add-RepositoryShapeSurface -SurfaceIds $surfaceIds -SurfaceStates $surfaceStates -SurfaceId "cli"
+    }
+    if ($cargoText -match "egui|tauri|winit|windows|gtk") { Add-RepositoryShapeSurface -SurfaceIds $surfaceIds -SurfaceStates $surfaceStates -SurfaceId "windows" }
+    if ($pythonText -match "streamlit|gradio") { Add-RepositoryShapeSurface -SurfaceIds $surfaceIds -SurfaceStates $surfaceStates -SurfaceId "web-app" }
+    if ($dependencyText -match "mcp") { Add-RepositoryShapeSurface -SurfaceIds $surfaceIds -SurfaceStates $surfaceStates -SurfaceId "mcp" }
+    if ($Root -match "dev_agent|agent") { Add-RepositoryShapeSurface -SurfaceIds $surfaceIds -SurfaceStates $surfaceStates -SurfaceId "agent" }
 
     $scanDirectories = @("public", "static", "src", "app", "tools", "scripts", "backend", "frontend") | ForEach-Object { Join-Path $Root $_ } | Where-Object { Test-Path -LiteralPath $_ -PathType Container }
     $scanFiles = @()
@@ -271,16 +358,20 @@ function Get-RepositoryShape($Catalog) {
     ) | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
     $workerFiles = @($scanFiles | Where-Object { $_.Name -match "service-worker|sw\.js$" })
     if ($manifestPath -and $workerFiles.Count -gt 0) { Add-RepositoryShapeTool -ToolIds $toolIds -ToolStates $toolStates -ToolId "pwa" -State "OVERRIDE" }
-    if ($scriptsText -match "pages|deploy-pages" -or (Test-Path -LiteralPath (Join-Path $Root ".github/workflows/pages-deploy.yml") -PathType Leaf)) { Add-RepositoryShapeTool -ToolIds $toolIds -ToolStates $toolStates -ToolId "pages" -State "OVERRIDE" }
     $generatedFiles = @($scanFiles | Where-Object { $_.Name -match "(^generated|\.generated\.|generated\.)" })
-    if ($generatedFiles.Count -gt 0 -or $scriptsText -match "generated|check:.*snapshot") { Add-RepositoryShapeTool -ToolIds $toolIds -ToolStates $toolStates -ToolId "generated-integrity" -State "OVERRIDE" }
-    $gitignorePath = Join-Path $Root ".gitignore"
-    $gitignoreText = if (Test-Path -LiteralPath $gitignorePath -PathType Leaf) { Get-Content -Raw -Encoding UTF8 $gitignorePath } else { "" }
-    if ((Test-Path -LiteralPath (Join-Path $Root ".env.example") -PathType Leaf) -or $gitignoreText -match "\.env|secret|credential") { Add-RepositoryShapeTool -ToolIds $toolIds -ToolStates $toolStates -ToolId "secrets" -State "OVERRIDE" }
+    $integrityText = $scriptsText
+    foreach ($scanFile in @($scanFiles | Where-Object { $_.Extension -in @(".ps1", ".mjs", ".js", ".py", ".rs", ".toml", ".yml", ".yaml") })) {
+        $integrityText += "`n" + (Get-Content -Raw -Encoding UTF8 -LiteralPath $scanFile.FullName -ErrorAction SilentlyContinue)
+    }
+    $hasIntegrityEvidence = $integrityText -match "(?i)sha[-_]?256|source[_-]?fingerprint|stale|generated.*check|check.*generated|snapshot.*check"
+    if ($generatedFiles.Count -gt 0 -or $hasIntegrityEvidence) {
+        Add-RepositoryShapeTool -ToolIds $toolIds -ToolStates $toolStates -ToolId "generated-integrity" -State $(if ($hasIntegrityEvidence) { "OVERRIDE" } else { "DEFAULT" })
+    }
 
     return [pscustomobject]@{
         markers = @($markers | Select-Object -Unique)
         surfaceIds = @($surfaceIds | Select-Object -Unique)
+        surfaceStates = $surfaceStates
         toolIds = @($toolIds | Select-Object -Unique)
         toolStates = $toolStates
     }
@@ -323,7 +414,7 @@ function Get-MigrateToolEntries($Manifest, $Catalog, $Options, $Shape) {
         return @(Resolve-DefaultSelections -Options $Options -Catalog $Catalog -RequireProfile $false -ExistingSurfaces $existingSurfaces).toolEntries
     }
 
-    if (-not $Manifest -and $Shape) {
+    if ($Shape -and @($Shape.toolIds).Count -gt 0) {
         $entries = @()
         foreach ($candidateId in @($Shape.toolIds)) {
             $entries += Find-DefaultCatalogEntry -Catalog $Catalog -Identifier $candidateId -Kind "tool"
@@ -348,6 +439,9 @@ function Get-MigrateToolEntries($Manifest, $Catalog, $Options, $Shape) {
 }
 
 function Get-MigrateRecommendedState($Entry, $Shape) {
+    if ([string]$Entry.kind -eq "surface" -and $Shape -and $Shape.surfaceStates -and $Shape.surfaceStates.ContainsKey([string]$Entry.id)) {
+        return [string]$Shape.surfaceStates[[string]$Entry.id]
+    }
     if ([string]$Entry.kind -eq "tool" -and $Shape -and $Shape.toolStates -and $Shape.toolStates.ContainsKey([string]$Entry.id)) {
         return [string]$Shape.toolStates[[string]$Entry.id]
     }
@@ -359,7 +453,8 @@ function Write-KntJsonFile([string]$Path, $Value) {
     [IO.File]::WriteAllText($Path, $json + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
 }
 
-function Copy-DefaultImplementation([string]$DefaultId, [string]$ProjectRoot, [string]$Kind = "Tool") {
+function Copy-DefaultImplementation([string]$DefaultId, [string]$ProjectRoot, [string]$Kind = "Tool", [System.Collections.Generic.List[string]]$ConflictingDefaults) {
+    Assert-RepositoryWriteAllowed "Default materialization"
     $templateRoot = Join-Path $BaseDir ("templates/defaults/" + $DefaultId)
     if (-not (Test-Path -LiteralPath $templateRoot -PathType Container)) { return }
     foreach ($templateFile in @(Get-ChildItem -LiteralPath $templateRoot -Recurse -File -Force)) {
@@ -371,7 +466,20 @@ function Copy-DefaultImplementation([string]$DefaultId, [string]$ProjectRoot, [s
             $destination = Join-Path $ProjectRoot $relative
         }
         if (Test-Path -LiteralPath $destination) {
-            Write-Knt "$Kind Default '$DefaultId' preserved existing path: $relative"
+            $sameContent = $false
+            try {
+                $sameContent = (Get-BaseFileHash -Path $templateFile.FullName) -eq (Get-BaseFileHash -Path $destination)
+            }
+            catch {
+                $sameContent = $false
+            }
+            if ($sameContent) {
+                Write-Knt "$Kind Default '$DefaultId' preserved identical path: $relative"
+            }
+            else {
+                if ($null -ne $ConflictingDefaults -and $DefaultId -notin $ConflictingDefaults) { [void]$ConflictingDefaults.Add($DefaultId) }
+                Write-Knt "$Kind Default '$DefaultId' found conflicting existing path: $relative; state OVERRIDE"
+            }
             continue
         }
         $parent = Split-Path -Parent $destination
@@ -410,6 +518,8 @@ function Invoke-Init {
         Write-Host "[init] Repository is already initialized: project/project.json" -ForegroundColor Yellow
         return 1
     }
+
+    Assert-RepositoryWriteAllowed "init"
 
     $catalog = Get-DefaultCatalog
     $selection = Get-SelectedInitProfiles
@@ -460,6 +570,7 @@ function Invoke-Init {
 
     $surfaceNames = New-Object System.Collections.Generic.List[string]
     $defaults = [pscustomobject]@{ schema_version = 1; packs = [pscustomobject]@{} }
+    $conflictingDefaults = New-Object System.Collections.Generic.List[string]
     foreach ($profileEntry in $profileEntries) {
         $profileName = Get-DefaultProfileName $profileEntry
         $profilePath = Join-Path $BaseDir ("profiles/" + $profileName + ".json")
@@ -468,11 +579,14 @@ function Invoke-Init {
             if ($surface.Name -notin $surfaceNames) { [void]$surfaceNames.Add([string]$surface.Name) }
         }
         $defaults.packs | Add-Member -NotePropertyName ([string]$profileEntry.id) -NotePropertyValue (Get-DefaultStateEntry "DEFAULT") -Force
-        Copy-DefaultImplementation -DefaultId ([string]$profileEntry.id) -ProjectRoot $projectRoot -Kind "Surface"
+        Copy-DefaultImplementation -DefaultId ([string]$profileEntry.id) -ProjectRoot $projectRoot -Kind "Surface" -ConflictingDefaults $conflictingDefaults
     }
     foreach ($toolEntry in $toolEntries) {
         $defaults.packs | Add-Member -NotePropertyName ([string]$toolEntry.id) -NotePropertyValue (Get-DefaultStateEntry "DEFAULT") -Force
-        Copy-DefaultImplementation -DefaultId ([string]$toolEntry.id) -ProjectRoot $projectRoot
+        Copy-DefaultImplementation -DefaultId ([string]$toolEntry.id) -ProjectRoot $projectRoot -ConflictingDefaults $conflictingDefaults
+    }
+    foreach ($conflictingDefault in @($conflictingDefaults | Select-Object -Unique)) {
+        $defaults.packs.$conflictingDefault.state = "OVERRIDE"
     }
     $manifest.runtime.modules = @()
     foreach ($surface in @($manifest.surfaces.PSObject.Properties)) {
@@ -504,6 +618,14 @@ function Invoke-Migrate($Manifest) {
     }
     $profileEntries = @(Get-MigrateProfileEntries -Manifest $Manifest -Catalog $catalog -Options $options -Shape $shape)
     $toolEntries = @(Get-MigrateToolEntries -Manifest $Manifest -Catalog $catalog -Options $options -Shape $shape)
+    $selectedSurfaceValues = @($profileEntries | ForEach-Object { @($_.compatible_surfaces) } | Select-Object -Unique)
+    if ($Manifest) {
+        $selectedSurfaceValues = @($selectedSurfaceValues + @(Get-ManifestSurfaceIds -Manifest $Manifest) | Select-Object -Unique)
+    }
+    foreach ($toolEntry in $toolEntries) {
+        $compatibilityError = Get-DefaultCompatibilityError -Entry $toolEntry -SelectedSurfaces $selectedSurfaceValues
+        if ($compatibilityError) { throw $compatibilityError }
+    }
     $selectedEntries = @($profileEntries + $toolEntries)
     if ($selectedEntries.Count -eq 0) {
         Write-Knt "No Default candidates detected. Use --profile <surface> or --default <tool-default>."
@@ -532,6 +654,7 @@ function Invoke-Migrate($Manifest) {
     }
 
     $changedDefaults = $false
+    $conflictingDefaults = New-Object System.Collections.Generic.List[string]
     foreach ($entry in $selectedEntries) {
         $packName = [string]$entry.id
         $packProperty = $defaults.packs.PSObject.Properties[$packName]
@@ -555,6 +678,8 @@ function Invoke-Migrate($Manifest) {
         return 0
     }
 
+    Assert-RepositoryWriteAllowed "migrate --apply"
+
     if (-not $Manifest) {
         throw "migrate --apply requires an existing Project Manifest; dry-run completed without changing this repository"
     }
@@ -564,8 +689,12 @@ function Invoke-Migrate($Manifest) {
         $state = if ($packProperty) { [string](Get-KntJsonProperty $packProperty.Value "state") } else { "DEFAULT" }
         if ($state -eq "DEFAULT") {
             $kind = if ([string]$entry.kind -eq "surface") { "Surface" } else { "Tool" }
-            Copy-DefaultImplementation -DefaultId ([string]$entry.id) -ProjectRoot $projectRoot -Kind $kind
+            Copy-DefaultImplementation -DefaultId ([string]$entry.id) -ProjectRoot $projectRoot -Kind $kind -ConflictingDefaults $conflictingDefaults
         }
+    }
+    foreach ($conflictingDefault in @($conflictingDefaults | Select-Object -Unique)) {
+        $defaults.packs.$conflictingDefault.state = "OVERRIDE"
+        $changedDefaults = $true
     }
 
     $changedManifest = $false
@@ -635,11 +764,31 @@ function Resolve-Command($Manifest, [string]$Name) {
     $value = $prop.Value
     if ($value -is [string]) {
         if ([string]::IsNullOrWhiteSpace($value)) { return $null }
-        return [pscustomobject]@{ run = $value; cwd = "project" }
+        return [pscustomobject]@{ mode = "legacy"; run = $value; cwd = "project" }
+    }
+    if ($value.PSObject.Properties["exec"]) {
+        $exec = [string]$value.exec
+        if ([string]::IsNullOrWhiteSpace($exec)) { return $null }
+        $args = @()
+        if ($value.PSObject.Properties["args"]) {
+            $args = @($value.args | ForEach-Object { [string]$_ })
+        }
+        $forwardArgs = $false
+        if ($value.PSObject.Properties["forward_args"]) {
+            $forwardArgs = [bool]$value.forward_args
+        }
+        $cwd = if ($value.PSObject.Properties["cwd"] -and $value.cwd) { [string]$value.cwd } else { "project" }
+        return [pscustomobject]@{
+            mode = "structured"
+            exec = $exec
+            args = $args
+            cwd = $cwd
+            forward_args = $forwardArgs
+        }
     }
     if (-not $value.run) { return $null }
     $cwd = if ($value.cwd) { [string]$value.cwd } else { "project" }
-    return [pscustomobject]@{ run = [string]$value.run; cwd = $cwd }
+    return [pscustomobject]@{ mode = "legacy"; run = [string]$value.run; cwd = $cwd }
 }
 
 function Get-ManifestPathValue($Manifest, [string]$Name, [string]$Default) {
@@ -659,14 +808,26 @@ function Invoke-ProjectCommand($Manifest, [string]$Name) {
         Write-Host "[doctor] MISSING command cwd: $($spec.cwd)" -ForegroundColor Red
         return 1
     }
-    $argText = if ($RemainingArgs) {
-        " " + (($RemainingArgs | ForEach-Object { '"' + ($_ -replace '"','\"') + '"' }) -join ' ')
-    }
-    else { "" }
-    Write-Knt "$Name -> $($spec.run)"
     Push-Location $cwd
     try {
-        Invoke-Expression ($spec.run + $argText)
+        if ($spec.mode -eq "structured") {
+            $forwardedArgs = @($RemainingArgs | Where-Object { $null -ne $_ })
+            if ($forwardedArgs.Count -gt 0 -and -not $spec.forward_args) {
+                throw "Structured command '$Name' must set forward_args=true to accept forwarded arguments"
+            }
+            $invokeArgs = @($spec.args)
+            if ($spec.forward_args) { $invokeArgs += $forwardedArgs }
+            Write-Knt "$Name -> $($spec.exec)"
+            & $spec.exec @invokeArgs
+        }
+        else {
+            $forwardedArgs = @($RemainingArgs | Where-Object { $null -ne $_ })
+            if ($forwardedArgs.Count -gt 0) {
+                throw "Legacy command '$Name' cannot safely forward arguments; use structured exec/args with forward_args=true"
+            }
+            Write-Knt "$Name -> $($spec.run)"
+            Invoke-Expression $spec.run
+        }
         if ($null -ne $LASTEXITCODE) { return $LASTEXITCODE }
         return 0
     }
@@ -766,12 +927,6 @@ function Test-SelectedDefaultImplementations($DefaultsData) {
                     }
                 }
             }
-            "secrets" {
-                if (-not (Test-Path -LiteralPath (Join-Path $projectRoot ".gitignore") -PathType Leaf)) {
-                    Write-Host "[doctor] MISSING implementation for Default 'secrets'" -ForegroundColor Red
-                    $ok = $false
-                }
-            }
         }
     }
     return $ok
@@ -854,6 +1009,24 @@ function Invoke-Doctor($Manifest) {
         $ok = $false
     }
     if (-not (Test-SelectedDefaultImplementations -DefaultsData $defaultsDataForImplementation)) { $ok = $false }
+    if ($defaultsDataForImplementation) {
+        $manifestSurfaces = @(Get-ManifestSurfaceIds -Manifest $Manifest)
+        foreach ($packProperty in @($defaultsDataForImplementation.packs.PSObject.Properties)) {
+            $state = [string](Get-KntJsonProperty $packProperty.Value "state")
+            if ($state -ne "DEFAULT") { continue }
+            try {
+                $entry = Find-AnyDefaultCatalogEntry -Catalog $catalog -Identifier ([string]$packProperty.Name)
+                $compatibilityError = Get-DefaultCompatibilityError -Entry $entry -SelectedSurfaces $manifestSurfaces
+                if ($compatibilityError) {
+                    Write-Host "[doctor] $compatibilityError" -ForegroundColor Red
+                    $ok = $false
+                }
+            }
+            catch {
+                # Unknown catalog IDs are already reported as schema errors above.
+            }
+        }
+    }
 
     $profiles = New-Object System.Collections.Generic.List[object]
     foreach ($selectedProfile in $selectedProfiles) {
@@ -939,7 +1112,7 @@ Common commands:
   doctor      Base/project structure and schema diagnostics
   init        Create a Project from catalog Surface/Tool Defaults
               --profile minimal|web-app|cli|windows-gui|mcp|api|agent|library
-              --default verify-binding|verify(alias)|ci-test|generated-integrity|file-io|pwa|pages|secrets|local-app
+              --default ci-test|generated-integrity|file-io|pwa
   migrate     Show or explicitly record catalog Default candidates
   base-check  Detect modifications in common Base files
   base-refresh Regenerate Base file hashes (repository-base only)
@@ -964,6 +1137,7 @@ try {
         if (Test-BaseFiles) { exit 0 } else { exit 1 }
     }
     if ($Command -eq "base-refresh") {
+        Assert-RepositoryWriteAllowed "base-refresh"
         $refreshManifest = Get-Manifest
         if ($refreshManifest.project.type -ne "repository-base") {
             throw "base-refresh is only available for project.type repository-base"

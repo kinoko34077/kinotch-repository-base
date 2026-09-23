@@ -16,8 +16,27 @@ if ([int]$config.schema_version -ne 1 -or [string]$config.algorithm -ne "SHA-256
 
 $failed = $false
 foreach ($entry in @($config.entries)) {
-    $source = Join-Path $Root ([string]$entry.source)
-    $artifact = Join-Path $Root ([string]$entry.artifact)
+    $rootPath = [IO.Path]::GetFullPath($Root).TrimEnd([char[]]@("/", "\"))
+    $rootPrefix = $rootPath + [IO.Path]::DirectorySeparatorChar
+    $sourceRelative = [string]$entry.source
+    $artifactRelative = [string]$entry.artifact
+    if ([IO.Path]::IsPathRooted($sourceRelative) -or [IO.Path]::IsPathRooted($artifactRelative)) {
+        Write-Error "Generated paths must be relative to the Project root"
+        $failed = $true
+        continue
+    }
+    $source = [IO.Path]::GetFullPath((Join-Path $rootPath $sourceRelative))
+    $artifact = [IO.Path]::GetFullPath((Join-Path $rootPath $artifactRelative))
+    if (-not $source.StartsWith($rootPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+        Write-Error "Generated source path is outside the Project root: $sourceRelative"
+        $failed = $true
+        continue
+    }
+    if (-not $artifact.StartsWith($rootPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+        Write-Error "Generated artifact path is outside the Project root: $artifactRelative"
+        $failed = $true
+        continue
+    }
     if (-not (Test-Path -LiteralPath $source -PathType Leaf)) {
         Write-Error "Generated source is missing: $($entry.source)"
         $failed = $true

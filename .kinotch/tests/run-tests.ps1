@@ -166,7 +166,13 @@ function Invoke-KntInitFixture {
     }
 }
 
-function Invoke-KntShapeMigrateFixture([scriptblock]$AssertOutput) {
+function Invoke-KntShapeMigrateFixture {
+    param(
+        [scriptblock]$AssertOutput,
+        [string]$WorkflowText = "name: Verify`nrun: npm test",
+        [switch]$GeneratedFile,
+        [switch]$IntegrityEvidence
+    )
     $tempRoot = Join-Path ([IO.Path]::GetTempPath()) ("kinotch-shape-test-" + [guid]::NewGuid().ToString("N"))
     New-Item -ItemType Directory -Path $tempRoot -Force | Out-Null
     try {
@@ -176,9 +182,17 @@ function Invoke-KntShapeMigrateFixture([scriptblock]$AssertOutput) {
         New-Item -ItemType Directory -Path (Join-Path $tempRoot ".github/workflows") -Force | Out-Null
         New-Item -ItemType Directory -Path (Join-Path $tempRoot "public") -Force | Out-Null
         Set-Content -LiteralPath (Join-Path $tempRoot "package.json") -Value '{"scripts":{"test":"node --test","build":"vite build"},"devDependencies":{"vite":"latest"}}' -NoNewline
-        Set-Content -LiteralPath (Join-Path $tempRoot ".github/workflows/verify.yml") -Value "name: Verify" -NoNewline
+        Set-Content -LiteralPath (Join-Path $tempRoot ".github/workflows/verify.yml") -Value $WorkflowText -NoNewline
         Set-Content -LiteralPath (Join-Path $tempRoot "public/manifest.json") -Value '{"name":"Shape","start_url":"/"}' -NoNewline
         Set-Content -LiteralPath (Join-Path $tempRoot "service-worker.js") -Value "self.addEventListener('fetch', () => {});" -NoNewline
+        if ($GeneratedFile) {
+            New-Item -ItemType Directory -Path (Join-Path $tempRoot "src") -Force | Out-Null
+            Set-Content -LiteralPath (Join-Path $tempRoot "src/generated-output.js") -Value "export default 'generated';" -NoNewline
+        }
+        if ($IntegrityEvidence) {
+            New-Item -ItemType Directory -Path (Join-Path $tempRoot "scripts") -Force | Out-Null
+            Set-Content -LiteralPath (Join-Path $tempRoot "scripts/integrity-check.ps1") -Value "Get-FileHash -Algorithm SHA256; stale check" -NoNewline
+        }
         $router = Join-Path $tempRoot ".kinotch/scripts/knt.ps1"
         $baseSource = Join-Path $RepoRoot ".kinotch"
         $invokeArgs = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $router, "-RootOverride", $tempRoot, "-BaseOverride", $baseSource, "migrate")
@@ -186,6 +200,39 @@ function Invoke-KntShapeMigrateFixture([scriptblock]$AssertOutput) {
         $exitCode = $LASTEXITCODE
         Assert-Equal 0 $exitCode "shape migrate exit code"
         if ($AssertOutput) { & $AssertOutput $tempRoot ($outputLines -join [Environment]::NewLine) }
+    }
+    finally {
+        Remove-Item -LiteralPath $tempRoot -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+function Invoke-KntExternalBaseFixture {
+    param(
+        [string]$Command,
+        [string[]]$Arguments,
+        [string]$FixtureName,
+        [int]$ExpectedExit = 0,
+        [scriptblock]$Prepare,
+        [scriptblock]$AssertOutput
+    )
+    $tempRoot = Join-Path ([IO.Path]::GetTempPath()) ("kinotch-external-base-test-" + [guid]::NewGuid().ToString("N"))
+    New-Item -ItemType Directory -Path $tempRoot -Force | Out-Null
+    try {
+        if ($FixtureName) {
+            Copy-Item -LiteralPath (Join-Path $FixtureRoot $FixtureName) -Destination (Join-Path $tempRoot "project") -Recurse -Force
+        }
+        if ($Prepare) { & $Prepare $tempRoot }
+        $router = Join-Path $RepoRoot ".kinotch/scripts/knt.ps1"
+        $baseSource = Join-Path $RepoRoot ".kinotch"
+        $invokeArgs = @(
+            "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $router,
+            "-RootOverride", $tempRoot, "-BaseOverride", $baseSource, $Command
+        ) + @($Arguments)
+        $outputLines = @(& $PowerShellExecutable @invokeArgs 2>&1)
+        $exitCode = $LASTEXITCODE
+        $output = $outputLines -join [Environment]::NewLine
+        Assert-Equal $ExpectedExit $exitCode "external Base $Command exit code"
+        if ($AssertOutput) { & $AssertOutput $tempRoot $output }
     }
     finally {
         Remove-Item -LiteralPath $tempRoot -Recurse -Force -ErrorAction SilentlyContinue
@@ -264,6 +311,20 @@ Invoke-TestCase "valid command object remains accepted" {
         [IO.File]::WriteAllText($manifestPath, (ConvertTo-Json $manifest -Depth 20) + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
     }
 }
+Invoke-TestCase "valid structured command object remains accepted" {
+    Invoke-KntFixture -Name "valid-minimal" -Command "doctor" -ExpectedExit 0 -Prepare {
+        param($root)
+        $manifestPath = Join-Path $root "project/project.json"
+        $manifest = Get-Content -Raw -Encoding UTF8 $manifestPath | ConvertFrom-Json
+        $manifest.commands.test = [pscustomobject]@{
+            exec = "pwsh"
+            args = @("-NoProfile", "-Command", "Write-Output valid")
+            cwd = "."
+            forward_args = $false
+        }
+        [IO.File]::WriteAllText($manifestPath, (ConvertTo-Json $manifest -Depth 20) + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
+    }
+}
 Invoke-TestCase "schema-valued additional command property is validated" {
     Invoke-KntFixture -Name "valid-minimal" -Command "doctor" -ExpectedExit 1 -Prepare {
         param($root)
@@ -339,6 +400,21 @@ Invoke-TestCase "init creates a doctor-valid multi-profile Project" {
         Assert-True (Test-Path (Join-Path $root "project/tests/README.md")) "project test placeholder was not generated"
     }
 }
+Invoke-TestCase "Tool Defaults require a compatible selected Surface" {
+    Invoke-KntInitFixture -Profiles @("minimal") -Defaults @("pwa") -ExpectedExit 2 -AssertOutput {
+        param($root, $output)
+        Assert-True ($output -match "not compatible|requires.*Surface") "minimal + pwa was accepted"
+    }
+    Invoke-KntInitFixture -Profiles @("cli") -Defaults @("pwa") -ExpectedExit 2 -AssertOutput {
+        param($root, $output)
+        Assert-True ($output -match "not compatible|requires.*Surface") "cli + pwa was accepted"
+    }
+    Invoke-KntInitFixture -Profiles @("web-app") -Defaults @("pwa") -AssertOutput {
+        param($root, $output)
+        $defaults = Get-Content -Raw -Encoding UTF8 (Join-Path $root "project/defaults.json") | ConvertFrom-Json
+        Assert-Equal "DEFAULT" $defaults.packs.pwa.state "web-app + pwa state"
+    }
+}
 Invoke-TestCase "init accepts all catalog surface profiles without Runtime injection" {
     Invoke-KntInitFixture -Profiles @("minimal", "web-app", "cli", "windows-gui", "mcp", "api", "agent", "library") -AssertOutput {
         param($root, $output)
@@ -368,17 +444,16 @@ Invoke-TestCase "surface Defaults materialize safe CLI, Windows, MCP, and API he
     }
 }
 Invoke-TestCase "init records selected Tool Defaults from the catalog" {
-    Invoke-KntInitFixture -Profiles @("web-app") -Defaults @("verify", "pwa") -AssertOutput {
+    Invoke-KntInitFixture -Profiles @("web-app") -Defaults @("pwa") -AssertOutput {
         param($root, $output)
         $defaults = Get-Content -Raw -Encoding UTF8 (Join-Path $root "project/defaults.json") | ConvertFrom-Json
-        Assert-Equal "DEFAULT" $defaults.packs."verify-binding".state "verify-binding Default state"
         Assert-Equal "DEFAULT" $defaults.packs.pwa.state "pwa Default state"
         $manifest = Get-Content -Raw -Encoding UTF8 (Join-Path $root "project/project.json") | ConvertFrom-Json
         Assert-Equal 0 @($manifest.runtime.modules).Count "Tool Default injected Runtime modules"
     }
 }
 Invoke-TestCase "init materializes safe Default implementations" {
-    Invoke-KntInitFixture -Profiles @("web-app") -Defaults @("ci-test", "pwa", "generated-integrity", "file-io", "secrets") -RemoveExistingCi -AssertOutput {
+    Invoke-KntInitFixture -Profiles @("web-app") -Defaults @("ci-test", "pwa", "generated-integrity", "file-io") -RemoveExistingCi -AssertOutput {
         param($root, $output)
         $ciPath = Join-Path $root ".github/workflows/kinotch-default.yml"
         Assert-True (Test-Path $ciPath) "ci-test workflow was not generated"
@@ -415,6 +490,27 @@ Invoke-TestCase "init materializes safe Default implementations" {
         Assert-Equal 1 $LASTEXITCODE "generated-integrity source-stale exit code"
     }
 }
+Invoke-TestCase "file and generated-integrity Defaults reject paths outside Project root" {
+    Invoke-KntInitFixture -Profiles @("web-app") -Defaults @("file-io", "generated-integrity") -AssertOutput {
+        param($root, $output)
+        $projectRoot = Join-Path $root "project"
+        $outsideRoot = Join-Path (Split-Path -Parent $root) ((Split-Path -Leaf $root) + "-other")
+        New-Item -ItemType Directory -Path $outsideRoot -Force | Out-Null
+        $outsidePath = Join-Path $outsideRoot "outside.txt"
+        Set-Content -LiteralPath $outsidePath -Value "outside" -NoNewline
+        $updater = Join-Path $projectRoot "tools/update-generated-integrity.ps1"
+        @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $updater -Root $projectRoot -Source "..\outside.txt" -Artifact "generated.txt" -Generator test 2>&1) | Out-Null
+        Assert-True ($LASTEXITCODE -ne 0) "generated-integrity updater accepted a parent path"
+        $fileIo = Join-Path $projectRoot "tools/file-io.ps1"
+        @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $fileIo -Action save -Path "..\outside.txt" -Content "changed" -Root $projectRoot 2>&1) | Out-Null
+        Assert-True ($LASTEXITCODE -ne 0) "file-io accepted a parent path"
+        $absolutePath = Join-Path $outsideRoot "absolute.txt"
+        @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $fileIo -Action save -Path $absolutePath -Content "changed" -Root $projectRoot 2>&1) | Out-Null
+        Assert-True ($LASTEXITCODE -ne 0) "file-io accepted an absolute path"
+        Assert-Equal "outside" (Get-Content -Raw -Encoding UTF8 $outsidePath) "outside file was modified"
+        Remove-Item -LiteralPath $outsideRoot -Recurse -Force
+    }
+}
 Invoke-TestCase "unknown catalog Default is rejected" {
     Invoke-KntInitFixture -Profiles @("web-app") -Defaults @("not-a-default") -ExpectedExit 2 -AssertOutput {
         param($root, $output)
@@ -436,10 +532,10 @@ Invoke-TestCase "migrate dry-run reports candidates without writing" {
         Assert-True (-not (Test-Path (Join-Path $root "project/defaults.json"))) "migrate dry-run wrote a file"
     }
 }
-Invoke-TestCase "migrate dry-run accepts a Tool Default from the catalog" {
-    Invoke-KntFixture -Name "valid-minimal" -Command "migrate" -Arguments @("--default", "verify") -ExpectedExit 0 -AssertOutput {
+Invoke-TestCase "migrate rejects removed Tool Default aliases" {
+    Invoke-KntFixture -Name "valid-minimal" -Command "migrate" -Arguments @("--default", "verify") -ExpectedExit 2 -AssertOutput {
         param($root, $output)
-        Assert-True ($output -match "Candidate Default Pack.*verify-binding") "verify-binding candidate was not reported"
+        Assert-True ($output -match "Unknown.*Default|catalog") "removed verify alias was accepted"
         Assert-True (-not (Test-Path (Join-Path $root "project/defaults.json"))) "Tool Default dry-run wrote a file"
     }
 }
@@ -451,8 +547,30 @@ Invoke-TestCase "migrate detects Web, PWA, and CI shape without a Base Manifest"
         Assert-True ($output -match "pwa") "pwa shape was not detected"
         Assert-True ($output -match "Candidate Default Pack 'ci-test': state OVERRIDE") "existing CI implementation was not classified as OVERRIDE"
         Assert-True ($output -match "Candidate Default Pack 'pwa': state OVERRIDE") "existing PWA implementation was not classified as OVERRIDE"
+        Assert-True ($output -match "Candidate Default Pack 'web-app': state OVERRIDE") "existing Web implementation was not classified as OVERRIDE"
+        Assert-True ($output -notmatch "Detected Surface candidates:.*cli") "test/build scripts were misclassified as CLI"
         Assert-True ($output -notmatch "Detected Tool candidates:.*verify") "L1 verify was misreported as a Tool Default"
         Assert-True ($output -match "Dry run") "shape migrate was not dry-run"
+    }
+}
+Invoke-TestCase "shape probe distinguishes deploy-only and verification CI" {
+    Invoke-KntShapeMigrateFixture -WorkflowText "name: Deploy`nrun: wrangler deploy" -AssertOutput {
+        param($root, $output)
+        Assert-True ($output -match "Candidate Default Pack 'ci-test': state DEFAULT") "deploy-only workflow was marked OVERRIDE"
+    }
+    Invoke-KntShapeMigrateFixture -WorkflowText "name: Verify`nrun: npm test" -AssertOutput {
+        param($root, $output)
+        Assert-True ($output -match "Candidate Default Pack 'ci-test': state OVERRIDE") "verification workflow was not marked OVERRIDE"
+    }
+}
+Invoke-TestCase "shape probe distinguishes generated files from integrity checks" {
+    Invoke-KntShapeMigrateFixture -GeneratedFile -AssertOutput {
+        param($root, $output)
+        Assert-True ($output -match "Candidate Default Pack 'generated-integrity': state DEFAULT") "generated file was incorrectly marked OVERRIDE"
+    }
+    Invoke-KntShapeMigrateFixture -GeneratedFile -IntegrityEvidence -AssertOutput {
+        param($root, $output)
+        Assert-True ($output -match "Candidate Default Pack 'generated-integrity': state OVERRIDE") "integrity evidence was not marked OVERRIDE"
     }
 }
 Invoke-TestCase "migrate apply preserves Project override and adds missing pack" {
@@ -479,13 +597,38 @@ Invoke-TestCase "migrate apply preserves Project override and adds missing pack"
     }
 }
 Invoke-TestCase "migrate apply materializes missing safe Tool Default files" {
-    Invoke-KntFixture -Name "valid-minimal" -Command "migrate" -Arguments @("--apply", "--default", "pwa") -ExpectedExit 0 -AssertOutput {
+    Invoke-KntFixture -Name "valid-minimal" -Command "migrate" -Arguments @("--apply", "--default", "pwa") -ExpectedExit 0 -Prepare {
+        param($root)
+        $manifestPath = Join-Path $root "project/project.json"
+        $manifest = Get-Content -Raw -Encoding UTF8 $manifestPath | ConvertFrom-Json
+        $manifest.surfaces.web = $true
+        [IO.File]::WriteAllText($manifestPath, (ConvertTo-Json $manifest -Depth 20) + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
+    } -AssertOutput {
         param($root, $output)
         Assert-True (Test-Path -LiteralPath (Join-Path $root "project/public/manifest.webmanifest") -PathType Leaf) "migrate apply did not materialize PWA manifest"
         Assert-True (Test-Path -LiteralPath (Join-Path $root "project/tools/pwa-check.ps1") -PathType Leaf) "migrate apply did not materialize PWA checker"
         $defaults = Get-Content -Raw -Encoding UTF8 (Join-Path $root "project/defaults.json") | ConvertFrom-Json
         Assert-Equal "DEFAULT" $defaults.packs.pwa.state "migrate applied Tool Default state"
         Assert-True ($output -match "Tool Default 'pwa' added") "migrate apply did not report materialized PWA files"
+    }
+}
+Invoke-TestCase "migrate apply records conflicting Default files as OVERRIDE" {
+    Invoke-KntFixture -Name "valid-minimal" -Command "migrate" -Arguments @("--apply", "--default", "pwa") -ExpectedExit 0 -Prepare {
+        param($root)
+        $manifestPath = Join-Path $root "project/project.json"
+        $manifest = Get-Content -Raw -Encoding UTF8 $manifestPath | ConvertFrom-Json
+        $manifest.surfaces.web = $true
+        [IO.File]::WriteAllText($manifestPath, (ConvertTo-Json $manifest -Depth 20) + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
+        $manifestPath = Join-Path $root "project/public/manifest.webmanifest"
+        New-Item -ItemType Directory -Path (Split-Path -Parent $manifestPath) -Force | Out-Null
+        Set-Content -LiteralPath $manifestPath -Value '{"name":"Project-owned","start_url":"/custom"}' -NoNewline
+    } -AssertOutput {
+        param($root, $output)
+        $defaults = Get-Content -Raw -Encoding UTF8 (Join-Path $root "project/defaults.json") | ConvertFrom-Json
+        Assert-Equal "OVERRIDE" $defaults.packs.pwa.state "conflicting PWA Default state"
+        $manifest = Get-Content -Raw -Encoding UTF8 (Join-Path $root "project/public/manifest.webmanifest") | ConvertFrom-Json
+        Assert-Equal "/custom" $manifest.start_url "existing PWA file was overwritten"
+        Assert-True ($output -match "conflict|OVERRIDE") "materialization conflict was not reported"
     }
 }
 Invoke-TestCase "migrate rejects an incompatible Tool Default from existing Manifest surfaces" {
@@ -499,6 +642,48 @@ Invoke-TestCase "migrate rejects an incompatible Tool Default from existing Mani
         param($root, $output)
         Assert-True ($output -match "not compatible") "migrate accepted an incompatible Tool Default"
         Assert-True (-not (Test-Path (Join-Path $root "project/defaults.json"))) "incompatible migrate wrote Default state"
+    }
+}
+Invoke-TestCase "doctor rejects a hand-edited incompatible DEFAULT Tool" {
+    Invoke-KntFixture -Name "valid-minimal" -Command "doctor" -ExpectedExit 1 -Prepare {
+        param($root)
+        $manifestPath = Join-Path $root "project/project.json"
+        $manifest = Get-Content -Raw -Encoding UTF8 $manifestPath | ConvertFrom-Json
+        $manifest.paths | Add-Member -NotePropertyName defaults -NotePropertyValue "defaults.json" -Force
+        [IO.File]::WriteAllText($manifestPath, (ConvertTo-Json $manifest -Depth 20) + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
+        $defaults = [pscustomobject]@{
+            schema_version = 1
+            packs = [pscustomobject]@{ pwa = [pscustomobject]@{ state = "DEFAULT" } }
+        }
+        [IO.File]::WriteAllText((Join-Path $root "project/defaults.json"), (ConvertTo-Json $defaults -Depth 10) + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
+    } -AssertOutput {
+        param($root, $output)
+        Assert-True ($output -match "not compatible|incompatible.*Surface") "doctor accepted an incompatible DEFAULT Tool"
+    }
+}
+Invoke-TestCase "external BaseOverride rejects init and migrate writes" {
+    Invoke-KntExternalBaseFixture -Command "init" -Arguments @("--profile", "web-app") -ExpectedExit 2 -AssertOutput {
+        param($root, $output)
+        Assert-True ($output -match "repository-local.*\.kinotch|read-only") "external Base init write was not rejected"
+        Assert-True (-not (Test-Path (Join-Path $root "project"))) "external Base init created Project files"
+    }
+    Invoke-KntExternalBaseFixture -FixtureName "valid-minimal" -Command "migrate" -Arguments @("--apply", "--default", "ci-test") -ExpectedExit 2 -Prepare {
+        param($root)
+        $manifestPath = Join-Path $root "project/project.json"
+        $manifest = Get-Content -Raw -Encoding UTF8 $manifestPath | ConvertFrom-Json
+        $manifest.surfaces.web = $true
+        [IO.File]::WriteAllText($manifestPath, (ConvertTo-Json $manifest -Depth 20) + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
+    } -AssertOutput {
+        param($root, $output)
+        Assert-True ($output -match "repository-local.*\.kinotch|read-only") "external Base migrate write was not rejected"
+        Assert-True (-not (Test-Path (Join-Path $root "project/defaults.json"))) "external Base migrate wrote Default state"
+    }
+}
+Invoke-TestCase "manifest-less migrate apply is rejected before writing" {
+    Invoke-KntExternalBaseFixture -Command "migrate" -Arguments @("--apply", "--profile", "web-app") -ExpectedExit 2 -AssertOutput {
+        param($root, $output)
+        Assert-True ($output -match "existing Project Manifest|repository-local.*\.kinotch|read-only") "manifest-less apply rejection was not reported"
+        Assert-True (-not (Test-Path (Join-Path $root "project/defaults.json"))) "manifest-less apply wrote Default state"
     }
 }
 Invoke-TestCase "doctor rejects an unknown Default catalog id" {
@@ -518,10 +703,35 @@ Invoke-TestCase "doctor rejects an unknown Default catalog id" {
         Assert-True ($output -match "Unknown.*Default|catalog") "unknown catalog Default was not reported by doctor"
     }
 }
+Invoke-TestCase "doctor rejects duplicate Default catalog identifiers and aliases" {
+    Invoke-KntFixture -Name "valid-minimal" -Command "doctor" -ExpectedExit 2 -Prepare {
+        param($root)
+        $catalogPath = Join-Path $root ".kinotch/defaults/catalog.json"
+        $catalog = Get-Content -Raw -Encoding UTF8 $catalogPath | ConvertFrom-Json
+        $catalog.defaults[1].aliases = @("cli")
+        [IO.File]::WriteAllText($catalogPath, (ConvertTo-Json $catalog -Depth 20) + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
+    } -AssertOutput {
+        param($root, $output)
+        Assert-True ($output -match "semantic|alias|duplicate|collision") "catalog alias collision was not rejected"
+    }
+}
+Invoke-TestCase "removed candidate Defaults are rejected" {
+    foreach ($removed in @("pages", "secrets", "local-app", "verify-binding")) {
+        Invoke-KntFixture -Name "valid-minimal" -Command "migrate" -Arguments @("--default", $removed) -ExpectedExit 2 -AssertOutput {
+            param($root, $output)
+            Assert-True ($output -match "Unknown.*Default|catalog") "removed Default was accepted"
+        }
+    }
+}
 Invoke-TestCase "Windows helper uses a Windows PowerShell 5.1-compatible host check" {
     $helper = Get-Content -Raw -Encoding UTF8 (Join-Path $RepoRoot ".kinotch/templates/defaults/windows/tools/windows-shell.ps1")
     Assert-True ($helper -match '\$env:OS\s*-eq\s*"Windows_NT"') "Windows helper does not use the Windows_NT environment marker"
     Assert-True ($helper -notmatch '\$IsWindows') "Windows helper relies on the PowerShell Core-only IsWindows variable"
+}
+Invoke-TestCase "API Default envelope remains a permissive boundary descriptor" {
+    $schema = Get-Content -Raw -Encoding UTF8 (Join-Path $RepoRoot ".kinotch/templates/defaults/api/contracts/api-error-envelope.json") | ConvertFrom-Json
+    Assert-True (@($schema.required) -notcontains "details") "API Default made details mandatory"
+    Assert-True ($schema.additionalProperties -eq $true) "API Default rejects Project-owned extensions"
 }
 Invoke-TestCase "oneOf requires exactly one matching schema" {
     $schema = [pscustomobject]@{
@@ -596,6 +806,37 @@ Invoke-TestCase "unknown command returns two" {
 Invoke-TestCase "project command exit code propagates" {
     Invoke-KntFixture -Name "command-failure" -Command "test" -ExpectedExit 7
 }
+Invoke-TestCase "structured command forwards metacharacters without injection" {
+    $malicious = "; Set-Content injected.txt pwned; `$(Get-Date) | & echo escaped"
+    Invoke-KntFixture -Name "valid-minimal" -Command "test" -Arguments @($malicious) -ExpectedExit 0 -Prepare {
+        param($root)
+        $recordScript = @'
+param()
+[IO.File]::WriteAllText("received-argument.txt", [string]$args[0], (New-Object System.Text.UTF8Encoding($false)))
+'@
+        [IO.File]::WriteAllText((Join-Path $root "project/record-argument.ps1"), $recordScript, (New-Object System.Text.UTF8Encoding($false)))
+        $manifestPath = Join-Path $root "project/project.json"
+        $manifest = Get-Content -Raw -Encoding UTF8 $manifestPath | ConvertFrom-Json
+        $manifest.commands.test = [pscustomobject]@{
+            exec = $PowerShellExecutable
+            args = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "record-argument.ps1")
+            cwd = "project"
+            forward_args = $true
+        }
+        [IO.File]::WriteAllText($manifestPath, (ConvertTo-Json $manifest -Depth 20) + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
+    } -AssertOutput {
+        param($root, $output)
+        $receivedPath = Join-Path $root "project/received-argument.txt"
+        Assert-Equal $malicious (Get-Content -Raw -Encoding UTF8 $receivedPath) "structured command argument"
+        Assert-True (-not (Test-Path (Join-Path $root "project/injected.txt"))) "structured command executed injected text"
+    }
+}
+Invoke-TestCase "legacy command rejects forwarded arguments explicitly" {
+    Invoke-KntFixture -Name "command-cwd" -Command "test" -Arguments @("unsafe-argument") -ExpectedExit 2 -AssertOutput {
+        param($root, $output)
+        Assert-True ($output -match "structured.*forward|forward.*structured|legacy") "legacy forwarded argument rejection was not reported"
+    }
+}
 Invoke-TestCase "verify fallback runs test then build" {
     Invoke-KntFixture -Name "verify-fallback" -Command "verify" -ExpectedExit 0 -AssertOutput {
         param($root, $output)
@@ -656,7 +897,7 @@ Invoke-TestCase "Base documentation and profile status are finalized" {
     Assert-Equal 0 @($surfaceRegistry.surfaces.PSObject.Properties).Count "Base Surface Registry should be empty"
     Assert-Equal "0.2.1" $baseVersion "Base version"
     Assert-True (@($catalog.defaults | Where-Object { $_.kind -eq "surface" }).Count -ge 8) "Surface Default catalog entries are incomplete"
-    Assert-True (@($catalog.defaults | Where-Object { $_.kind -eq "tool" }).Count -ge 8) "Tool Default catalog entries are incomplete"
+    Assert-Equal 4 @($catalog.defaults | Where-Object { $_.kind -eq "tool" }).Count "Active Tool Default catalog count"
     foreach ($profileFile in Get-ChildItem (Join-Path $RepoRoot ".kinotch/profiles") -File) {
         $profile = Get-Content -Raw -Encoding UTF8 $profileFile.FullName | ConvertFrom-Json
         Assert-Equal "planned" $profile.status "$($profileFile.Name) profile status"

@@ -6,9 +6,14 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$resolved = [IO.Path]::GetFullPath((Join-Path $Root $Path))
-$rootPath = [IO.Path]::GetFullPath($Root).TrimEnd([char[]]@("/", "\")) + [IO.Path]::DirectorySeparatorChar
-if (-not $resolved.StartsWith($rootPath, [System.StringComparison]::OrdinalIgnoreCase)) {
+if ([IO.Path]::IsPathRooted($Path)) {
+    Write-Error "File path must be relative to the Project root"
+    exit 1
+}
+$rootPath = [IO.Path]::GetFullPath($Root).TrimEnd([char[]]@("/", "\"))
+$rootPrefix = $rootPath + [IO.Path]::DirectorySeparatorChar
+$resolved = [IO.Path]::GetFullPath((Join-Path $rootPath $Path))
+if (-not $resolved.StartsWith($rootPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
     Write-Error "File path is outside the Project root"
     exit 1
 }

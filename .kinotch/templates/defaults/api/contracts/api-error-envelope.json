@@ -5,8 +5,7 @@
   "type": "object",
   "required": [
     "error",
-    "message",
-    "details"
+    "message"
   ],
   "properties": {
     "error": {
@@ -24,5 +23,5 @@
       "minLength": 1
     }
   },
-  "additionalProperties": false
+  "additionalProperties": true
 }

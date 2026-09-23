@@ -76,14 +76,6 @@
       "aliases": []
     },
     {
-      "id": "verify-binding",
-      "kind": "tool",
-      "description": "Optional Project verify binding; the knt verify router remains an L1 Hard Base command。",
-      "default_state": "DEFAULT",
-      "compatible_surfaces": ["minimal", "web", "cli", "gui_windows", "mcp", "api", "agent", "library"],
-      "aliases": ["verify"]
-    },
-    {
       "id": "ci-test",
       "kind": "tool",
       "description": "Non-deploying CI test Gate connection。",
@@ -113,30 +105,6 @@
       "description": "Optional PWA manifest, service worker, and offline hooks。",
       "default_state": "DEFAULT",
       "compatible_surfaces": ["web"],
-      "aliases": []
-    },
-    {
-      "id": "pages",
-      "kind": "tool",
-      "description": "Optional GitHub Pages build and artifact boundary。",
-      "default_state": "DEFAULT",
-      "compatible_surfaces": ["web"],
-      "aliases": []
-    },
-    {
-      "id": "secrets",
-      "kind": "tool",
-      "description": "Secret-file and environment-file hygiene boundary。",
-      "default_state": "DEFAULT",
-      "compatible_surfaces": ["minimal", "web", "cli", "gui_windows", "mcp", "api", "agent", "library"],
-      "aliases": []
-    },
-    {
-      "id": "local-app",
-      "kind": "tool",
-      "description": "Local setup, doctor/check, run, and smoke entry boundary。",
-      "default_state": "DEFAULT",
-      "compatible_surfaces": ["cli", "library"],
       "aliases": []
     }
   ]
