@@ -1,6 +1,6 @@
 # Current State
 
-Last verified: 2026-09-23 — self-test 42/42; doctor, base-check, and verify passed locally
+Last verified: 2026-09-23 — self-test 44/44; doctor, base-check, and verify passed locally
 
 ## Implemented
 
@@ -32,6 +32,12 @@ Last verified: 2026-09-23 — self-test 42/42; doctor, base-check, and verify pa
 - Manifest-less read-only `knt migrate` repository-shape probe using package, Cargo,
   Python, workflow, and web-asset markers
 - Explicit `knt migrate --apply` materialization of missing safe Default helpers
+- `verify-binding` is an optional Tool Default; the L1 `knt verify` router is always available and is not disabled by Default state
+- `ci-test` workflow generation with doctor → setup → verify, separate from the Base repository workflow
+- Generated-integrity source and artifact SHA-256 stale checks
+- Relative-base-path-safe PWA defaults and explicit UTF-8 text-only file-io helper scope
+- Existing-surface compatibility validation for explicit `knt migrate --default` selections
+- Windows PowerShell 5.1-compatible Windows helper host detection
 
 ## In progress
 
@@ -55,9 +61,10 @@ Last verified: 2026-09-23 — self-test 42/42; doctor, base-check, and verify pa
   meaning is a provisional PARTIAL GO candidate. No Surface Pack or production
   integration was added.
 - Default-first standardization has completed the safe Phase 3B implementation
-  slice: low-risk, removable Surface and Tool conveniences have catalog entries
-  and selected implementations. Phase 4 canary adoption review is next; no
-  existing Project has been modified.
+  slice and pre-Canary hardening: low-risk, removable Surface and Tool
+  conveniences have catalog entries, selected implementations, and regression
+  coverage. Phase 4 canary adoption review is next; no existing Project has
+  been modified.
 - The canonical four-layer policy is `.kinotch/meta/06_DEFAULT_FIRST_STANDARD.md`.
 - The Default Catalog is `.kinotch/defaults/catalog.json`; it is the single
   source for supported Surface / Tool Default identifiers and aliases.
@@ -79,6 +86,8 @@ Last verified: 2026-09-23 — self-test 42/42; doctor, base-check, and verify pa
   copies. The Runtime canonical source is maintained in the separate Runtime
   repository and is not independently edited here.
 - The Base smoke command is intentionally unconfigured because Base itself has no production entry point.
+- The generated file-io helper is intentionally UTF-8 text-only; binary format
+  handling remains Project-owned through the callback boundary.
 
 ## Current constraints
 

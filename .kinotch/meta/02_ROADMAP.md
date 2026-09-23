@@ -96,7 +96,7 @@ Surface Default / Tool Defaultとして提供する。Projectからoverride / di
 
 ### Tool Defaults
 
-- `verify`
+- `verify-binding` (CLI alias: `verify`; L1 `knt verify` is always available)
 - `ci-test`
 - `generated-integrity`
 - `file-io`
@@ -121,11 +121,11 @@ Default identifier・互換Surface・説明の正本は
 Safe, removable implementation slice complete. Catalogで選択したDefaultへ、
 Domainを拘束しない実装を与える。
 
-- `verify`: common router、direct verifyまたはtest→build fallback
-- `ci-test`: non-deploy GitHub Actions verify workflow
-- `generated-integrity`: SHA-256 metadata、check、update helper
-- `web-app` / `pwa`: manifest、pass-through service worker、registration helper、check
-- `file-io`: format-independent open/save boundary and safe helper
+- `verify-binding`: optional Project binding; the L1 `knt verify` router is not a removable Default
+- `ci-test`: separate non-deploy GitHub Actions workflow with doctor→setup→verify
+- `generated-integrity`: source and artifact SHA-256 metadata、stale check、update helper
+- `web-app` / `pwa`: relative-base manifest、pass-through service worker、registration helper、check
+- `file-io`: format-independent callback boundary and UTF-8 text-only helper
 - `secrets` / `local-app`: templateのsecret hygieneと共通command vocabulary
 - Surface helpers: `cli` JSON/error/help/exit, `windows` shell boundary, `mcp`
   tool guidance, and permissive `api` error-envelope schema

@@ -1,6 +1,7 @@
 {
   "schema_version": 1,
   "kind": "project-file-io-boundary",
+  "helper_scope": "UTF-8 text helper only; binary Projects provide their own byte/path callback.",
   "operations": [
     "open",
     "save",

@@ -1,10 +1,14 @@
 [CmdletBinding()]
 param()
 
+function Test-WindowsShellHost {
+    return ($env:OS -eq "Windows_NT")
+}
+
 function Reveal-WindowsPath {
     param([Parameter(Mandatory=$true)][string]$Path)
 
-    if (-not $IsWindows) {
+    if (-not (Test-WindowsShellHost)) {
         throw "Windows shell Default is only available on Windows."
     }
     $resolved = (Resolve-Path -LiteralPath $Path -ErrorAction Stop).Path
@@ -14,7 +18,7 @@ function Reveal-WindowsPath {
 function Copy-WindowsClipboardText {
     param([Parameter(Mandatory=$true)][string]$Text)
 
-    if (-not $IsWindows) {
+    if (-not (Test-WindowsShellHost)) {
         throw "Windows shell Default is only available on Windows."
     }
     Set-Clipboard -Value $Text

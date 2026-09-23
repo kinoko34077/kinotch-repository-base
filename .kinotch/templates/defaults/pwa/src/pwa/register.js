@@ -1,6 +1,6 @@
 export async function registerServiceWorker({
-  scriptUrl = "/service-worker.js",
-  scope = "/"
+  scriptUrl = "./service-worker.js",
+  scope = "./"
 } = {}) {
   if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) {
     return null;

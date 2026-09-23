@@ -31,8 +31,8 @@ knt.cmd test
 knt.cmd build
 knt.cmd verify
 knt.cmd init --profile web-app --default pwa
-knt.cmd init --profile cli --profile mcp --default verify
-knt.cmd migrate --profile cli --default verify
+knt.cmd init --profile cli --profile mcp --default verify-binding
+knt.cmd migrate --profile cli --default verify-binding
 knt.cmd smoke
 ```
 
@@ -63,7 +63,7 @@ PowerShell:
 
 ## init / migrate
 
-`knt init --profile <surface>` は `minimal`、`web-app`、`cli`、`windows-gui`（`windows` alias）、`mcp`、`api`、`agent`、`library` を複数選択し、TemplateからProject Overlayを生成する。`--default <tool-default>` で `verify`、`ci-test`、`generated-integrity`、`file-io`、`pwa`、`pages`、`secrets`、`local-app` 等のTool Defaultも選択できる。`cli` はJSON/error/exit/help helper、`windows` はExplorer/clipboard境界、`mcp` はtool naming/input/diagnostic境界、`api` はHTTP statusやcode体系を固定しないerror envelope schemaを生成する。`ci-test` は非Deployのworkflow、`pwa` はmanifest / service worker / registration helper / check、`generated-integrity` はSHA-256 metadata / check / update helper、`file-io` は形式非依存のfile boundary / helperを生成する。`verify` はBase routerのdirect verifyまたはtest→build fallbackを使用する。選択ProfileはSurface宣言と安全な補助だけを生成し、`runtime.modules` は空のまま保持する。既存の `project/project.json` または既存Projectファイルは上書きしない。
+`knt init --profile <surface>` は `minimal`、`web-app`、`cli`、`windows-gui`（`windows` alias）、`mcp`、`api`、`agent`、`library` を複数選択し、TemplateからProject Overlayを生成する。`--default <tool-default>` で `verify-binding`（CLI alias `verify`）、`ci-test`、`generated-integrity`、`file-io`、`pwa`、`pages`、`secrets`、`local-app` 等のTool Defaultも選択できる。`knt verify` 自体はL1 Hard Baseの常設コマンドであり、Default stateで無効化・生成する対象ではない。`verify-binding` は任意のProject側verify設定を記録する補助である。`cli` はJSON/error/exit/help helper、`windows` はExplorer/clipboard境界、`mcp` はtool naming/input/diagnostic境界、`api` はHTTP statusやcode体系を固定しないerror envelope schemaを生成する。`ci-test` はBase自身のworkflowとは別の非Deploy workflowを生成し、doctor → setup → verifyを実行する。`pwa` は相対base pathで動くmanifest / service worker / registration helper / check、`generated-integrity` はsourceとartifact双方のSHA-256 metadata / check / update helper、`file-io` はUTF-8 text専用helperと形式非依存のProject callback境界を生成する。選択ProfileはSurface宣言と安全な補助だけを生成し、`runtime.modules` は空のまま保持する。既存の `project/project.json` または既存Projectファイルは上書きしない。
 
 `knt migrate` は既存ProjectのSurface / Tool Default候補を表示するだけで、既定ではファイルを変更しない。Project Manifestがない場合も、`-BaseOverride` を指定したBase routerからrepository shapeをread-only検出できる。`--apply` を明示した場合だけManifestのあるProjectの `project/defaults.json` と必要なManifest pathを更新し、DEFAULT状態の安全な補助ファイルを不足分だけ生成する。既存の `OVERRIDE` / `DISABLED` 状態と既存ファイルは保持する。Domain fileは変更しない。
 
@@ -75,7 +75,7 @@ PowerShell:
 
 ## verify
 
-`generated-integrity` または `pwa` が `DEFAULT` で実装ファイルが存在する場合は、`knt verify` がそれぞれのcheckを先に実行する。続いて `project/project.json.commands.verify` があればそれを実行する。
+`generated-integrity` または `pwa` が `DEFAULT` で実装ファイルが存在する場合は、`knt verify` がそれぞれのcheckを先に実行する。続いて `project/project.json.commands.verify` があればそれを実行する。`verify-binding` の `DISABLED` はこのL1 routerを無効化しない。
 
 未定義の場合は、定義済みの `test` と `build` を順に実行する。これにより技術スタックが違ってもAgent・人間から見える操作語彙を固定する。
 

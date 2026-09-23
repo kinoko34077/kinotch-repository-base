@@ -16,9 +16,20 @@ if ([int]$config.schema_version -ne 1 -or [string]$config.algorithm -ne "SHA-256
 
 $failed = $false
 foreach ($entry in @($config.entries)) {
+    $source = Join-Path $Root ([string]$entry.source)
     $artifact = Join-Path $Root ([string]$entry.artifact)
+    if (-not (Test-Path -LiteralPath $source -PathType Leaf)) {
+        Write-Error "Generated source is missing: $($entry.source)"
+        $failed = $true
+        continue
+    }
     if (-not (Test-Path -LiteralPath $artifact -PathType Leaf)) {
         Write-Error "Generated artifact is missing: $($entry.artifact)"
+        $failed = $true
+        continue
+    }
+    if ([string]$entry.source_sha256 -notmatch '^[0-9a-fA-F]{64}$') {
+        Write-Error "Generated source hash is missing or invalid: $($entry.source)"
         $failed = $true
         continue
     }
@@ -27,7 +38,12 @@ foreach ($entry in @($config.entries)) {
         $failed = $true
         continue
     }
+    $sourceActual = (Get-FileHash -Algorithm SHA256 -LiteralPath $source).Hash.ToLowerInvariant()
     $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $artifact).Hash.ToLowerInvariant()
+    if ($sourceActual -ne ([string]$entry.source_sha256).ToLowerInvariant()) {
+        Write-Error "Generated source is stale: $($entry.source)"
+        $failed = $true
+    }
     if ($actual -ne ([string]$entry.sha256).ToLowerInvariant()) {
         Write-Error "Generated artifact is stale: $($entry.artifact)"
         $failed = $true

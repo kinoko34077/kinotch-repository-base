@@ -1,7 +1,7 @@
 {
   "name": "KiNoTch. Web App",
   "short_name": "KiNoTch.",
-  "start_url": "/",
+  "start_url": ".",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#ffffff",

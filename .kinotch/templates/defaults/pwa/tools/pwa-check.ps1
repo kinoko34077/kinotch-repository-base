@@ -14,6 +14,7 @@ else {
         $manifest = Get-Content -Raw -Encoding UTF8 $manifestPath | ConvertFrom-Json
         if ([string]::IsNullOrWhiteSpace([string]$manifest.name)) { [void]$errors.Add("manifest.name is required") }
         if ([string]::IsNullOrWhiteSpace([string]$manifest.start_url)) { [void]$errors.Add("manifest.start_url is required") }
+        elseif ([string]$manifest.start_url -match '^[\\/]|^[a-zA-Z][a-zA-Z0-9+.-]*:') { [void]$errors.Add("manifest.start_url must be relative to the Project base path") }
     }
     catch { [void]$errors.Add("manifest.webmanifest is not valid JSON") }
 }

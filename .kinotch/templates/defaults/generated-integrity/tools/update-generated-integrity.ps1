@@ -8,12 +8,16 @@ param(
 $ErrorActionPreference = "Stop"
 $configPath = Join-Path $Root "generated-integrity.json"
 $artifactPath = Join-Path $Root $Artifact
+$sourcePath = Join-Path $Root $Source
 if (-not (Test-Path -LiteralPath $artifactPath -PathType Leaf)) { throw "Generated artifact not found: $Artifact" }
+if (-not (Test-Path -LiteralPath $sourcePath -PathType Leaf)) { throw "Generated source not found: $Source" }
 if (-not (Test-Path -LiteralPath $configPath -PathType Leaf)) { throw "generated-integrity.json is missing" }
 $config = Get-Content -Raw -Encoding UTF8 $configPath | ConvertFrom-Json
+$sourceHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $sourcePath).Hash.ToLowerInvariant()
 $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $artifactPath).Hash.ToLowerInvariant()
 $entry = [pscustomobject]@{
     source = $Source
+    source_sha256 = $sourceHash
     artifact = $Artifact
     sha256 = $hash
     generator = $Generator

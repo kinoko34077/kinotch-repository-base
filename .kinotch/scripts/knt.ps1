@@ -158,7 +158,7 @@ function Get-DefaultOptions([string]$CommandName) {
     return [pscustomobject]@{ profiles = @($profiles); defaults = @($defaults); apply = $apply }
 }
 
-function Resolve-DefaultSelections($Options, $Catalog, [bool]$RequireProfile) {
+function Resolve-DefaultSelections($Options, $Catalog, [bool]$RequireProfile, [string[]]$ExistingSurfaces = @()) {
     $profileEntries = @()
     foreach ($profileName in @($Options.profiles)) {
         $profileEntries += Find-DefaultCatalogEntry -Catalog $Catalog -Identifier ([string]$profileName) -Kind "surface"
@@ -172,6 +172,9 @@ function Resolve-DefaultSelections($Options, $Catalog, [bool]$RequireProfile) {
         $toolEntries += Find-DefaultCatalogEntry -Catalog $Catalog -Identifier ([string]$defaultName) -Kind "tool"
     }
     $selectedSurfaces = @($profileEntries | ForEach-Object { @($_.compatible_surfaces) } | Select-Object -Unique)
+    if ($ExistingSurfaces.Count -gt 0) {
+        $selectedSurfaces = @($selectedSurfaces + @($ExistingSurfaces) | Select-Object -Unique)
+    }
     foreach ($tool in $toolEntries) {
         $compatible = @($tool.compatible_surfaces)
         if ($selectedSurfaces.Count -gt 0 -and $compatible.Count -gt 0) {
@@ -234,9 +237,8 @@ function Get-RepositoryShape($Catalog) {
     if ($hasWebAssets -or $dependencyText -match "vite|react|vue|svelte|astro|next") {
         [void]$surfaceIds.Add("web-app")
     }
-    if ($cargoText -or $pythonText -or $scriptsText -match "(^|\s)test|build|lint") {
-        [void]$toolIds.Add("verify")
-    }
+    # knt verify is an L1 Hard Base command. Shape detection must not report it
+    # as an optional Tool Default; CI remains the independent L2 candidate.
     if ($package -and ($package.bin -or $scriptsText -match "cli|start|run")) { [void]$surfaceIds.Add("cli") }
     if ($cargoText -match "\[\[bin\]\]|\[package\]" -or $pythonText -match "\[project\.scripts\]") {
         [void]$surfaceIds.Add("cli")
@@ -297,9 +299,15 @@ function Get-MigrateProfileEntries($Manifest, $Catalog, $Options, $Shape) {
     return @($entries)
 }
 
+function Get-ManifestSurfaceIds($Manifest) {
+    if (-not $Manifest -or -not $Manifest.PSObject.Properties["surfaces"]) { return @() }
+    return @($Manifest.surfaces.PSObject.Properties | Where-Object { $_.Value -eq $true } | ForEach-Object { [string]$_.Name } | Select-Object -Unique)
+}
+
 function Get-MigrateToolEntries($Manifest, $Catalog, $Options, $Shape) {
     if (@($Options.defaults).Count -gt 0) {
-        return @(Resolve-DefaultSelections -Options $Options -Catalog $Catalog -RequireProfile $false).toolEntries
+        $existingSurfaces = if ($Manifest) { @(Get-ManifestSurfaceIds -Manifest $Manifest) } else { @() }
+        return @(Resolve-DefaultSelections -Options $Options -Catalog $Catalog -RequireProfile $false -ExistingSurfaces $existingSurfaces).toolEntries
     }
 
     if (-not $Manifest -and $Shape) {
@@ -311,9 +319,6 @@ function Get-MigrateToolEntries($Manifest, $Catalog, $Options, $Shape) {
     }
 
     $candidateIds = New-Object System.Collections.Generic.List[string]
-    if ($Manifest -and (Resolve-Command $Manifest "verify" -or Resolve-Command $Manifest "test" -or Resolve-Command $Manifest "build")) {
-        [void]$candidateIds.Add("verify")
-    }
     if (Test-Path -LiteralPath (Join-Path $Root ".github/workflows/verify.yml") -PathType Leaf) {
         [void]$candidateIds.Add("ci-test")
     }
@@ -711,7 +716,7 @@ function Test-SelectedDefaultImplementations($DefaultsData) {
                 }
             }
             "ci-test" {
-                if (-not (Test-Path -LiteralPath (Join-Path $Root ".github/workflows/verify.yml") -PathType Leaf)) {
+                if (-not (Test-Path -LiteralPath (Join-Path $Root ".github/workflows/kinotch-default.yml") -PathType Leaf)) {
                     Write-Host "[doctor] MISSING implementation for Default 'ci-test'" -ForegroundColor Red
                     $ok = $false
                 }
@@ -913,7 +918,7 @@ Common commands:
   doctor      Base/project structure and schema diagnostics
   init        Create a Project from catalog Surface/Tool Defaults
               --profile minimal|web-app|cli|windows-gui|mcp|api|agent|library
-              --default verify|ci-test|generated-integrity|file-io|pwa|pages|secrets|local-app
+              --default verify-binding|verify(alias)|ci-test|generated-integrity|file-io|pwa|pages|secrets|local-app
   migrate     Show or explicitly record catalog Default candidates
   base-check  Detect modifications in common Base files
   base-refresh Regenerate Base file hashes (repository-base only)
@@ -921,7 +926,7 @@ Common commands:
   dev         Project development command
   test        Project tests
   build       Project build
-  verify      Project verify command; falls back to test + build
+  verify      L1 Project verify command; falls back to test + build
   generated-integrity  Check selected generated artifacts against SHA-256 metadata
   pwa-check   Check selected PWA manifest, service worker, and registration helper
   smoke       Project smoke / real-entry check

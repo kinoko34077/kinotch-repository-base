@@ -76,12 +76,12 @@
       "aliases": []
     },
     {
-      "id": "verify",
+      "id": "verify-binding",
       "kind": "tool",
-      "description": "Project verification Gate connection。",
+      "description": "Optional Project verify binding; the knt verify router remains an L1 Hard Base command。",
       "default_state": "DEFAULT",
       "compatible_surfaces": ["minimal", "web", "cli", "gui_windows", "mcp", "api", "agent", "library"],
-      "aliases": []
+      "aliases": ["verify"]
     },
     {
       "id": "ci-test",

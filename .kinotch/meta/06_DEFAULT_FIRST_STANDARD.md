@@ -45,10 +45,14 @@ Surface Default identifiers are `minimal`, `web-app`, `cli`, `windows`,
 `mcp`, `api`, `agent`, and `library`. The `windows-gui` profile is the
 canonical profile name for the `windows` Default alias.
 
-Tool Default identifiers are `verify`, `ci-test`, `generated-integrity`,
+Tool Default identifiers are `verify-binding`, `ci-test`, `generated-integrity`,
 `file-io`, `pwa`, `pages`, `secrets`, and `local-app`. The machine-readable
 catalog at `.kinotch/defaults/catalog.json` is the single source for these
 identifiers, descriptions, compatibility, aliases, and default state.
+
+`verify` remains a CLI alias for `verify-binding`. The `knt verify` command
+itself is an L1 Hard Base command and is always available; its existence is
+not controlled by a Tool Default state.
 
 These are Defaults, not mandatory universal libraries. Existing Framework
 dispatch remains authoritative where it already exists. A Surface Profile
@@ -111,7 +115,7 @@ Tool Defaults independently:
 ```text
 knt init --profile web-app
 knt init --profile web-app --default pwa
-knt init --profile cli --profile mcp --default verify
+knt init --profile cli --profile mcp --default verify-binding
 ```
 
 Initialization creates a Project overlay from the Base templates, records the
@@ -128,11 +132,11 @@ nothing. Only `knt migrate --apply` records candidates. Existing `OVERRIDE` and
 
 The current Phase 3B implementation materializes only removable helpers:
 
-- `verify` uses the Base router's direct command or `test` then `build` fallback.
-- `ci-test` adds a non-deploy `doctor` → `verify` GitHub Actions workflow when absent.
-- `pwa` adds a minimal manifest, pass-through service worker, registration helper, and `pwa-check`.
-- `generated-integrity` adds SHA-256 metadata, stale checking, and metadata update helpers.
-- `file-io` adds a format-independent operation boundary and safe text helper; Project code owns decoding, encoding, picker, and D&D behavior.
+- `verify-binding` records an optional Project-side verify binding. The L1 `knt verify` router remains the common entry point and uses direct verify or `test` then `build` fallback.
+- `ci-test` adds a separate non-deploy GitHub Actions workflow when absent; it runs `doctor` → `setup` → `verify`. The Base repository's own workflow is not overwritten.
+- `pwa` adds a minimal manifest with relative base-path URLs, a pass-through service worker, registration helper, and `pwa-check`.
+- `generated-integrity` adds source and artifact SHA-256 metadata, stale checking for both, and metadata update helpers.
+- `file-io` adds a format-independent Project callback boundary and a UTF-8 text-only helper; binary Projects provide their own byte/path callback.
 - `cli` adds opt-in JSON/error/help/exit helpers without parsing Domain arguments.
 - `windows` adds opt-in Explorer/clipboard shell boundaries; GUI state and picker ownership remain Project-owned.
 - `mcp` adds tool naming/input/diagnostic guidance without a second dispatch registry.

@@ -46,17 +46,17 @@
 ## Phase 3A — KiNoTch. Default Catalog
 
 - Surface: `minimal`, `web-app`, `cli`, `windows`, `mcp`, `api`, `agent`, `library`
-- Tool: `verify`, `ci-test`, `generated-integrity`, `file-io`, `pwa`, `pages`, `secrets`, `local-app`
+- Tool: `verify-binding` (CLI alias `verify`), `ci-test`, `generated-integrity`, `file-io`, `pwa`, `pages`, `secrets`, `local-app`
 - `knt init`はProfile選択からRuntime moduleを自動注入しない。
 - 既存Framework・Project実装はOverrideとして保持できる。
 
 ## Phase 3B — Actual Default behavior (safe slice complete)
 
-- `verify` common router and fallback gate
-- `ci-test` non-deploy workflow template
-- `generated-integrity` SHA-256 check/update templates
-- `web-app` / `pwa` manifest, service worker, registration, and check templates
-- `file-io` format-independent boundary and safe helper
+- `verify-binding` optional Project binding; the `knt verify` common router is L1
+- `ci-test` separate non-deploy doctor→setup→verify workflow template
+- `generated-integrity` source and artifact SHA-256 check/update templates
+- `web-app` / `pwa` relative-base manifest, service worker, registration, and check templates
+- `file-io` format-independent boundary and UTF-8 text-only helper
 - `cli` JSON/error/help/exit helper
 - `windows` Explorer/clipboard shell boundary
 - `mcp` tool boundary descriptor without a second registry
