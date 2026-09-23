@@ -1,9 +1,10 @@
 # 02 — Roadmap
 
-Current position: Phase 3B safe Default behavior implemented; Phase 4 canary
-adoption review is next. Phase 2A Portable Contract validation remains
-independent and provisional; Default adoption does not wait for Portable
-Contract maturity.
+Current position: Phase 3B safe Default behavior and Phase 4A read-only Canary
+validation are complete. Phase 4B adoption-safety hardening is complete; real
+existing-repository `migrate --apply` remains an explicit future adoption step.
+Phase 2A Portable Contract validation remains independent and provisional;
+Default adoption does not wait for Portable Contract maturity.
 
 ## Phase 0 — Repository Base v0.1系
 
@@ -96,14 +97,10 @@ Surface Default / Tool Defaultとして提供する。Projectからoverride / di
 
 ### Tool Defaults
 
-- `verify-binding` (CLI alias: `verify`; L1 `knt verify` is always available)
 - `ci-test`
 - `generated-integrity`
 - `file-io`
 - `pwa`
-- `pages`
-- `secrets`
-- `local-app`
 
 Default identifier・互換Surface・説明の正本は
 `.kinotch/defaults/catalog.json` とする。
@@ -121,12 +118,10 @@ Default identifier・互換Surface・説明の正本は
 Safe, removable implementation slice complete. Catalogで選択したDefaultへ、
 Domainを拘束しない実装を与える。
 
-- `verify-binding`: optional Project binding; the L1 `knt verify` router is not a removable Default
 - `ci-test`: separate non-deploy GitHub Actions workflow with doctor→setup→verify
-- `generated-integrity`: source and artifact SHA-256 metadata、stale check、update helper
+- `generated-integrity`: Project-root-safe source and artifact SHA-256 metadata、stale check、update helper
 - `web-app` / `pwa`: relative-base manifest、pass-through service worker、registration helper、check
 - `file-io`: format-independent callback boundary and UTF-8 text-only helper
-- `secrets` / `local-app`: templateのsecret hygieneと共通command vocabulary
 - Surface helpers: `cli` JSON/error/help/exit, `windows` shell boundary, `mcp`
   tool guidance, and permissive `api` error-envelope schema
 
@@ -171,9 +166,21 @@ Domainを拘束しない実装を与える。
 - rate-limit hook
 - smoke / health
 
-## Phase 4 — init / migrate and existing repository adoption
+## Phase 4A — Read-only Canary validation
 
-Canaryごとのread-only validationを完了。既存repoは一括変更せず、明示判断
+Canaryごとのshape probeと既存検証を完了した。外部Baseを指定したshape
+probeはread-onlyであり、既存repoへBaseファイルやDefaultを投入していない。
+
+## Phase 4B — Adoption safety hardening
+
+Surface / Tool互換性、doctor再検証、repository-local `.kinotch/` 書込み境界、
+structured command引数、Project-root path containment、Default Catalog
+semantic validation、既存ファイル衝突時のOVERRIDE記録を実装する。Base v0.3.0
+としてこの安全点を固定する。
+
+## Phase 4C — init / migrate and existing repository adoption
+
+既存repoは一括変更せず、明示判断
 とRepository Manifestが揃ったrepoだけへ段階適用する。
 
 - `knt init --profile <surface> --default <tool-default>`
@@ -189,7 +196,8 @@ Canaryごとのread-only validationを完了。既存repoは一括変更せず�
 Overlayを生成する。Surface選択からRuntime moduleを自動注入しない。
 `knt migrate` は差分を表示し、明示選択されたものだけ適用する。Domain
 fileは自動書換えしない。Manifestなしのshape probeでは、既存相当実装を
-`OVERRIDE`候補として表示し、既存repoへBase構造を自動投入しない。
+`OVERRIDE`候補として表示し、既存repoへBase構造を自動投入しない。外部Base
+overrideはshape probe専用で、既存repoのapplyには使用しない。
 
 ## Phase 5 — 既存repoへの段階導入
 

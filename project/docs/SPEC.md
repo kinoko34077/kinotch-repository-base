@@ -1,6 +1,6 @@
 # KiNoTch. Repository Base Specification
 
-Status: active for Base v0.2
+Status: active for Base v0.3.0
 
 ## Purpose
 
@@ -25,9 +25,9 @@ The Base reduces the effort to create, read, repair, and verify a repository wit
 13. Surface Profiles and Runtime module selection are independent; `knt init` leaves `runtime.modules` empty unless a Project explicitly declares modules.
 14. Surface Defaults and Tool Defaults are defined by one machine-readable Default Catalog and can be selected without router hard-coded lists.
 15. `minimal`, `web-app`, `cli`, `windows-gui`, `mcp`, `api`, `agent`, and `library` are valid Surface Profiles, with `windows` retained as an alias.
-16. Selecting `ci-test`, `pwa`, `generated-integrity`, or `file-io` materializes only removable, Domain-neutral implementation files; `verify-binding` records an optional Project binding while the L1 `verify` router remains available independently.
+16. Selecting `ci-test`, `pwa`, `generated-integrity`, or `file-io` materializes only removable, Domain-neutral implementation files; the L1 `verify` router remains available independently and is not a Tool Default.
 17. Selecting `cli`, `windows`, `mcp`, or `api` materializes only removable helpers or permissive boundary descriptors; it does not add a framework, dispatch registry, HTTP policy, or Domain behavior.
-18. `knt migrate` can perform a read-only repository-shape probe without a Project Manifest and refuses `--apply` until a Base Manifest exists; explicit apply materializes only missing safe helpers, validates explicit Defaults against existing Manifest Surfaces, and preserves overrides.
+18. `knt migrate` can perform a read-only repository-shape probe without a Project Manifest and refuses `--apply` until both a Project Manifest and repository-local `.kinotch/` Base exist; an external Base override is read-only, explicit apply materializes only missing safe helpers, validates Defaults against existing Manifest Surfaces, and preserves overrides.
 19. `ci-test` provides a separate doctor → setup → verify workflow, generated-integrity checks both source and artifact hashes, PWA defaults are relative-base-path safe, and the generated file-io helper is explicitly UTF-8 text-only.
 
 ## Fixed read order
@@ -46,16 +46,16 @@ The Runtime owns execution implementations and the cross-repository Execution Co
 
 ## Inputs and outputs
 
-Inputs are the repository files, project/project.json, contract registries, Base schemas, profile declarations, Default state, and command arguments. doctor emits diagnostics and an exit code. verify delegates to the configured project verification command or test then build fallback. base-check reports common-file drift. init generates only a missing Project Overlay. migrate reports candidates and writes only after explicit `--apply`, preserving existing Default states. Base self-tests report individual behavior failures and an aggregate exit code.
+Inputs are the repository files, project/project.json, contract registries, Base schemas, profile declarations, Default state, and command arguments. doctor emits diagnostics and an exit code, including Catalog semantics and DEFAULT Tool/Surface compatibility. verify delegates to the configured project verification command or test then build fallback. base-check reports common-file drift. init generates only a missing Project Overlay. migrate reports candidates and writes only after explicit `--apply` with a repository-local Base, preserving existing Default states. Base self-tests report individual behavior failures and an aggregate exit code.
 
 ## Constraints
 
 - Runtime packages are not required for Base use.
 - Surface Profiles do not imply Runtime modules. Existing explicit Runtime module declarations remain Project-owned.
-- Default Catalog entries are low-risk, removable Surface or Tool conveniences; they do not define Runtime execution semantics.
+- Default Catalog entries are low-risk, removable Surface or Tool conveniences; only entries with actual materialized behavior are cataloged, and they do not define Runtime execution semantics.
 - Production deployment policy remains Project-owned.
 - Surface adapters must not duplicate Domain Core behavior.
-- Generated artifacts must be regenerated from their canonical source.
+- Generated artifacts must be regenerated from their canonical source and remain inside the Project root.
 - Default implementations must remain Surface / Tool conveniences; they must not define Domain formats, deploy policy, Runtime modules, or public API semantics.
 
 ## Exceptions and fallback

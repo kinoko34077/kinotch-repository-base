@@ -1,6 +1,8 @@
 # Current State
 
-Last verified: 2026-09-23 — self-test 44/44; doctor, base-check, and verify passed locally
+Base version: `0.3.0`
+
+Last verified: 2026-09-23 — self-test 58/58; doctor, base-check, and verify passed locally after the Base v0.3.0 index refresh
 
 ## Implemented
 
@@ -13,7 +15,7 @@ Last verified: 2026-09-23 — self-test 44/44; doctor, base-check, and verify pa
 - Profile existence and Profile / Surface contradiction diagnostics
 - Manifest path and command cwd diagnostics
 - Strict Base hash index and deterministic refresh
-- Base self-test runner with 42 passing cases
+- Base self-test runner with 58 passing cases
 - Base and Runtime Meta under .kinotch/meta/
 - New Repository templates under .kinotch/templates/project/
 - Runtime Contractの確定済み / Runtime Phase 1候補の区別
@@ -34,12 +36,17 @@ Last verified: 2026-09-23 — self-test 44/44; doctor, base-check, and verify pa
 - Manifest-less read-only `knt migrate` repository-shape probe using package, Cargo,
   Python, workflow, and web-asset markers
 - Explicit `knt migrate --apply` materialization of missing safe Default helpers
-- `verify-binding` is an optional Tool Default; the L1 `knt verify` router is always available and is not disabled by Default state
+- `knt verify` remains an L1 Hard Base command; it is not a Tool Default and is not disabled by Default state
 - `ci-test` workflow generation with doctor → setup → verify, separate from the Base repository workflow
 - Generated-integrity source and artifact SHA-256 stale checks
 - Relative-base-path-safe PWA defaults and explicit UTF-8 text-only file-io helper scope
 - Existing-surface compatibility validation for explicit `knt migrate --default` selections
 - Windows PowerShell 5.1-compatible Windows helper host detection
+- Strict Surface/Tool compatibility validation in init, migrate, and doctor
+- External `-BaseOverride` restricted to read-only shape probing; writes require a repository-local `.kinotch/`
+- Structured `exec` / `args` Project commands with safe forwarded-argument handling; legacy commands reject forwarded arguments
+- Project-root containment checks for generated-integrity and file-io helpers
+- Default Catalog semantic validation, Surface `OVERRIDE` detection, verification-aware CI detection, and conflict-to-`OVERRIDE` materialization
 
 ## In progress
 
@@ -63,10 +70,9 @@ Last verified: 2026-09-23 — self-test 44/44; doctor, base-check, and verify pa
   meaning is a provisional PARTIAL GO candidate. No Surface Pack or production
   integration was added.
 - Default-first standardization has completed the safe Phase 3B implementation
-  slice and pre-Canary hardening: low-risk, removable Surface and Tool
-  conveniences have catalog entries, selected implementations, regression
-  coverage, and a read-only Phase 4 Canary validation. No existing Project has
-  been modified.
+  slice and Phase 4A read-only Canary validation. Phase 4B adoption-safety
+  hardening is implemented for Base v0.3.0. No existing Project has been
+  modified or migrated with `--apply`.
 - The canonical four-layer policy is `.kinotch/meta/06_DEFAULT_FIRST_STANDARD.md`.
 - The Default Catalog is `.kinotch/defaults/catalog.json`; it is the single
   source for supported Surface / Tool Default identifiers and aliases.
@@ -90,6 +96,8 @@ Last verified: 2026-09-23 — self-test 44/44; doctor, base-check, and verify pa
 - The Base smoke command is intentionally unconfigured because Base itself has no production entry point.
 - The generated file-io helper is intentionally UTF-8 text-only; binary format
   handling remains Project-owned through the callback boundary.
+- Symlink and junction resolution is not fully guaranteed by the text path
+  containment helpers; this remains a documented platform boundary.
 
 ## Current constraints
 
@@ -100,18 +108,15 @@ Last verified: 2026-09-23 — self-test 44/44; doctor, base-check, and verify pa
 
 ## Next work
 
-1. Keep Canary adoption repository-local and opt-in; preserve existing
-   `OVERRIDE` / `DISABLED` implementations and do not copy Base structure into
-   a repository without an explicit Manifest migration decision.
-2. Apply a Default only after an active Project decision and its repository-local
-   verification; do not bulk-rewrite existing repositories.
-3. Keep Default Pack behavior removable and Project-owned; do not add Domain
+1. Begin explicit, repository-local Canary adoption only after a Project
+   decision, Base files, Manifest, and local verification are present.
+2. Preserve existing `OVERRIDE` / `DISABLED` implementations and do not
+   bulk-rewrite existing repositories.
+3. Keep Default behavior removable and Project-owned; do not add Domain
    behavior or a universal Surface library.
-4. Keep the `kinotch-api` production boundary unchanged unless a pure
-   application operation appears without Response or Context wrapping.
-5. Keep Runtime provisional until additional heterogeneous repositories
+4. Keep Runtime provisional until additional heterogeneous repositories
    validate the same Portable meanings.
-6. Do not add Runtime modules, Surface Packs, or Domain adapters to Base merely
+5. Do not add Runtime modules, Surface Packs, or Domain adapters to Base merely
    because a Default Catalog entry exists.
 
 ## Verification
