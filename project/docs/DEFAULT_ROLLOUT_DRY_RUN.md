@@ -103,28 +103,30 @@ generated helpers.
 ## Phase 4B adoption status
 
 The first eight clean Canary adoptions were completed after the v0.3.7 safety
-hardening. Existing Domain files were not moved, and all detected equivalent
-Surface / Tool implementations were recorded as `OVERRIDE`.
+hardening. Their common layer was subsequently synchronized to Base v0.3.8.
+Existing Domain files were not moved, and all detected equivalent Surface /
+Tool implementations were recorded as `OVERRIDE`.
 
-| Repository | Commit | Local verification | Result |
+| Repository | Latest Base sync commit | Local verification | Result |
 | --- | --- | --- | --- |
-| `jev-audit` | `e7b0a38` | `doctor`, `base-check`, `verify`, 52 unittest tests | Base v0.3.7 synchronization; CLI/MCP/CI/generated boundaries preserved |
-| `kinotch-api` | `188b3c9` | `doctor`, `base-check`, `verify`, 207 passed / 1 skipped | Base v0.3.7 synchronization; API/MCP/CI/generated boundaries preserved |
-| `lyric_reader_page` | `7bf6394` | `doctor`, `base-check`, `verify`, 129 npm tests | Base v0.3.7 synchronization; web/reader/writer/browser boundaries preserved |
-| `weather-widget` | `16a78f6` | `doctor`, `base-check`, `verify` | Base v0.3.7 synchronization; existing Web/PWA boundaries preserved |
-| `memory-game` | `546a977` | `doctor`, `base-check`, `verify` | Base v0.3.7 synchronization; existing static Web game boundary preserved |
-| `Structured-Cell-Automaton` | `affb267` | `doctor`, `base-check`, `verify` | Base v0.3.7 synchronization; existing Streamlit GUI and Domain boundary preserved |
-| `2bit-cell-automaton` | `55a33d4` | `doctor`, `base-check`, `verify` | Base v0.3.7 synchronization; existing static Web experiment boundary preserved |
-| `colony-ai` | `9a1284f` | `doctor`, `base-check`, `setup`, `verify`, 20 unittest tests | Base v0.3.7 synchronization; existing Python CLI/Tkinter and Ollama boundaries preserved |
+| `jev-audit` | `2566e9b` | `doctor`, `base-check`, `verify`, 52 unittest tests | Base v0.3.8 synchronization; CLI/MCP/CI/generated boundaries preserved |
+| `kinotch-api` | `204d15e` | `doctor`, `base-check`, `verify`, 207 passed / 1 skipped | Base v0.3.8 synchronization; API/MCP/CI/generated boundaries preserved |
+| `lyric_reader_page` | `81e7ef5` | `doctor`, `base-check`, `verify`, 129 npm tests | Base v0.3.8 synchronization; web/reader/writer/browser boundaries preserved |
+| `weather-widget` | `6a3eda1` | `doctor`, `base-check`, `verify` | Base v0.3.8 synchronization; existing Web/PWA boundaries preserved |
+| `memory-game` | `6a6dd8f` | `doctor`, `base-check`, `verify` | Base v0.3.8 synchronization; existing static Web game boundary preserved |
+| `Structured-Cell-Automaton` | `7a0d313` | `doctor`, `base-check`, `verify` | Base v0.3.8 synchronization; existing Streamlit GUI and Domain boundary preserved |
+| `2bit-cell-automaton` | `5c2c688` | `doctor`, `base-check`, `verify` | Base v0.3.8 synchronization; existing static Web experiment boundary preserved |
+| `colony-ai` | `7a2e5a6` | `doctor`, `base-check`, `setup`, `verify`, 20 unittest tests | Base v0.3.8 synchronization; existing Python CLI/Tkinter and Ollama boundaries preserved |
 
-`refil-viewer` was prepared separately in commit `88019e2`. Its repository
-local Base and `web-app=OVERRIDE` state pass `doctor` and `base-check`, but
+`refil-viewer` was prepared separately and most recently synchronized in
+commit `d4b0c02`. Its repository-local Base and `web-app=OVERRIDE` state pass
+`doctor` and `base-check`, but
 `knt verify` correctly returns exit code 1 because the existing Vite source has
 duplicate `pageIndex` declarations in `src/App.vue`. It remains staged rather
 than a clean Canary adoption.
 
-The Base v0.3.7 root hygiene, Shape Probe update, and Project command exit-code
-propagation fix were synchronized into the adopters after
+The Base v0.3.8 root hygiene, Shape Probe compatibility filter, and Project
+command exit-code propagation fix were synchronized into the adopters after
 their first local verification. The remaining Canaries (`standby-display` and
 `SynTrail-LM`) remain staged for separate clean-tree reviews; `SynTrail-LM`
 currently has user-owned dirty files and is not eligible for automatic
