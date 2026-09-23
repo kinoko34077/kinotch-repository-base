@@ -1,8 +1,8 @@
 # Current State
 
-Base version: `0.3.8`
+Base version: `0.3.9`
 
-Last verified: 2026-09-24 — self-test 64/64; doctor, base-check, and verify passed locally after the Base v0.3.8 index refresh
+Last verified: 2026-09-24 — self-test 71/71; doctor, base-check, and verify passed locally after the Base v0.3.9 index refresh
 
 ## Implemented
 
@@ -15,7 +15,7 @@ Last verified: 2026-09-24 — self-test 64/64; doctor, base-check, and verify pa
 - Profile existence and Profile / Surface contradiction diagnostics
 - Manifest path and command cwd diagnostics
 - Strict Base hash index and deterministic refresh
-- Base self-test runner with 64 passing cases
+- Base self-test runner with 71 passing cases
 - Base and Runtime Meta under .kinotch/meta/
 - New Repository templates under .kinotch/templates/project/
 - Runtime Contractの確定済み / Runtime Phase 1候補の区別
@@ -56,6 +56,9 @@ Last verified: 2026-09-24 — self-test 64/64; doctor, base-check, and verify pa
 - Project command output is captured separately from its native exit code so `knt verify` propagates failing fallback commands
 - Project-root containment checks for generated-integrity and file-io helpers
 - Default Catalog semantic validation, Surface `OVERRIDE` detection, verification-aware CI detection, and conflict-to-`OVERRIDE` materialization
+- Atomic Default materialization with MISSING / IDENTICAL / CONFLICT preflight planning
+- OS-aware Project-root path containment: case-insensitive on Windows and case-sensitive on Unix-like systems
+- Explicit migrate Surface/Manifest consistency checks and doctor rejection of disabled `DEFAULT` Surfaces
 - Common CI runs Project setup before verification, and shape probing does not classify Wrangler-only Web projects as API
 - Common Python build metadata such as `*.egg-info/` is ignored by the Base root hygiene rules
 - Common Cloudflare build outputs such as `.wrangler/` and `artifacts/` are ignored by the Base root hygiene rules
@@ -84,12 +87,14 @@ Last verified: 2026-09-24 — self-test 64/64; doctor, base-check, and verify pa
   integration was added.
 - Default-first standardization completed the safe Phase 3B implementation
   slice, Phase 4A read-only validation, Phase 4B adoption-safety hardening,
-  and the Phase 4C adoption review. Eight repositories are cleanly adopted at
-  Base v0.3.8: `jev-audit`, `kinotch-api`, `lyric_reader_page`,
+  and the Phase 4C adoption review. Eight repositories remain recorded as
+  cleanly adopted at Base v0.3.8: `jev-audit`, `kinotch-api`, `lyric_reader_page`,
   `weather-widget`, `memory-game`, `Structured-Cell-Automaton`,
   `2bit-cell-automaton`, and `colony-ai`; existing
   CLI/MCP/API/generated/browser/PWA/Streamlit behavior remains Project-owned
   as `OVERRIDE`.
+- Base v0.3.9 is the current maintenance release; existing adopted repositories
+  are synchronized only during their normal maintenance cycle.
 - `refil-viewer` remains `STAGED`: its Base v0.3.8 files pass doctor and
   base-check, while its existing Vite source still fails on a duplicate
   `pageIndex` declaration. This is a Project bug and is not hidden or fixed by
@@ -142,7 +147,8 @@ Last verified: 2026-09-24 — self-test 64/64; doctor, base-check, and verify pa
 ## Next work
 
 1. Continue normal Phase 5 repository maintenance: when a repository is
-   actively changed, confirm its Base version and synchronize only if needed.
+   actively changed, confirm its Base version and synchronize to Base v0.3.9
+   only when the repository-local adoption decision permits it.
 2. Run `doctor`, `base-check`, and the existing Project verification after
    each repository-local Base synchronization.
 3. Preserve existing `OVERRIDE` / `DISABLED` implementations and do not

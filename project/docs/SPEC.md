@@ -1,6 +1,6 @@
 # KiNoTch. Repository Base Specification
 
-Status: active for Base v0.3.8
+Status: active for Base v0.3.9
 
 ## Purpose
 
