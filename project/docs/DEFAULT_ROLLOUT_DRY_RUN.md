@@ -2,9 +2,10 @@
 
 Last inspected: 2026-09-23
 
-This is a read-only classification of the locally available Git repositories.
-No repository outside `kinotch-repository-base` was modified, migrated, or
-given a KiNoTch Base copy. `OVERRIDE` means an existing implementation or
+This is the Phase 4A read-only classification of the locally available Git
+repositories. At the time of this report no repository outside
+`kinotch-repository-base` was modified, migrated, or given a KiNoTch Base copy.
+`OVERRIDE` means an existing implementation or
 policy is already authoritative; `DEFAULT` means a removable Default is a
 candidate for a future explicit migration; `DISABLED` means the Project should
 not provide the Default; `N/A` means the repository is not a suitable target or
@@ -93,8 +94,25 @@ canary is a repository-local Base adoption review, starting with:
 - `SynTrail-LM`: preserve native Windows/file I/O/trainer behavior as `OVERRIDE`.
 - `lyric_reader_page`: preserve reader/writer and mobile gates as `OVERRIDE`.
 
-This report intentionally stops before `knt migrate --apply`. Applying a
+The Phase 4A report intentionally stopped before `knt migrate --apply`. Applying a
 Default still requires an active repository-local Manifest, an explicit pack
 selection, and a clean repository-specific test run. For the five Canaries
 above, validation supports preserving existing behavior rather than adding
 generated helpers.
+
+## Phase 4B adoption status
+
+The first two clean Canary adoptions were completed after the v0.3.3 safety
+hardening. Existing Domain files were not moved, and all detected equivalent
+Surface / Tool implementations were recorded as `OVERRIDE`.
+
+| Repository | Commit | Local verification | Result |
+| --- | --- | --- | --- |
+| `jev-audit` | `041bb87` | `knt setup`, `doctor`, `base-check`, `verify`, 52 unittest tests | Base adoption; CLI/MCP/CI/generated boundaries preserved |
+| `kinotch-api` | `8bf82e8` | `knt setup`, `doctor`, `base-check`, `verify`, 207 passed / 1 skipped | Base adoption; API/MCP/CI/generated boundaries preserved |
+
+The Base v0.3.3 root hygiene update was synchronized into both adopters after
+their first local verification. The remaining Canaries (`standby-display`,
+`SynTrail-LM`, and `lyric_reader_page`) remain staged for separate clean-tree
+reviews; `SynTrail-LM` currently has user-owned dirty files and is not eligible
+for automatic adoption.

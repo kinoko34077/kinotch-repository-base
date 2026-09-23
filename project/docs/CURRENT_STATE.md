@@ -29,7 +29,8 @@ Last verified: 2026-09-23 — self-test 60/60; doctor, base-check, and verify pa
 - Surface Profile selection no longer injects Runtime modules; new templates start with an empty module list
 - `knt migrate` catalog-driven dry-run / explicit apply with `OVERRIDE` and `DISABLED` preservation
 - Phase 4 Canary shape validation with existing-equivalent `OVERRIDE` detection
-- Read-only verification of the first five Canaries; no external repository was modified
+- Phase 4A read-only verification completed; Phase 4B adoption has now been
+  completed for the first two clean Canaries: `jev-audit` and `kinotch-api`
 - Default implementation templates for `ci-test`, `pwa`, `generated-integrity`, and `file-io`
 - Surface Default helpers for `cli`, `windows`, `mcp`, and `api`
 - `knt verify` integration for selected PWA and generated-integrity checks
@@ -74,13 +75,15 @@ Last verified: 2026-09-23 — self-test 60/60; doctor, base-check, and verify pa
   integration was added.
 - Default-first standardization has completed the safe Phase 3B implementation
   slice and Phase 4A read-only Canary validation. Phase 4B adoption-safety
-  hardening is implemented for Base v0.3.3. No existing Project has been
-  modified or migrated with `--apply`.
+  hardening is implemented for Base v0.3.3. Phase 4C adoption is active for
+  `jev-audit` and `kinotch-api`; existing CLI/MCP/API/generated behavior was
+  preserved as `OVERRIDE`.
 - The canonical four-layer policy is `.kinotch/meta/06_DEFAULT_FIRST_STANDARD.md`.
 - The Default Catalog is `.kinotch/defaults/catalog.json`; it is the single
   source for supported Surface / Tool Default identifiers and aliases.
-- A read-only local/GitHub adoption classification is recorded in
-  `project/docs/DEFAULT_ROLLOUT_DRY_RUN.md`; no existing Project was changed.
+- The Phase 4A read-only classification and Phase 4B adoption record are kept
+  in `project/docs/DEFAULT_ROLLOUT_DRY_RUN.md`; remaining Canaries are still
+  staged and have not been changed.
 - `knt init` now generates a safe multi-profile Project Overlay, and `knt migrate`
   reports Default Pack candidates by default and applies them only with explicit
   `--apply`, preserving existing `OVERRIDE` / `DISABLED` states.
@@ -111,7 +114,7 @@ Last verified: 2026-09-23 — self-test 60/60; doctor, base-check, and verify pa
 
 ## Next work
 
-1. Begin explicit, repository-local Canary adoption only after a Project
+1. Continue explicit, repository-local Canary adoption only after a Project
    decision, Base files, Manifest, and local verification are present.
 2. Preserve existing `OVERRIDE` / `DISABLED` implementations and do not
    bulk-rewrite existing repositories.
