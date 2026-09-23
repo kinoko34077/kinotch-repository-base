@@ -102,7 +102,7 @@ generated helpers.
 
 ## Phase 4B adoption status
 
-The first seven clean Canary adoptions were completed after the v0.3.7 safety
+The first eight clean Canary adoptions were completed after the v0.3.7 safety
 hardening. Existing Domain files were not moved, and all detected equivalent
 Surface / Tool implementations were recorded as `OVERRIDE`.
 
@@ -115,6 +115,7 @@ Surface / Tool implementations were recorded as `OVERRIDE`.
 | `memory-game` | `546a977` | `doctor`, `base-check`, `verify` | Base v0.3.7 synchronization; existing static Web game boundary preserved |
 | `Structured-Cell-Automaton` | `affb267` | `doctor`, `base-check`, `verify` | Base v0.3.7 synchronization; existing Streamlit GUI and Domain boundary preserved |
 | `2bit-cell-automaton` | `55a33d4` | `doctor`, `base-check`, `verify` | Base v0.3.7 synchronization; existing static Web experiment boundary preserved |
+| `colony-ai` | `9a1284f` | `doctor`, `base-check`, `setup`, `verify`, 20 unittest tests | Base v0.3.7 synchronization; existing Python CLI/Tkinter and Ollama boundaries preserved |
 
 `refil-viewer` was prepared separately in commit `88019e2`. Its repository
 local Base and `web-app=OVERRIDE` state pass `doctor` and `base-check`, but

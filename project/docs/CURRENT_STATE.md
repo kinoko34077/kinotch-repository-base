@@ -30,9 +30,9 @@ Last verified: 2026-09-23 — self-test 63/63; doctor, base-check, and verify pa
 - `knt migrate` catalog-driven dry-run / explicit apply with `OVERRIDE` and `DISABLED` preservation
 - Phase 4 Canary shape validation with existing-equivalent `OVERRIDE` detection
 - Phase 4A read-only verification completed; Phase 4B adoption has now been
-  completed for seven clean Canaries: `jev-audit`, `kinotch-api`,
+  completed for eight clean Canaries: `jev-audit`, `kinotch-api`,
   `lyric_reader_page`, `weather-widget`, `memory-game`,
-  `Structured-Cell-Automaton`, and `2bit-cell-automaton`
+  `Structured-Cell-Automaton`, `2bit-cell-automaton`, and `colony-ai`
 - `refil-viewer` has a repository-local Base v0.3.7 preparation commit, but its
   existing Vite build currently fails on a duplicate `pageIndex` declaration;
   it is not counted as a clean Canary adoption
@@ -84,7 +84,8 @@ Last verified: 2026-09-23 — self-test 63/63; doctor, base-check, and verify pa
   slice and Phase 4A read-only Canary validation. Phase 4B adoption-safety
   hardening is implemented for Base v0.3.7. Phase 4C adoption is active for
   `jev-audit`, `kinotch-api`, `lyric_reader_page`, `weather-widget`,
-  `memory-game`, `Structured-Cell-Automaton`, and `2bit-cell-automaton`;
+  `memory-game`, `Structured-Cell-Automaton`, `2bit-cell-automaton`, and
+  `colony-ai`;
   existing CLI/MCP/API/generated/browser/PWA/Streamlit behavior was preserved
   as `OVERRIDE`.
 - `refil-viewer` is prepared but held outside the clean-adoption count until
