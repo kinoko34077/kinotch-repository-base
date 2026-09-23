@@ -1,8 +1,8 @@
 # Current State
 
-Base version: `0.3.4`
+Base version: `0.3.5`
 
-Last verified: 2026-09-23 — self-test 60/60; doctor, base-check, and verify passed locally after the Base v0.3.4 index refresh
+Last verified: 2026-09-23 — self-test 61/61; doctor, base-check, and verify passed locally after the Base v0.3.5 index refresh
 
 ## Implemented
 
@@ -15,7 +15,7 @@ Last verified: 2026-09-23 — self-test 60/60; doctor, base-check, and verify pa
 - Profile existence and Profile / Surface contradiction diagnostics
 - Manifest path and command cwd diagnostics
 - Strict Base hash index and deterministic refresh
-- Base self-test runner with 60 passing cases
+- Base self-test runner with 61 passing cases
 - Base and Runtime Meta under .kinotch/meta/
 - New Repository templates under .kinotch/templates/project/
 - Runtime Contractの確定済み / Runtime Phase 1候補の区別
@@ -77,7 +77,7 @@ Last verified: 2026-09-23 — self-test 60/60; doctor, base-check, and verify pa
   integration was added.
 - Default-first standardization has completed the safe Phase 3B implementation
   slice and Phase 4A read-only Canary validation. Phase 4B adoption-safety
-  hardening is implemented for Base v0.3.4. Phase 4C adoption is active for
+  hardening is implemented for Base v0.3.5. Phase 4C adoption is active for
   `jev-audit`, `kinotch-api`, and `lyric_reader_page`; existing
   CLI/MCP/API/generated/browser behavior was preserved as `OVERRIDE`.
 - The canonical four-layer policy is `.kinotch/meta/06_DEFAULT_FIRST_STANDARD.md`.
