@@ -833,6 +833,7 @@ function Invoke-ProjectCommand($Manifest, [string]$Name) {
     }
     Push-Location $cwd
     try {
+        $commandOutput = @()
         if ($spec.mode -eq "structured") {
             $forwardedArgs = @($RemainingArgs | Where-Object { $null -ne $_ })
             if ($forwardedArgs.Count -gt 0 -and -not $spec.forward_args) {
@@ -841,7 +842,7 @@ function Invoke-ProjectCommand($Manifest, [string]$Name) {
             $invokeArgs = @($spec.args)
             if ($spec.forward_args) { $invokeArgs += $forwardedArgs }
             Write-Knt "$Name -> $($spec.exec)"
-            & $spec.exec @invokeArgs
+            $commandOutput = @(& $spec.exec @invokeArgs 2>&1)
         }
         else {
             $forwardedArgs = @($RemainingArgs | Where-Object { $null -ne $_ })
@@ -849,10 +850,11 @@ function Invoke-ProjectCommand($Manifest, [string]$Name) {
                 throw "Legacy command '$Name' cannot safely forward arguments; use structured exec/args with forward_args=true"
             }
             Write-Knt "$Name -> $($spec.run)"
-            Invoke-Expression $spec.run
+            $commandOutput = @(Invoke-Expression $spec.run 2>&1)
         }
-        if ($null -ne $LASTEXITCODE) { return $LASTEXITCODE }
-        return 0
+        $commandExitCode = if ($null -ne $LASTEXITCODE) { [int]$LASTEXITCODE } else { 0 }
+        foreach ($outputLine in $commandOutput) { Write-Host $outputLine }
+        return $commandExitCode
     }
     finally {
         Pop-Location

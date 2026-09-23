@@ -1,8 +1,8 @@
 # Current State
 
-Base version: `0.3.6`
+Base version: `0.3.7`
 
-Last verified: 2026-09-23 — self-test 62/62; doctor, base-check, and verify passed locally after the Base v0.3.6 index refresh
+Last verified: 2026-09-23 — self-test 63/63; doctor, base-check, and verify passed locally after the Base v0.3.7 index refresh
 
 ## Implemented
 
@@ -15,7 +15,7 @@ Last verified: 2026-09-23 — self-test 62/62; doctor, base-check, and verify pa
 - Profile existence and Profile / Surface contradiction diagnostics
 - Manifest path and command cwd diagnostics
 - Strict Base hash index and deterministic refresh
-- Base self-test runner with 62 passing cases
+- Base self-test runner with 63 passing cases
 - Base and Runtime Meta under .kinotch/meta/
 - New Repository templates under .kinotch/templates/project/
 - Runtime Contractの確定済み / Runtime Phase 1候補の区別
@@ -48,6 +48,7 @@ Last verified: 2026-09-23 — self-test 62/62; doctor, base-check, and verify pa
 - Strict Surface/Tool compatibility validation in init, migrate, and doctor
 - External `-BaseOverride` restricted to read-only shape probing; writes require a repository-local `.kinotch/`
 - Structured `exec` / `args` Project commands with safe forwarded-argument handling; legacy commands reject forwarded arguments
+- Project command output is captured separately from its native exit code so `knt verify` propagates failing fallback commands
 - Project-root containment checks for generated-integrity and file-io helpers
 - Default Catalog semantic validation, Surface `OVERRIDE` detection, verification-aware CI detection, and conflict-to-`OVERRIDE` materialization
 - Common CI runs Project setup before verification, and shape probing does not classify Wrangler-only Web projects as API
@@ -78,7 +79,7 @@ Last verified: 2026-09-23 — self-test 62/62; doctor, base-check, and verify pa
   integration was added.
 - Default-first standardization has completed the safe Phase 3B implementation
   slice and Phase 4A read-only Canary validation. Phase 4B adoption-safety
-  hardening is implemented for Base v0.3.6. Phase 4C adoption is active for
+  hardening is implemented for Base v0.3.7. Phase 4C adoption is active for
   `jev-audit`, `kinotch-api`, `lyric_reader_page`, `weather-widget`,
   `memory-game`, `Structured-Cell-Automaton`, and `2bit-cell-automaton`;
   existing CLI/MCP/API/generated/browser/PWA/Streamlit behavior was preserved

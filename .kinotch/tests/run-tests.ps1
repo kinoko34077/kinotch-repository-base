@@ -879,6 +879,19 @@ Invoke-TestCase "verify fallback runs test then build" {
         Assert-Equal ("test" + [Environment]::NewLine + "build") ((Get-Content -Raw $marker).Trim()) "verify order"
     }
 }
+Invoke-TestCase "verify fallback propagates a failing project command" {
+    Invoke-KntFixture -Name "verify-fallback" -Command "verify" -ExpectedExit 9 -Prepare {
+        param($root)
+        $manifestPath = Join-Path $root "project/project.json"
+        $manifest = Get-Content -Raw -Encoding UTF8 $manifestPath | ConvertFrom-Json
+        $manifest.commands.build.run = if (Get-Command pwsh -ErrorAction SilentlyContinue) {
+            "& pwsh -NoProfile -Command 'exit 9'"
+        } else {
+            "& powershell -NoProfile -Command 'exit 9'"
+        }
+        [IO.File]::WriteAllText($manifestPath, (ConvertTo-Json $manifest -Depth 20) + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
+    }
+}
 Invoke-TestCase "command runs in declared cwd" {
     Invoke-KntFixture -Name "command-cwd" -Command "test" -ExpectedExit 0 -AssertOutput {
         param($root, $output)
@@ -931,7 +944,7 @@ Invoke-TestCase "Base documentation and profile status are finalized" {
     Assert-True ($runtime -match "ActionRequest") "Runtime candidate-contract content is missing"
     Assert-True ($workflow -match "knt\.ps1 setup") "Base CI setup step is missing"
     Assert-Equal 0 @($surfaceRegistry.surfaces.PSObject.Properties).Count "Base Surface Registry should be empty"
-    Assert-Equal "0.3.6" $baseVersion "Base version"
+    Assert-Equal "0.3.7" $baseVersion "Base version"
     Assert-True (@($catalog.defaults | Where-Object { $_.kind -eq "surface" }).Count -ge 8) "Surface Default catalog entries are incomplete"
     Assert-Equal 4 @($catalog.defaults | Where-Object { $_.kind -eq "tool" }).Count "Active Tool Default catalog count"
     foreach ($profileFile in Get-ChildItem (Join-Path $RepoRoot ".kinotch/profiles") -File) {
