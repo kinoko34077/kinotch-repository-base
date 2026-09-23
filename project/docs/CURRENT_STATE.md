@@ -2,7 +2,7 @@
 
 Base version: `0.3.9`
 
-Last verified: 2026-09-24 — self-test 71/71; doctor, base-check, and verify passed locally after the Base v0.3.9 index refresh
+Last verified: 2026-09-24 — self-test 72/72; doctor, base-check, and verify passed locally after the Base v0.3.9 index refresh
 
 ## Implemented
 
@@ -38,6 +38,7 @@ Last verified: 2026-09-24 — self-test 71/71; doctor, base-check, and verify pa
   it is not counted as a clean Canary adoption
 - Default implementation templates for `ci-test`, `pwa`, `generated-integrity`, and `file-io`
 - Surface Default helpers for `cli`, `windows`, `mcp`, and `api`
+- CLI Surface Kit common option parsing, stdout/stderr helpers, generic result rendering, and exit handling; Project-specific arguments remain untouched
 - `knt verify` integration for selected PWA and generated-integrity checks
 - Manifest-less read-only `knt migrate` repository-shape probe using package, Cargo,
   Python, workflow, and web-asset markers
@@ -95,6 +96,8 @@ Last verified: 2026-09-24 — self-test 71/71; doctor, base-check, and verify pa
   as `OVERRIDE`.
 - Base v0.3.9 is the current maintenance release; existing adopted repositories
   are synchronized only during their normal maintenance cycle.
+- Surface Default Kit expansion has started as a Phase 5 Base feature slice;
+  the CLI Kit is implemented and Windows/MCP/API Kit expansions remain next.
 - `refil-viewer` remains `STAGED`: its Base v0.3.8 files pass doctor and
   base-check, while its existing Vite source still fails on a duplicate
   `pageIndex` declaration. This is a Project bug and is not hidden or fixed by
@@ -143,25 +146,26 @@ Last verified: 2026-09-24 — self-test 71/71; doctor, base-check, and verify pa
 - Production deploy policy remains project-specific.
 - Base-wide Meta belongs under .kinotch/meta/.
 - New repositories use .kinotch/templates/project/ as their generation source.
-- Base v0.3.9 is frozen as the Phase 5 maintenance baseline; Base and Runtime
-  feature expansion is paused unless the Phase 5 return conditions are met.
+- Base v0.3.9 remains the current Phase 5 maintenance baseline while the
+  Surface Default Kit feature slice is evaluated; Runtime semantics remain
+  unchanged.
 
 ## Next work
 
-1. Continue normal Phase 5 repository maintenance only for an active Project;
-   confirm its Base version and synchronize to Base v0.3.9 only when the
-   repository-local adoption decision permits it.
+1. Complete the Windows, MCP, and API Surface Kit slices without changing
+   Runtime semantics or adding fine-grained Catalog entries.
 2. Run `doctor`, `base-check`, and the existing Project verification after
-   each repository-local Base synchronization.
+   each Surface Kit slice.
 3. Preserve existing `OVERRIDE` / `DISABLED` implementations and do not
    bulk-rewrite existing repositories.
 4. Keep Default behavior removable and Project-owned; do not add Domain
    behavior or a universal Surface library.
 5. Keep Runtime provisional until additional heterogeneous repositories
    validate the same Portable meanings.
-6. Do not add Runtime modules, Surface Packs, or Domain adapters to Base merely
-   because a Default Catalog entry exists.
-7. Do not run a periodic full-repository audit or bulk synchronization.
+6. Do not add Runtime modules or Domain adapters to Base merely because a
+   Surface Kit helper exists.
+7. After the feature slice, return to normal Phase 5 maintenance and do not
+   run a periodic full-repository audit or bulk synchronization.
 8. Treat `refil-viewer`, `standby-display`, and `SynTrail-LM` as STAGED, and
    keep `dev_agent` / `IDS-Composit` as NOT_ADOPTED until active work creates a
    concrete adoption reason.

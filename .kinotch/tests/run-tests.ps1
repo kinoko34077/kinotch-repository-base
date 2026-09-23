@@ -474,6 +474,59 @@ Invoke-TestCase "surface Defaults materialize safe CLI, Windows, MCP, and API he
         Assert-True ($output -match "Surface Default 'api' added") "API surface Default was not materialized"
     }
 }
+Invoke-TestCase "CLI Surface Kit preserves Project arguments and separates output streams" {
+    Invoke-KntInitFixture -Profiles @("cli") -AssertOutput {
+        param($root, $output)
+        $helper = Join-Path $root "project/tools/cli-default.ps1"
+        $probe = Join-Path $root "cli-kit-probe.ps1"
+        $probeText = @'
+param(
+    [Parameter(Mandatory=$true)][string]$HelperPath,
+    [Parameter(Mandatory=$true)][ValidateSet("parse", "output", "exit")][string]$Mode
+)
+$ErrorActionPreference = "Stop"
+. $HelperPath
+switch ($Mode) {
+    "parse" {
+        $options = Get-CliCommonOptions @("--json", "--quiet", "--verbose", "--dry-run", "--yes", "--domain-value")
+        if (-not $options.Json -or -not $options.Quiet -or -not $options.Verbose -or -not $options.DryRun -or -not $options.Yes) { throw "common flags were not parsed" }
+        if ($options.RemainingArgs.Count -ne 1 -or $options.RemainingArgs[0] -ne "--domain-value") { throw "Project argument was consumed" }
+        Write-Output "parse-ok"
+    }
+    "output" {
+        Write-CliOutput -Message "normal"
+        Write-CliOutput -Message "hidden" -Quiet
+        Write-CliDiagnostic -Message "hidden-diagnostic"
+        Write-CliDiagnostic -Message "diagnostic" -VerboseOutput
+        Write-CliJson -Value ([pscustomobject]@{ kind = "json" })
+        Write-CliResult -Value ([pscustomobject]@{ kind = "result" }) -Json
+    }
+    "exit" {
+        Exit-Cli -Code 7
+    }
+}
+'@
+        Set-Content -LiteralPath $probe -Value $probeText -Encoding UTF8
+        $parseOutput = @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $probe -HelperPath $helper -Mode parse 2>&1)
+        Assert-Equal 0 $LASTEXITCODE "CLI common option probe exit code"
+        Assert-True (($parseOutput -join "`n") -match "parse-ok") "CLI common option probe did not complete"
+
+        $stderrPath = Join-Path $root "cli-kit.stderr"
+        $stdoutOutput = @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $probe -HelperPath $helper -Mode output 2> $stderrPath)
+        Assert-Equal 0 $LASTEXITCODE "CLI output probe exit code"
+        $stdoutText = $stdoutOutput -join "`n"
+        $stderrText = if (Test-Path -LiteralPath $stderrPath) { Get-Content -Raw -Encoding UTF8 $stderrPath } else { "" }
+        Assert-True ($stdoutText -match "normal") "CLI stdout helper did not write normal output"
+        Assert-True ($stdoutText -notmatch "hidden") "CLI quiet output was not suppressed"
+        Assert-True ($stdoutText -match '"kind":"json"') "CLI JSON output was not emitted"
+        Assert-True ($stdoutText -match '"kind":"result"') "CLI result JSON was not emitted"
+        Assert-True ($stderrText -match "diagnostic") "CLI diagnostic was not written to stderr"
+        Assert-True ($stderrText -notmatch "hidden-diagnostic") "CLI non-verbose diagnostic was not suppressed"
+
+        $exitOutput = @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $probe -HelperPath $helper -Mode exit 2>&1)
+        Assert-Equal 7 $LASTEXITCODE "CLI exit helper code"
+    }
+}
 Invoke-TestCase "init records selected Tool Defaults from the catalog" {
     Invoke-KntInitFixture -Profiles @("web-app") -Defaults @("pwa") -AssertOutput {
         param($root, $output)

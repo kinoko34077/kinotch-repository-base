@@ -204,7 +204,7 @@
     },
     {
       "path": ".kinotch/templates/defaults/cli/tools/cli-default.ps1",
-      "sha256": "acd5188379f133cdd0324536e1a48dbc6d364c442262a6a13b5f39ebebf7ab75"
+      "sha256": "f47d4933a10b4d535f63a56f485dff8678cdc786272b0f0399db8ffe57c7be63"
     },
     {
       "path": ".kinotch/templates/defaults/file-io/contracts/file-io.json",
@@ -388,7 +388,7 @@
     },
     {
       "path": ".kinotch/tests/run-tests.ps1",
-      "sha256": "509ff6dfd661ece3b6596dadcb84b055567195e92259a7ef4a64a17f68127479"
+      "sha256": "7560be0ffbd6ca87ac6bf7f6e8a7bf58863bd6742de052517bd00111465cf02f"
     },
     {
       "path": "AGENTS.md",
