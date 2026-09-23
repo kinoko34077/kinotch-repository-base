@@ -102,7 +102,7 @@ generated helpers.
 
 ## Phase 4B adoption status
 
-The first six clean Canary adoptions were completed after the v0.3.5 safety
+The first seven clean Canary adoptions were completed after the v0.3.5 safety
 hardening. Existing Domain files were not moved, and all detected equivalent
 Surface / Tool implementations were recorded as `OVERRIDE`.
 
@@ -114,6 +114,7 @@ Surface / Tool implementations were recorded as `OVERRIDE`.
 | `weather-widget` | `4a56e82` | `doctor`, `base-check`, `verify` | Base adoption plus v0.3.5 alignment; existing Web/PWA boundaries preserved |
 | `memory-game` | `37c7493` | `doctor`, `base-check`, `verify` | Base adoption; existing static Web game boundary preserved |
 | `Structured-Cell-Automaton` | `d7e0d4f` | `doctor`, `base-check`, `verify` | Base adoption; existing Streamlit GUI and Domain boundary preserved |
+| `2bit-cell-automaton` | `fba4b3b` | `doctor`, `base-check`, `verify` | Base adoption; existing static Web experiment boundary preserved |
 
 The Base v0.3.5 root hygiene and Shape Probe update was synchronized into the adopters after
 their first local verification. The remaining Canaries (`standby-display` and

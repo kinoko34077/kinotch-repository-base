@@ -182,7 +182,7 @@ semantic validation、既存ファイル衝突時のOVERRIDE記録を実装す�
 
 既存repoは一括変更せず、`jev-audit`、`kinotch-api`、
 `lyric_reader_page`、`weather-widget`、`memory-game`、
-`Structured-Cell-Automaton` の初回適用を完了した。
+`Structured-Cell-Automaton`、`2bit-cell-automaton` の初回適用を完了した。
 残りのrepoは明示判断
 とRepository Manifestが揃ったrepoだけへ段階適用する。
 
