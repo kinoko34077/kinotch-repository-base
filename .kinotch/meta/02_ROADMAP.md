@@ -181,7 +181,7 @@ semantic validation、既存ファイル衝突時のOVERRIDE記録を実装す�
 ## Phase 4C — init / migrate and existing repository adoption
 
 既存repoは一括変更せず、`jev-audit`、`kinotch-api`、
-`lyric_reader_page` の初回適用を完了した。
+`lyric_reader_page`、`weather-widget` の初回適用を完了した。
 残りのrepoは明示判断
 とRepository Manifestが揃ったrepoだけへ段階適用する。
 

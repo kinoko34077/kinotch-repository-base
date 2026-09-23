@@ -102,18 +102,21 @@ generated helpers.
 
 ## Phase 4B adoption status
 
-The first three clean Canary adoptions were completed after the v0.3.4 safety
+The first four clean Canary adoptions were completed after the v0.3.5 safety
 hardening. Existing Domain files were not moved, and all detected equivalent
 Surface / Tool implementations were recorded as `OVERRIDE`.
 
 | Repository | Commit | Local verification | Result |
 | --- | --- | --- | --- |
-| `jev-audit` | `6e4bac7` | `knt setup`, `doctor`, `base-check`, `verify`, 52 unittest tests | Base adoption plus v0.3.4 alignment; CLI/MCP/CI/generated boundaries preserved |
-| `kinotch-api` | `6d3911f` | `knt setup`, `doctor`, `base-check`, `verify`, 207 passed / 1 skipped | Base adoption plus v0.3.4 alignment; API/MCP/CI/generated boundaries preserved |
-| `lyric_reader_page` | `ac8b0c6` | `knt setup`, `doctor`, `base-check`, `verify`, 129 npm tests | Base adoption; web/reader/writer/browser boundaries preserved |
+| `jev-audit` | `6765ce2` | `knt setup`, `doctor`, `base-check`, `verify`, 52 unittest tests | Base adoption plus v0.3.5 alignment; CLI/MCP/CI/generated boundaries preserved |
+| `kinotch-api` | `117e2f5` | `knt setup`, `doctor`, `base-check`, `verify`, 207 passed / 1 skipped | Base adoption plus v0.3.5 alignment; API/MCP/CI/generated boundaries preserved |
+| `lyric_reader_page` | `3afbbc1` | `knt setup`, `doctor`, `base-check`, `verify`, 129 npm tests | Base adoption plus v0.3.5 alignment; web/reader/writer/browser boundaries preserved |
+| `weather-widget` | `4a56e82` | `doctor`, `base-check`, `verify` | Base adoption plus v0.3.5 alignment; existing Web/PWA boundaries preserved |
 
-The Base v0.3.4 root hygiene update was synchronized into the adopters after
+The Base v0.3.5 root hygiene and Shape Probe update was synchronized into the adopters after
 their first local verification. The remaining Canaries (`standby-display` and
 `SynTrail-LM`) remain staged for separate clean-tree reviews; `SynTrail-LM`
 currently has user-owned dirty files and is not eligible for automatic
-adoption.
+adoption. `standby-display` is clean, but its existing `.editorconfig`,
+`.gitattributes`, and `.gitignore` require an explicit merge decision before
+Base-managed root files are introduced.
