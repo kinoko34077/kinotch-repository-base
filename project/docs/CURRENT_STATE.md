@@ -2,7 +2,7 @@
 
 Base version: `0.3.8`
 
-Last verified: 2026-09-23 — self-test 64/64; doctor, base-check, and verify passed locally after the Base v0.3.8 index refresh
+Last verified: 2026-09-24 — self-test 64/64; doctor, base-check, and verify passed locally after the Base v0.3.8 index refresh
 
 ## Implemented
 
@@ -15,7 +15,7 @@ Last verified: 2026-09-23 — self-test 64/64; doctor, base-check, and verify pa
 - Profile existence and Profile / Surface contradiction diagnostics
 - Manifest path and command cwd diagnostics
 - Strict Base hash index and deterministic refresh
-- Base self-test runner with 63 passing cases
+- Base self-test runner with 64 passing cases
 - Base and Runtime Meta under .kinotch/meta/
 - New Repository templates under .kinotch/templates/project/
 - Runtime Contractの確定済み / Runtime Phase 1候補の区別
@@ -33,7 +33,7 @@ Last verified: 2026-09-23 — self-test 64/64; doctor, base-check, and verify pa
   completed for eight clean Canaries: `jev-audit`, `kinotch-api`,
   `lyric_reader_page`, `weather-widget`, `memory-game`,
   `Structured-Cell-Automaton`, `2bit-cell-automaton`, and `colony-ai`
-- `refil-viewer` has a repository-local Base v0.3.7 preparation commit, but its
+- `refil-viewer` has a repository-local Base v0.3.8 preparation commit, but its
   existing Vite build currently fails on a duplicate `pageIndex` declaration;
   it is not counted as a clean Canary adoption
 - Default implementation templates for `ci-test`, `pwa`, `generated-integrity`, and `file-io`
@@ -82,23 +82,35 @@ Last verified: 2026-09-23 — self-test 64/64; doctor, base-check, and verify pa
   tooling; AgentBackend remains Agent-owned. Only a narrow artifact-reference
   meaning is a provisional PARTIAL GO candidate. No Surface Pack or production
   integration was added.
-- Default-first standardization has completed the safe Phase 3B implementation
-  slice and Phase 4A read-only Canary validation. Phase 4B adoption-safety
-  hardening is implemented for Base v0.3.8. Phase 4C adoption is active for
-  `jev-audit`, `kinotch-api`, `lyric_reader_page`, `weather-widget`,
-  `memory-game`, `Structured-Cell-Automaton`, `2bit-cell-automaton`, and
-  `colony-ai`;
-  existing CLI/MCP/API/generated/browser/PWA/Streamlit behavior was preserved
+- Default-first standardization completed the safe Phase 3B implementation
+  slice, Phase 4A read-only validation, Phase 4B adoption-safety hardening,
+  and the Phase 4C adoption review. Eight repositories are cleanly adopted at
+  Base v0.3.8: `jev-audit`, `kinotch-api`, `lyric_reader_page`,
+  `weather-widget`, `memory-game`, `Structured-Cell-Automaton`,
+  `2bit-cell-automaton`, and `colony-ai`; existing
+  CLI/MCP/API/generated/browser/PWA/Streamlit behavior remains Project-owned
   as `OVERRIDE`.
-- `refil-viewer` is prepared but held outside the clean-adoption count until
-  its Project-owned Vite build failure is resolved.
+- `refil-viewer` remains `STAGED`: its Base v0.3.8 files pass doctor and
+  base-check, while its existing Vite source still fails on a duplicate
+  `pageIndex` declaration. This is a Project bug and is not hidden or fixed by
+  Base adoption.
+- `standby-display` remains `STAGED`: its PWA and generated-asset boundaries
+  are existing `OVERRIDE` implementations, but its root hygiene files differ
+  from Base and require an explicit merge decision before adoption.
+- `SynTrail-LM` remains `STAGED` for a future clean-tree decision; its
+  user-owned dirty files were not modified. `dev_agent` and `IDS-Composit` are
+  `NOT_ADOPTED` pending explicit repository-local Base decisions, and
+  `srt2subtitle` remains `N/A` because only its GitHub tree was inspected.
+- Phase 4C is complete as an adoption decision phase, not as a requirement to
+  install Base into every repository. The current position is Phase 5,
+  gradual repository adoption and maintenance.
 - The canonical four-layer policy is `.kinotch/meta/06_DEFAULT_FIRST_STANDARD.md`.
 - The Default Catalog is `.kinotch/defaults/catalog.json`; it is the single
   source for supported Surface / Tool Default identifiers and aliases.
-- The Phase 4A read-only classification and Phase 4B adoption record are kept
-  in `project/docs/DEFAULT_ROLLOUT_DRY_RUN.md`; `standby-display` and
-  `SynTrail-LM` remain staged for separate reviews. `standby-display` needs a
-  root hygiene merge review before Base files can be copied safely.
+- The Phase 4A read-only classification, Phase 4B adoption record, and Phase
+  4C operation state are kept in `project/docs/DEFAULT_ROLLOUT_DRY_RUN.md`.
+  That table records adoption state, not Default maturity. No bulk migration
+  is planned.
 - `knt init` now generates a safe multi-profile Project Overlay, and `knt migrate`
   reports Default Pack candidates by default and applies them only with explicit
   `--apply`, preserving existing `OVERRIDE` / `DISABLED` states.
@@ -129,15 +141,17 @@ Last verified: 2026-09-23 — self-test 64/64; doctor, base-check, and verify pa
 
 ## Next work
 
-1. Continue explicit, repository-local Canary adoption only after a Project
-   decision, Base files, Manifest, and local verification are present.
-2. Preserve existing `OVERRIDE` / `DISABLED` implementations and do not
+1. Continue normal Phase 5 repository maintenance: when a repository is
+   actively changed, confirm its Base version and synchronize only if needed.
+2. Run `doctor`, `base-check`, and the existing Project verification after
+   each repository-local Base synchronization.
+3. Preserve existing `OVERRIDE` / `DISABLED` implementations and do not
    bulk-rewrite existing repositories.
-3. Keep Default behavior removable and Project-owned; do not add Domain
+4. Keep Default behavior removable and Project-owned; do not add Domain
    behavior or a universal Surface library.
-4. Keep Runtime provisional until additional heterogeneous repositories
+5. Keep Runtime provisional until additional heterogeneous repositories
    validate the same Portable meanings.
-5. Do not add Runtime modules, Surface Packs, or Domain adapters to Base merely
+6. Do not add Runtime modules, Surface Packs, or Domain adapters to Base merely
    because a Default Catalog entry exists.
 
 ## Verification

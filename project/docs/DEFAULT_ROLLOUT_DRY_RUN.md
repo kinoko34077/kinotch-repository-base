@@ -1,6 +1,6 @@
 # Default Pack rollout dry-run
 
-Last inspected: 2026-09-23
+Last inspected: 2026-09-24
 
 This is the Phase 4A read-only classification of the locally available Git
 repositories. At the time of this report no repository outside
@@ -17,6 +17,44 @@ The current Catalog contains four Tool Defaults: `ci-test`,
 `generated-integrity`, `file-io`, and `pwa`; `knt verify` remains an L1 command.
 It was evidence for adoption planning, not an authorization to rewrite any
 Project.
+
+## Phase 4C operation state / Phase 5 baseline
+
+This table is the current operational record after the Phase 4C reviews. The
+`State` column describes repository adoption work only; it is not a Default
+maturity or Portable Contract status. `N/A` means that the repository is not a
+safe or locally available adoption target at this time.
+
+| Repository | Current Base version | Detected Surface | Tool Defaults | State | Verification | Next action |
+| --- | --- | --- | --- | --- | --- | --- |
+| `jev-audit` | `0.3.8` | `cli`, `mcp` | `ci-test=OVERRIDE` | `ADOPTED` | doctor/base-check/verify; 52 unittest tests, 1 skipped | Phase 5 maintenance |
+| `kinotch-api` | `0.3.8` | `api` | `ci-test=OVERRIDE`, `generated-integrity=OVERRIDE` | `ADOPTED` | doctor/base-check/verify; npm 207 passed, 1 skipped locally | Phase 5 maintenance; recheck hosted status when available |
+| `lyric_reader_page` | `0.3.8` | `web-app` | `ci-test=OVERRIDE` | `ADOPTED` | doctor/base-check/verify; npm 129 tests | Phase 5 maintenance |
+| `weather-widget` | `0.3.8` | `web-app` | `pwa=OVERRIDE` | `ADOPTED` | doctor/base-check/verify | Phase 5 maintenance |
+| `memory-game` | `0.3.8` | `web-app` | none | `ADOPTED` | doctor/base-check/verify | Phase 5 maintenance |
+| `Structured-Cell-Automaton` | `0.3.8` | `web-app` | none | `ADOPTED` | doctor/base-check/verify | Phase 5 maintenance |
+| `2bit-cell-automaton` | `0.3.8` | `web-app` | none | `ADOPTED` | doctor/base-check/verify | Phase 5 maintenance |
+| `colony-ai` | `0.3.8` | `cli` | none | `ADOPTED` | doctor/base-check/setup/verify; 20 unittest tests | Phase 5 maintenance |
+| `refil-viewer` | `0.3.8` | `web-app` | none | `STAGED` | doctor/base-check pass; verify blocked by existing duplicate `pageIndex` in `src/App.vue` | Project bugfix, then test/build/verify |
+| `standby-display` | — | `web-app` | `pwa=OVERRIDE`, `generated-integrity=OVERRIDE`; `ci-test` not inferred | `STAGED` | read-only shape probe; npm test 13 passed; existing PWA/build boundaries present | Decide root hygiene merge; then local Base adoption and full verification |
+| `SynTrail-LM` | — | `windows`, `cli` | `file-io=OVERRIDE` | `STAGED` | read-only review; existing Cargo tests recorded as passing, but worktree is user-owned dirty | Clean owner boundary, then explicit adoption review |
+| `dev_agent` | — | `agent`, `cli` | `ci-test=OVERRIDE` | `NOT_ADOPTED` | read-only shape probe; no repository-local `.kinotch/`, root hygiene conflict | Explicit Base adoption decision; preserve AgentBackend and gate policy |
+| `IDS-Composit` | — | `web-app`, `library` | `ci-test=OVERRIDE`, `generated-integrity=OVERRIDE` | `NOT_ADOPTED` | read-only shape probe; existing Vite/calibration/generated gates; no repository-local `.kinotch/` | Explicit adoption decision; keep Pages and generated-data policy Project-owned |
+| `srt2subtitle` | N/A | `web-app` | `ci-test=OVERRIDE` | `N/A` | GitHub-only tree inspection; no local checkout verification | Revisit when locally active |
+| `Gomoku-5D` | N/A | `web-app` | `ci-test=OVERRIDE` | `N/A` | GitHub-only tree inspection | Revisit when locally active |
+| `Micro-Chordbot` | N/A | `web-app` | `ci-test=OVERRIDE` | `N/A` | GitHub-only tree inspection | Revisit when locally active |
+| `microtone-piano` | N/A | `web-app` | `pwa=OVERRIDE` | `N/A` | GitHub-only tree inspection | Revisit when locally active |
+| `.ai-guidelines` | — | N/A | N/A | `N/A` | Policy source, not a KiNoTch Project target | Keep as policy source |
+| `cloudflare-migration/clock-server` | — | N/A | N/A | `N/A` | Read-only local shape review | No adoption by structure alone |
+| `cloudflare-migration/detemuhann-redirect` | — | N/A | N/A | `N/A` | Read-only local shape review | Keep redirect/deploy policy Project-owned |
+| `cloudflare-migration/legacy-clock` | — | N/A | N/A | `N/A` | Read-only local shape review | Legacy service; revisit only with active work |
+| `cloudflare-migration/rokuyo-proxy` | — | N/A | N/A | `N/A` | Read-only local shape review | Keep proxy/deploy boundary Project-owned |
+| `cloudflare-migration/weather-proxy` | — | N/A | N/A | `N/A` | Read-only local shape review | Keep provider boundary Project-owned |
+| `cora_engine` | — | N/A | N/A | `N/A` | No reliable standard marker in local root | Revisit when actively developed |
+| `line-style-viewer` | — | `web-app` | none | `N/A` | Existing static viewer; no Base adoption | Revisit with active Project decision |
+| `Mapience-prototype` | — | N/A | N/A | `N/A` | Too little local structure for safe inference | Do not force adoption |
+| `obsidian-related-notes-view` | — | `library` | none | `N/A` | Existing host/plugin lifecycle is Project-owned | Revisit with active Project decision |
+| `txt-auto-replace` | — | `browser-extension` | N/A | `N/A` | Browser-extension Surface is outside the current catalog | Do not misclassify as CLI/local-app |
 
 ## Phase 4 Canary validation
 
@@ -98,7 +136,8 @@ The Phase 4A report intentionally stopped before `knt migrate --apply`. Applying
 Default still requires an active repository-local Manifest, an explicit pack
 selection, and a clean repository-specific test run. For the five Canaries
 above, validation supports preserving existing behavior rather than adding
-generated helpers.
+generated helpers. Phase 4C then recorded the remaining adoption decisions in
+the operation-state table above; no bulk migration follows from that review.
 
 ## Phase 4B adoption status
 
@@ -128,8 +167,21 @@ than a clean Canary adoption.
 The Base v0.3.8 root hygiene, Shape Probe compatibility filter, and Project
 command exit-code propagation fix were synchronized into the adopters after
 their first local verification. The remaining Canaries (`standby-display` and
-`SynTrail-LM`) remain staged for separate clean-tree reviews; `SynTrail-LM`
-currently has user-owned dirty files and is not eligible for automatic
-adoption. `standby-display` is clean, but its existing `.editorconfig`,
-`.gitattributes`, and `.gitignore` require an explicit merge decision before
-Base-managed root files are introduced.
+`SynTrail-LM`) remain staged for separate repository-local decisions;
+`SynTrail-LM` currently has user-owned dirty files and is not eligible for
+automatic adoption. `standby-display` is clean, but its existing
+`.editorconfig`, `.gitattributes`, and `.gitignore` require an explicit merge
+decision before Base-managed root files are introduced. `dev_agent` and
+`IDS-Composit` are recorded as `NOT_ADOPTED` until their own Base introduction
+is explicitly approved; GitHub-only candidates are `N/A` until a local active-
+work decision exists.
+
+## Phase 4C closeout
+
+Phase 4C is complete as an adoption decision phase. Eight clean repositories
+are adopted at Base v0.3.8. `refil-viewer` remains staged for its existing
+Project-owned Vite error; `standby-display` remains staged for root hygiene
+merge review; `SynTrail-LM` remains staged without touching its dirty worktree;
+and `dev_agent`, `IDS-Composit`, and unavailable GitHub-only repositories are
+not automatically migrated. Phase 5 now governs future adoption as part of
+normal repository maintenance.
