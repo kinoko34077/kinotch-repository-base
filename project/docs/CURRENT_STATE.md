@@ -1,8 +1,8 @@
 # Current State
 
-Base version: `0.3.3`
+Base version: `0.3.4`
 
-Last verified: 2026-09-23 — self-test 60/60; doctor, base-check, and verify passed locally after the Base v0.3.3 index refresh
+Last verified: 2026-09-23 — self-test 60/60; doctor, base-check, and verify passed locally after the Base v0.3.4 index refresh
 
 ## Implemented
 
@@ -51,6 +51,7 @@ Last verified: 2026-09-23 — self-test 60/60; doctor, base-check, and verify pa
 - Common CI runs Project setup before verification, and shape probing does not classify Wrangler-only Web projects as API
 - Common Python build metadata such as `*.egg-info/` is ignored by the Base root hygiene rules
 - Common Cloudflare build outputs such as `.wrangler/` and `artifacts/` are ignored by the Base root hygiene rules
+- Common Python audit/cache and browser test-report outputs are ignored by the Base root hygiene rules
 
 ## In progress
 
@@ -75,7 +76,7 @@ Last verified: 2026-09-23 — self-test 60/60; doctor, base-check, and verify pa
   integration was added.
 - Default-first standardization has completed the safe Phase 3B implementation
   slice and Phase 4A read-only Canary validation. Phase 4B adoption-safety
-  hardening is implemented for Base v0.3.3. Phase 4C adoption is active for
+  hardening is implemented for Base v0.3.4. Phase 4C adoption is active for
   `jev-audit` and `kinotch-api`; existing CLI/MCP/API/generated behavior was
   preserved as `OVERRIDE`.
 - The canonical four-layer policy is `.kinotch/meta/06_DEFAULT_FIRST_STANDARD.md`.
