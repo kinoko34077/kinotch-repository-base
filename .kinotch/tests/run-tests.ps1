@@ -999,6 +999,17 @@ Write-Output "windows-kit-ok"
         Assert-True (($probeOutput -join "`n") -match "windows-kit-ok") "Windows Surface Kit probe did not complete"
     }
 }
+Invoke-TestCase "MCP Surface Kit describes reusable boundary hooks without a second registry" {
+    Invoke-KntInitFixture -Profiles @("mcp") -AssertOutput {
+        param($root, $output)
+        $descriptor = Get-Content -Raw -Encoding UTF8 (Join-Path $root "project/contracts/mcp-tools.json") | ConvertFrom-Json
+        Assert-True ($descriptor.tool_name_pattern -eq '^[a-z][a-z0-9_.-]*$') "MCP naming boundary changed"
+        Assert-True ($descriptor.input_schema_validation -eq $true) "MCP input validation hook missing"
+        Assert-True ($descriptor.resource_path_resolution -eq $true) "MCP resource path resolution missing"
+        Assert-True ($descriptor.error_conversion -eq $true) "MCP error conversion boundary missing"
+        Assert-True ($descriptor.dispatch.use_existing_framework -eq $true) "MCP descriptor requests a second dispatcher"
+    }
+}
 Invoke-TestCase "API Default envelope remains a permissive boundary descriptor" {
     $schema = Get-Content -Raw -Encoding UTF8 (Join-Path $RepoRoot ".kinotch/templates/defaults/api/contracts/api-error-envelope.json") | ConvertFrom-Json
     Assert-True (@($schema.required) -notcontains "details") "API Default made details mandatory"

@@ -140,7 +140,7 @@ git push origin main
 - Consumes: host/framework dispatcher metadata and Project-owned schemas/callbacks.
 - Produces: a language-neutral `kinotch-mcp-default-boundary` descriptor containing naming, input schema, working-directory, resource-path, diagnostics, error conversion, capabilities, and dispatch ownership.
 
-- [ ] **Step 1: Write failing descriptor assertions**
+- [x] **Step 1: Write failing descriptor assertions**
 
 Extend the existing MCP test to require:
 
@@ -152,19 +152,19 @@ Assert-True $descriptor.error_conversion 'MCP error conversion boundary missing'
 Assert-True $descriptor.dispatch.use_existing_framework 'MCP descriptor requests a second dispatcher'
 ```
 
-- [ ] **Step 2: Run the self-test and verify it fails**
+- [x] **Step 2: Run the self-test and verify it fails**
 
 Expected: current descriptor lacks the new boundary fields.
 
-- [ ] **Step 3: Extend the JSON descriptor only**
+- [x] **Step 3: Extend the JSON descriptor only**
 
 Add boolean/description fields for validation, working-directory normalization, resource path resolution, structured diagnostics, generic error conversion, version/capability reporting, and explicit `use_existing_framework: true`. Do not add a tool registry or Domain operation names.
 
-- [ ] **Step 4: Run schema/doctor/self-tests**
+- [x] **Step 4: Run schema/doctor/self-tests**
 
 Expected: the materialized JSON remains valid, `doctor` still passes for an initialized MCP Project, and no Runtime dependency is added.
 
-- [ ] **Step 5: Commit the MCP slice**
+- [x] **Step 5: Commit the MCP slice**
 
 ```powershell
 git add .kinotch/templates/defaults/mcp/contracts/mcp-tools.json .kinotch/tests/run-tests.ps1 project/docs/CURRENT_STATE.md

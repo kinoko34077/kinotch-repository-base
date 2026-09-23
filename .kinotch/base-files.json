@@ -228,7 +228,7 @@
     },
     {
       "path": ".kinotch/templates/defaults/mcp/contracts/mcp-tools.json",
-      "sha256": "eda3ea9f35a657f5f892a7cb5d2ed4e274518ccae201b354c127be4682436758"
+      "sha256": "e709e7fe7bfabba4cf14bc0c978a338462eb47fccaaf0a4e429177cc58da29e1"
     },
     {
       "path": ".kinotch/templates/defaults/pwa/public/manifest.webmanifest",
@@ -388,7 +388,7 @@
     },
     {
       "path": ".kinotch/tests/run-tests.ps1",
-      "sha256": "0a22fc07fce4e223f685409d15743ad9b251280548582d1fac182a6c135de06f"
+      "sha256": "10a5a5747cd444cc6b31aad3b2fad7a4c2f7b51ddd884dbb9fc20382dceb542f"
     },
     {
       "path": "AGENTS.md",
