@@ -1,8 +1,8 @@
 # Current State
 
-Base version: `0.3.2`
+Base version: `0.3.3`
 
-Last verified: 2026-09-23 — self-test 60/60; doctor, base-check, and verify passed locally after the Base v0.3.2 index refresh
+Last verified: 2026-09-23 — self-test 60/60; doctor, base-check, and verify passed locally after the Base v0.3.3 index refresh
 
 ## Implemented
 
@@ -49,6 +49,7 @@ Last verified: 2026-09-23 — self-test 60/60; doctor, base-check, and verify pa
 - Default Catalog semantic validation, Surface `OVERRIDE` detection, verification-aware CI detection, and conflict-to-`OVERRIDE` materialization
 - Common CI runs Project setup before verification, and shape probing does not classify Wrangler-only Web projects as API
 - Common Python build metadata such as `*.egg-info/` is ignored by the Base root hygiene rules
+- Common Cloudflare build outputs such as `.wrangler/` and `artifacts/` are ignored by the Base root hygiene rules
 
 ## In progress
 
@@ -73,7 +74,7 @@ Last verified: 2026-09-23 — self-test 60/60; doctor, base-check, and verify pa
   integration was added.
 - Default-first standardization has completed the safe Phase 3B implementation
   slice and Phase 4A read-only Canary validation. Phase 4B adoption-safety
-  hardening is implemented for Base v0.3.2. No existing Project has been
+  hardening is implemented for Base v0.3.3. No existing Project has been
   modified or migrated with `--apply`.
 - The canonical four-layer policy is `.kinotch/meta/06_DEFAULT_FIRST_STANDARD.md`.
 - The Default Catalog is `.kinotch/defaults/catalog.json`; it is the single
