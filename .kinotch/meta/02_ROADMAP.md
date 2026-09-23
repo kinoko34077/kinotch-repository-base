@@ -177,7 +177,7 @@ probeはread-onlyであり、既存repoへBaseファイルやDefaultを投入し
 Surface / Tool互換性、doctor再検証、repository-local `.kinotch/` 書込み境界、
 structured command引数、Project-root path containment、Default Catalog
 semantic validation、既存ファイル衝突時のOVERRIDE記録、Project commandの
-native exit code伝播を実装する。Base v0.3.7
+native exit code伝播と互換Shape候補フィルタを実装する。Base v0.3.8
 としてこの安全点を固定する。
 
 ## Phase 4C — init / migrate and existing repository adoption

@@ -1,8 +1,8 @@
 # Current State
 
-Base version: `0.3.7`
+Base version: `0.3.8`
 
-Last verified: 2026-09-23 — self-test 63/63; doctor, base-check, and verify passed locally after the Base v0.3.7 index refresh
+Last verified: 2026-09-23 — self-test 64/64; doctor, base-check, and verify passed locally after the Base v0.3.8 index refresh
 
 ## Implemented
 
@@ -41,6 +41,8 @@ Last verified: 2026-09-23 — self-test 63/63; doctor, base-check, and verify pa
 - `knt verify` integration for selected PWA and generated-integrity checks
 - Manifest-less read-only `knt migrate` repository-shape probe using package, Cargo,
   Python, workflow, and web-asset markers
+- Shape Probe filters Tool candidates through detected Surface compatibility before
+  presenting a Default candidate
 - Explicit `knt migrate --apply` materialization of missing safe Default helpers
 - `knt verify` remains an L1 Hard Base command; it is not a Tool Default and is not disabled by Default state
 - `ci-test` workflow generation with doctor → setup → verify, separate from the Base repository workflow
@@ -82,7 +84,7 @@ Last verified: 2026-09-23 — self-test 63/63; doctor, base-check, and verify pa
   integration was added.
 - Default-first standardization has completed the safe Phase 3B implementation
   slice and Phase 4A read-only Canary validation. Phase 4B adoption-safety
-  hardening is implemented for Base v0.3.7. Phase 4C adoption is active for
+  hardening is implemented for Base v0.3.8. Phase 4C adoption is active for
   `jev-audit`, `kinotch-api`, `lyric_reader_page`, `weather-widget`,
   `memory-game`, `Structured-Cell-Automaton`, `2bit-cell-automaton`, and
   `colony-ai`;
