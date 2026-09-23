@@ -1,8 +1,8 @@
 # Current State
 
-Base version: `0.3.0`
+Base version: `0.3.1`
 
-Last verified: 2026-09-23 — self-test 58/58; doctor, base-check, and verify passed locally after the Base v0.3.0 index refresh
+Last verified: 2026-09-23 — self-test 60/60; doctor, base-check, and verify passed locally after the Base v0.3.1 index refresh
 
 ## Implemented
 
@@ -15,7 +15,7 @@ Last verified: 2026-09-23 — self-test 58/58; doctor, base-check, and verify pa
 - Profile existence and Profile / Surface contradiction diagnostics
 - Manifest path and command cwd diagnostics
 - Strict Base hash index and deterministic refresh
-- Base self-test runner with 58 passing cases
+- Base self-test runner with 60 passing cases
 - Base and Runtime Meta under .kinotch/meta/
 - New Repository templates under .kinotch/templates/project/
 - Runtime Contractの確定済み / Runtime Phase 1候補の区別
@@ -47,6 +47,7 @@ Last verified: 2026-09-23 — self-test 58/58; doctor, base-check, and verify pa
 - Structured `exec` / `args` Project commands with safe forwarded-argument handling; legacy commands reject forwarded arguments
 - Project-root containment checks for generated-integrity and file-io helpers
 - Default Catalog semantic validation, Surface `OVERRIDE` detection, verification-aware CI detection, and conflict-to-`OVERRIDE` materialization
+- Common CI runs Project setup before verification, and shape probing does not classify Wrangler-only Web projects as API
 
 ## In progress
 
@@ -71,7 +72,7 @@ Last verified: 2026-09-23 — self-test 58/58; doctor, base-check, and verify pa
   integration was added.
 - Default-first standardization has completed the safe Phase 3B implementation
   slice and Phase 4A read-only Canary validation. Phase 4B adoption-safety
-  hardening is implemented for Base v0.3.0. No existing Project has been
+  hardening is implemented for Base v0.3.1. No existing Project has been
   modified or migrated with `--apply`.
 - The canonical four-layer policy is `.kinotch/meta/06_DEFAULT_FIRST_STANDARD.md`.
 - The Default Catalog is `.kinotch/defaults/catalog.json`; it is the single
