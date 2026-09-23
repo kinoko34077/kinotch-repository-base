@@ -15,6 +15,8 @@ KiNoTch.Runtime = 複数repoで再利用する共通実装。個別repoへコピ
 
 Base-wide Metaは `.kinotch/meta/` に置き、新規Repository用の生成元は `.kinotch/templates/project/` に置く。Base自身のProject情報は `project/**` に記録し、Templateと混同しない。
 
+Base v0.3.9はPhase 5の保守基準版である。以後は実Projectの開発を優先し、activeなrepoで具体的な必要性が生じた場合だけBase / Default / Runtimeを再評価する。通常の運用方針は [Phase 5 Operations](meta/07_PHASE5_OPERATIONS.md) を参照する。
+
 ## Default-first
 
 共通要素はHard Base、Surface / Tool Default、Portable Semantic Contract、Project Overlay / Domainの4層へ分類する。低リスクで安全に外せる標準便利機能はDefaultとして先に提供し、Domain意味・公開互換性・永続形式・権限境界を持つものだけRuntimeのPortable Contract候補として検証する。正本と判断規則は [Default-first標準化方針](meta/06_DEFAULT_FIRST_STANDARD.md) に置く。

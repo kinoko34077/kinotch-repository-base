@@ -32,7 +32,7 @@
     },
     {
       "path": ".kinotch/FILE_INVENTORY.txt",
-      "sha256": "66f3f706f88b7bd8867bcca8a3001041f977e8993ea2090e7d5e815be77078d1"
+      "sha256": "774993bff8af573209c26953ff96232b5e05ee0ba10e27530763d8b88be8fdc6"
     },
     {
       "path": ".kinotch/PROJECT_BOUNDARY.md",
@@ -40,7 +40,7 @@
     },
     {
       "path": ".kinotch/README_BASE.md",
-      "sha256": "500ffbdbc514492ced71e11a3e7c951aaffe893fc7ad27ae220d9cca789209d6"
+      "sha256": "1fe07179c1c70d658237b383a7609c57ce6b6df0abdde02e1a8e711d4ca21579"
     },
     {
       "path": ".kinotch/REPOSITORY_STANDARD.md",
@@ -68,7 +68,7 @@
     },
     {
       "path": ".kinotch/meta/02_ROADMAP.md",
-      "sha256": "eaef31268ea96313ea192353cfb82f2f36c7860cd249682479a2835717bdbf34"
+      "sha256": "3b51d5f027abbaf84dae4cbf89843dd87415da9112d19ef82c92e624ad779ed6"
     },
     {
       "path": ".kinotch/meta/03_GUARDRAILS.md",
@@ -87,8 +87,12 @@
       "sha256": "6d3e0a782117d830e13fbf859f7d757094f3eb4396c5d2725df4430e655d4754"
     },
     {
+      "path": ".kinotch/meta/07_PHASE5_OPERATIONS.md",
+      "sha256": "1ad0e54110fc82d6a71d14ba52437f17f4a8066f67a58e9a27576b241f4466b8"
+    },
+    {
       "path": ".kinotch/meta/README.md",
-      "sha256": "8b9a6e4cd0708ac2cf2f52c888ebcad021da288d1b6af52dea43b9de44e313ae"
+      "sha256": "bf4a787218fbb6a4ad2bfbf4cff810e4fe82b0fc8519a7f5650523be2e8b6dac"
     },
     {
       "path": ".kinotch/profiles/agent.json",

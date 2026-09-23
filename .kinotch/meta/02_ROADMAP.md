@@ -218,20 +218,20 @@ failureとBase failureの分離、全repoの運用状態記録、およびBase v
 ## Phase 5 — 既存repoへの段階導入 / maintenance (current)
 
 専用adoption campaignを継続せず、通常のProject作業に同期判断を組み込む。
-全repoを一括書換えしない。
+Base v0.3.9を当面の基準版として固定し、全repoを一括書換えしない。
 
 - 改修するrepoから順次適用
 - project固有ロジックは無理に移動しない
 - 複数repoで反復確認できた知識だけBase / Runtimeへ昇格
 - 既存互換性を壊してまで形式統一しない
-- まず全所有repoへdry-runし、`DEFAULT` / `OVERRIDE` / `DISABLED` / `N/A`
-  を分類する
-- CanaryはWeb / Verify、Generated Integrity、CLI / MCP、File I/O / Windows、
-  APIの各系統から段階的に確認する
-- 既存repoを改修したときだけ、必要ならBase同期後に`doctor`、
+- activeになったrepoだけ、必要ならread-only shape probeまたは既存Base状態を確認する
+- `ADOPTED` / `STAGED` / `NOT_ADOPTED` / `N/A` の運用状態を維持し、
+  Default stateの `DEFAULT` / `OVERRIDE` / `DISABLED` と混同しない
+- 既存repoを改修するときだけ、必要ならBase同期後に`doctor`、
   `base-check`、既存`verify`を実行する
-- Phase 5で追うのは、Base導入repo数、Base version分布、doctor failure、
-  Base起因verify failure、および反復する`OVERRIDE`だけとする
+- Base変更は明確なBase bug、Security/Data loss、2repo以上の同一障害、
+  同一手作業の反復、または現行Defaultで安全に表現できない共通問題に限定する
+- 詳細な運用手順は [07_PHASE5_OPERATIONS.md](07_PHASE5_OPERATIONS.md) を参照する
 
 ## Phase 6 — 安定化
 

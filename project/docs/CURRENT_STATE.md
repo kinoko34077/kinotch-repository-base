@@ -143,12 +143,14 @@ Last verified: 2026-09-24 — self-test 71/71; doctor, base-check, and verify pa
 - Production deploy policy remains project-specific.
 - Base-wide Meta belongs under .kinotch/meta/.
 - New repositories use .kinotch/templates/project/ as their generation source.
+- Base v0.3.9 is frozen as the Phase 5 maintenance baseline; Base and Runtime
+  feature expansion is paused unless the Phase 5 return conditions are met.
 
 ## Next work
 
-1. Continue normal Phase 5 repository maintenance: when a repository is
-   actively changed, confirm its Base version and synchronize to Base v0.3.9
-   only when the repository-local adoption decision permits it.
+1. Continue normal Phase 5 repository maintenance only for an active Project;
+   confirm its Base version and synchronize to Base v0.3.9 only when the
+   repository-local adoption decision permits it.
 2. Run `doctor`, `base-check`, and the existing Project verification after
    each repository-local Base synchronization.
 3. Preserve existing `OVERRIDE` / `DISABLED` implementations and do not
@@ -159,6 +161,10 @@ Last verified: 2026-09-24 — self-test 71/71; doctor, base-check, and verify pa
    validate the same Portable meanings.
 6. Do not add Runtime modules, Surface Packs, or Domain adapters to Base merely
    because a Default Catalog entry exists.
+7. Do not run a periodic full-repository audit or bulk synchronization.
+8. Treat `refil-viewer`, `standby-display`, and `SynTrail-LM` as STAGED, and
+   keep `dev_agent` / `IDS-Composit` as NOT_ADOPTED until active work creates a
+   concrete adoption reason.
 
 ## Verification
 
