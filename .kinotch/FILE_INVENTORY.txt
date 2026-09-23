@@ -19,6 +19,7 @@
 .kinotch/meta/04_EXTRACTION_CRITERIA.md
 .kinotch/meta/05_VALIDATION_PLAN.md
 .kinotch/meta/06_DEFAULT_FIRST_STANDARD.md
+.kinotch/meta/07_PHASE5_OPERATIONS.md
 .kinotch/meta/README.md
 .kinotch/profiles/agent.json
 .kinotch/profiles/api.json
