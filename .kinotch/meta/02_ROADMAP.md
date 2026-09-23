@@ -173,7 +173,8 @@ Domainを拘束しない実装を与える。
 
 ## Phase 4 — init / migrate and existing repository adoption
 
-次の工程。既存repoは一括変更せず、canaryごとのdry-runと明示判断から開始する。
+Canaryごとのread-only validationを完了。既存repoは一括変更せず、明示判断
+とRepository Manifestが揃ったrepoだけへ段階適用する。
 
 - `knt init --profile <surface> --default <tool-default>`
 - 複数Surface / Tool Default選択による初期化
@@ -187,7 +188,8 @@ Domainを拘束しない実装を与える。
 `knt init` はCatalogを参照して選択SurfaceとTool Defaultの構成、Project
 Overlayを生成する。Surface選択からRuntime moduleを自動注入しない。
 `knt migrate` は差分を表示し、明示選択されたものだけ適用する。Domain
-fileは自動書換えしない。
+fileは自動書換えしない。Manifestなしのshape probeでは、既存相当実装を
+`OVERRIDE`候補として表示し、既存repoへBase構造を自動投入しない。
 
 ## Phase 5 — 既存repoへの段階導入
 

@@ -26,6 +26,8 @@ Last verified: 2026-09-23 — self-test 44/44; doctor, base-check, and verify pa
 - `knt init` support for all eight Surface Profiles and repeated Tool Defaults
 - Surface Profile selection no longer injects Runtime modules; new templates start with an empty module list
 - `knt migrate` catalog-driven dry-run / explicit apply with `OVERRIDE` and `DISABLED` preservation
+- Phase 4 Canary shape validation with existing-equivalent `OVERRIDE` detection
+- Read-only verification of the first five Canaries; no external repository was modified
 - Default implementation templates for `ci-test`, `pwa`, `generated-integrity`, and `file-io`
 - Surface Default helpers for `cli`, `windows`, `mcp`, and `api`
 - `knt verify` integration for selected PWA and generated-integrity checks
@@ -62,8 +64,8 @@ Last verified: 2026-09-23 — self-test 44/44; doctor, base-check, and verify pa
   integration was added.
 - Default-first standardization has completed the safe Phase 3B implementation
   slice and pre-Canary hardening: low-risk, removable Surface and Tool
-  conveniences have catalog entries, selected implementations, and regression
-  coverage. Phase 4 canary adoption review is next; no existing Project has
+  conveniences have catalog entries, selected implementations, regression
+  coverage, and a read-only Phase 4 Canary validation. No existing Project has
   been modified.
 - The canonical four-layer policy is `.kinotch/meta/06_DEFAULT_FIRST_STANDARD.md`.
 - The Default Catalog is `.kinotch/defaults/catalog.json`; it is the single
@@ -98,8 +100,9 @@ Last verified: 2026-09-23 — self-test 44/44; doctor, base-check, and verify pa
 
 ## Next work
 
-1. Run repository-local canary adoption reviews by dry-run first and preserve
-   existing `OVERRIDE` / `DISABLED` implementations.
+1. Keep Canary adoption repository-local and opt-in; preserve existing
+   `OVERRIDE` / `DISABLED` implementations and do not copy Base structure into
+   a repository without an explicit Manifest migration decision.
 2. Apply a Default only after an active Project decision and its repository-local
    verification; do not bulk-rewrite existing repositories.
 3. Keep Default Pack behavior removable and Project-owned; do not add Domain

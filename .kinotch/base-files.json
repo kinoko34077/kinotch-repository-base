@@ -40,7 +40,7 @@
     },
     {
       "path": ".kinotch/README_BASE.md",
-      "sha256": "ea946eed41331dd207742769b91586420ca075c0b1d22491ba1e0b6056d7b68b"
+      "sha256": "b6cf253b90fc1f2732313c8f3e51e796b49bc2ce4381db64e1ced67d12c61722"
     },
     {
       "path": ".kinotch/REPOSITORY_STANDARD.md",
@@ -68,7 +68,7 @@
     },
     {
       "path": ".kinotch/meta/02_ROADMAP.md",
-      "sha256": "662ebba0af15bfb6e64bfece166357a92fc6cb4ca5952832ca6520c5e402a2b4"
+      "sha256": "ff14dc3a5c5192aa52150857ee5194d871af8f07cdf648bdd246bb2972a0b573"
     },
     {
       "path": ".kinotch/meta/03_GUARDRAILS.md",
@@ -168,7 +168,7 @@
     },
     {
       "path": ".kinotch/scripts/knt.ps1",
-      "sha256": "8130bbeec7afc17df760ed3b4a7484a8334735786726cc7f32cb897e93e0cc78"
+      "sha256": "73291ceccf3f0d48d23470660e68eb02cf30b96f20a854ec0823e6c28fae1e90"
     },
     {
       "path": ".kinotch/scripts/update-base-index.ps1",
@@ -380,7 +380,7 @@
     },
     {
       "path": ".kinotch/tests/run-tests.ps1",
-      "sha256": "cf93f8d7399112042249ca5f8afa5d9b435f84337e439609ac7ad70f9c52cc61"
+      "sha256": "fad8de467648d6336a8b67c8cacbc067f26029dfff2ce9f900e3887cff2332dd"
     },
     {
       "path": "AGENTS.md",

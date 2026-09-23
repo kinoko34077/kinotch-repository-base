@@ -177,7 +177,7 @@ function Invoke-KntShapeMigrateFixture([scriptblock]$AssertOutput) {
         New-Item -ItemType Directory -Path (Join-Path $tempRoot "public") -Force | Out-Null
         Set-Content -LiteralPath (Join-Path $tempRoot "package.json") -Value '{"scripts":{"test":"node --test","build":"vite build"},"devDependencies":{"vite":"latest"}}' -NoNewline
         Set-Content -LiteralPath (Join-Path $tempRoot ".github/workflows/verify.yml") -Value "name: Verify" -NoNewline
-        Set-Content -LiteralPath (Join-Path $tempRoot "public/manifest.webmanifest") -Value '{"name":"Shape","start_url":"/"}' -NoNewline
+        Set-Content -LiteralPath (Join-Path $tempRoot "public/manifest.json") -Value '{"name":"Shape","start_url":"/"}' -NoNewline
         Set-Content -LiteralPath (Join-Path $tempRoot "service-worker.js") -Value "self.addEventListener('fetch', () => {});" -NoNewline
         $router = Join-Path $tempRoot ".kinotch/scripts/knt.ps1"
         $baseSource = Join-Path $RepoRoot ".kinotch"
@@ -449,6 +449,8 @@ Invoke-TestCase "migrate detects Web, PWA, and CI shape without a Base Manifest"
         Assert-True ($output -match "web-app") "web-app shape was not detected"
         Assert-True ($output -match "ci-test") "ci-test shape was not detected"
         Assert-True ($output -match "pwa") "pwa shape was not detected"
+        Assert-True ($output -match "Candidate Default Pack 'ci-test': state OVERRIDE") "existing CI implementation was not classified as OVERRIDE"
+        Assert-True ($output -match "Candidate Default Pack 'pwa': state OVERRIDE") "existing PWA implementation was not classified as OVERRIDE"
         Assert-True ($output -notmatch "Detected Tool candidates:.*verify") "L1 verify was misreported as a Tool Default"
         Assert-True ($output -match "Dry run") "shape migrate was not dry-run"
     }

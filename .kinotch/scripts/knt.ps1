@@ -197,9 +197,17 @@ function Get-DefaultStateEntry($State) {
     return [pscustomobject]@{ state = $State }
 }
 
+function Add-RepositoryShapeTool($ToolIds, $ToolStates, [string]$ToolId, [string]$State = "DEFAULT") {
+    if ($ToolId -notin $ToolIds) { [void]$ToolIds.Add($ToolId) }
+    if (-not $ToolStates.ContainsKey($ToolId) -or $State -eq "OVERRIDE") {
+        $ToolStates[$ToolId] = $State
+    }
+}
+
 function Get-RepositoryShape($Catalog) {
     $surfaceIds = New-Object System.Collections.Generic.List[string]
     $toolIds = New-Object System.Collections.Generic.List[string]
+    $toolStates = @{}
     $markers = New-Object System.Collections.Generic.List[string]
     $packagePath = Join-Path $Root "package.json"
     $packageText = ""
@@ -223,7 +231,7 @@ function Get-RepositoryShape($Catalog) {
     $workflowPath = Join-Path $Root ".github/workflows"
     if (Test-Path -LiteralPath $workflowPath -PathType Container) {
         [void]$markers.Add(".github/workflows")
-        [void]$toolIds.Add("ci-test")
+        Add-RepositoryShapeTool -ToolIds $toolIds -ToolStates $toolStates -ToolId "ci-test" -State "OVERRIDE"
     }
     $publicPath = Join-Path $Root "public"
     $staticPath = Join-Path $Root "static"
@@ -245,7 +253,7 @@ function Get-RepositoryShape($Catalog) {
     }
     if ($cargoText -match "egui|tauri|winit|windows|gtk") { [void]$surfaceIds.Add("windows") }
     if ($pythonText -match "streamlit|gradio") { [void]$surfaceIds.Add("web-app") }
-    if ($pythonText) { [void]$toolIds.Add("local-app") }
+    if ($pythonText) { Add-RepositoryShapeTool -ToolIds $toolIds -ToolStates $toolStates -ToolId "local-app" }
     if ($dependencyText -match "mcp") { [void]$surfaceIds.Add("mcp") }
     if ($Root -match "dev_agent|agent") { [void]$surfaceIds.Add("agent") }
 
@@ -255,21 +263,26 @@ function Get-RepositoryShape($Catalog) {
         $scanFiles += @(Get-ChildItem -LiteralPath $scanDirectory -Recurse -File -Force -ErrorAction SilentlyContinue)
     }
     $scanFiles += @(Get-ChildItem -LiteralPath $Root -File -Force -ErrorAction SilentlyContinue)
-    $manifestPath = Join-Path $Root "public/manifest.webmanifest"
-    if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) { $manifestPath = Join-Path $Root "manifest.webmanifest" }
+    $manifestPath = @(
+        (Join-Path $Root "public/manifest.webmanifest"),
+        (Join-Path $Root "public/manifest.json"),
+        (Join-Path $Root "manifest.webmanifest"),
+        (Join-Path $Root "manifest.json")
+    ) | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
     $workerFiles = @($scanFiles | Where-Object { $_.Name -match "service-worker|sw\.js$" })
-    if ((Test-Path -LiteralPath $manifestPath -PathType Leaf) -and $workerFiles.Count -gt 0) { [void]$toolIds.Add("pwa") }
-    if ($scriptsText -match "pages|deploy-pages" -or (Test-Path -LiteralPath (Join-Path $Root ".github/workflows/pages-deploy.yml") -PathType Leaf)) { [void]$toolIds.Add("pages") }
+    if ($manifestPath -and $workerFiles.Count -gt 0) { Add-RepositoryShapeTool -ToolIds $toolIds -ToolStates $toolStates -ToolId "pwa" -State "OVERRIDE" }
+    if ($scriptsText -match "pages|deploy-pages" -or (Test-Path -LiteralPath (Join-Path $Root ".github/workflows/pages-deploy.yml") -PathType Leaf)) { Add-RepositoryShapeTool -ToolIds $toolIds -ToolStates $toolStates -ToolId "pages" -State "OVERRIDE" }
     $generatedFiles = @($scanFiles | Where-Object { $_.Name -match "(^generated|\.generated\.|generated\.)" })
-    if ($generatedFiles.Count -gt 0 -or $scriptsText -match "generated|check:.*snapshot") { [void]$toolIds.Add("generated-integrity") }
+    if ($generatedFiles.Count -gt 0 -or $scriptsText -match "generated|check:.*snapshot") { Add-RepositoryShapeTool -ToolIds $toolIds -ToolStates $toolStates -ToolId "generated-integrity" -State "OVERRIDE" }
     $gitignorePath = Join-Path $Root ".gitignore"
     $gitignoreText = if (Test-Path -LiteralPath $gitignorePath -PathType Leaf) { Get-Content -Raw -Encoding UTF8 $gitignorePath } else { "" }
-    if ((Test-Path -LiteralPath (Join-Path $Root ".env.example") -PathType Leaf) -or $gitignoreText -match "\.env|secret|credential") { [void]$toolIds.Add("secrets") }
+    if ((Test-Path -LiteralPath (Join-Path $Root ".env.example") -PathType Leaf) -or $gitignoreText -match "\.env|secret|credential") { Add-RepositoryShapeTool -ToolIds $toolIds -ToolStates $toolStates -ToolId "secrets" -State "OVERRIDE" }
 
     return [pscustomobject]@{
         markers = @($markers | Select-Object -Unique)
         surfaceIds = @($surfaceIds | Select-Object -Unique)
         toolIds = @($toolIds | Select-Object -Unique)
+        toolStates = $toolStates
     }
 }
 
@@ -332,6 +345,13 @@ function Get-MigrateToolEntries($Manifest, $Catalog, $Options, $Shape) {
         $entries += Find-DefaultCatalogEntry -Catalog $Catalog -Identifier $candidateId -Kind "tool"
     }
     return @($entries)
+}
+
+function Get-MigrateRecommendedState($Entry, $Shape) {
+    if ([string]$Entry.kind -eq "tool" -and $Shape -and $Shape.toolStates -and $Shape.toolStates.ContainsKey([string]$Entry.id)) {
+        return [string]$Shape.toolStates[[string]$Entry.id]
+    }
+    return "DEFAULT"
 }
 
 function Write-KntJsonFile([string]$Path, $Value) {
@@ -476,9 +496,8 @@ function Invoke-Init {
 function Invoke-Migrate($Manifest) {
     $options = Get-DefaultOptions "migrate"
     $catalog = Get-DefaultCatalog
-    $shape = $null
+    $shape = Get-RepositoryShape -Catalog $catalog
     if (-not $Manifest) {
-        $shape = Get-RepositoryShape -Catalog $catalog
         Write-Knt ("Detected repository markers: " + ($(if ($shape.markers.Count) { $shape.markers -join ", " } else { "(none)" })))
         Write-Knt ("Detected Surface candidates: " + ($(if ($shape.surfaceIds.Count) { $shape.surfaceIds -join ", " } else { "(none)" })))
         Write-Knt ("Detected Tool candidates: " + ($(if ($shape.toolIds.Count) { $shape.toolIds -join ", " } else { "(none)" })))
@@ -521,9 +540,11 @@ function Invoke-Migrate($Manifest) {
             Write-Knt "Candidate Default Pack '$packName': preserved state $state"
         }
         else {
-            Write-Knt "Candidate Default Pack '$packName': state DEFAULT"
+            $state = Get-MigrateRecommendedState -Entry $entry -Shape $shape
+            $suffix = if ($state -eq "OVERRIDE") { " (existing equivalent detected)" } else { "" }
+            Write-Knt "Candidate Default Pack '$packName': state $state$suffix"
             if ($options.apply) {
-                $defaults.packs | Add-Member -NotePropertyName $packName -NotePropertyValue ([pscustomobject]@{ state = "DEFAULT" }) -Force
+                $defaults.packs | Add-Member -NotePropertyName $packName -NotePropertyValue ([pscustomobject]@{ state = $state }) -Force
                 $changedDefaults = $true
             }
         }

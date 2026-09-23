@@ -15,6 +15,29 @@ markers, source/test directories, public/static assets, and GitHub workflows.
 It was evidence for adoption planning, not an authorization to rewrite any
 Project.
 
+## Phase 4 Canary validation
+
+On 2026-09-23 the five first Canary repositories were rechecked with the
+Base-owned shape probe using `-BaseOverride`. The probe was read-only and no
+Canary received a Base copy or `migrate --apply` change. Existing Project
+implementations remain authoritative and are classified as `OVERRIDE` where
+the shape probe can identify an equivalent boundary.
+
+| Canary | Shape probe result | Repository verification | Adoption decision |
+| --- | --- | --- | --- |
+| `standby-display` | `web-app`; `pwa=OVERRIDE` from `manifest.json` + `service-worker.js` | `npm test`: 13 passed | Keep PWA, asset build, and release behavior Project-owned; no Default files added. |
+| `jev-audit` | `cli`, `mcp`; `ci-test=OVERRIDE`; `local-app` remains a candidate | `python -m unittest discover -s tests`: 52 tests, 1 skipped | Keep CLI/MCP and Runtime Pilot paths Project-owned; do not add a second setup/runtime layer. |
+| `kinotch-api` | `api`, `cli`, `mcp`; `ci-test=OVERRIDE`, `generated-integrity=OVERRIDE`, `secrets=OVERRIDE` | `npm test`: 207 passed, 1 skipped | Keep Worker, generated snapshot, error, and deploy boundaries Project-owned. |
+| `SynTrail-LM` | `cli`; no Tool Default candidate | `cargo test`: 237 library tests + 185 integration tests passed | Keep native Windows, trainer, persistence, and file I/O Project-owned. Existing dirty user files were not touched. |
+| `lyric_reader_page` | `web-app`, `cli`; `ci-test=OVERRIDE` | `npm test`: 28 passed | Keep reader/writer and browser quality gates Project-owned. |
+
+The shape probe now distinguishes an existing equivalent from a missing
+convenience in dry-run output, for example `state OVERRIDE (existing
+equivalent detected)`. A `DEFAULT` candidate is not applied automatically.
+The Base structure is not copied into these repositories because they do not
+yet have a KiNoTch Project Manifest and moving their existing Domain files
+would violate the non-destructive adoption rule.
+
 ## Locally available repositories
 
 | Repository | Detected shape | Surface candidates | Tool candidates | Recommended state | Reason / existing equivalent |
@@ -26,13 +49,13 @@ Project.
 | `cloudflare-migration/legacy-clock` | Node / source | N/A | N/A | N/A | Legacy service; no adoption by structure alone. |
 | `cloudflare-migration/lyric_reader_page` | Node / tests / workflow | `web-app=OVERRIDE` | `verify-binding=OVERRIDE`, `pwa=N/A` | OVERRIDE | Existing reader/writer quality gates and browser boundaries are authoritative. |
 | `cloudflare-migration/rokuyo-proxy` | Node / source | N/A | N/A | N/A | Proxy-specific transport and deployment policy. |
-| `cloudflare-migration/standby-display` | Node / web assets / tests / workflow | `web-app=OVERRIDE` | `verify-binding=OVERRIDE`, `ci-test=OVERRIDE`, `generated-integrity=OVERRIDE`, `pwa=OVERRIDE` | OVERRIDE | Existing build-assets, tests, PWA, and release gates already exist. |
+| `cloudflare-migration/standby-display` | Node / web assets / tests / PWA | `web-app=OVERRIDE` | `verify-binding=OVERRIDE`, `generated-integrity=OVERRIDE`, `pwa=OVERRIDE` | OVERRIDE | Existing `build-assets`, tests, PWA, and release gates already exist; no generic helper is added. |
 | `cloudflare-migration/weather-proxy` | Node / source | N/A | N/A | N/A | Proxy-specific transport and deployment policy. |
 | `colony-ai` | Python / tests | `cli=DEFAULT` | `local-app=DEFAULT`, `verify-binding=N/A` | DEFAULT candidate | Repeated setup/run/diagnose shape is a safe local-tool candidate; no Base entry exists yet. |
 | `cora_engine` | Git repository, no standard marker detected | N/A | N/A | N/A | No reliable Surface or Tool inference from the local root. |
 | `dev_agent` | Python / source / tests / workflow | `agent=OVERRIDE`, `cli=OVERRIDE` | `local-app=OVERRIDE`, `ci-test=OVERRIDE` | OVERRIDE | AgentBackend, recovery, provider, and gate policy are already Project-owned. |
 | `IDS-Composit` | Node / source / tests / workflow | `web-app=OVERRIDE`, `library=OVERRIDE` | `verify-binding=OVERRIDE`, `ci-test=OVERRIDE`, `generated-integrity=OVERRIDE`, `pages=OVERRIDE` | OVERRIDE | Vite, calibration, generated data, and Pages policy already have explicit gates. |
-| `jev-audit` | Python / tests / workflow | `cli=OVERRIDE`, `mcp=OVERRIDE` | `verify-binding=OVERRIDE`, `ci-test=OVERRIDE` | OVERRIDE | Existing CLI/MCP and optional Runtime Pilot paths are authoritative. |
+| `jev-audit` | Python / tests / workflow | `cli=OVERRIDE`, `mcp=OVERRIDE` | `verify-binding=OVERRIDE`, `ci-test=OVERRIDE`, `local-app=DEFAULT candidate` | OVERRIDE | Existing setup, CLI/MCP, tests, and optional Runtime Pilot paths are authoritative; no generic local-app helper is applied. |
 | `kinotch-api` | Node / Hono / source / workflow | `api=OVERRIDE` | `verify-binding=OVERRIDE`, `ci-test=OVERRIDE`, `generated-integrity=OVERRIDE` | OVERRIDE | Worker bindings, error codes, generated snapshots, and deploy gates are Project-owned. |
 | `line-style-viewer` | Static Web files (`index.html`, JS, CSS) | `web-app=OVERRIDE` | `verify-binding=N/A` | OVERRIDE | Existing static viewer is already the Project implementation. |
 | `Mapience-prototype` | Git repository, no standard marker detected | N/A | N/A | N/A | Too little local structure for safe adoption. |
@@ -68,6 +91,8 @@ canary is a repository-local Base adoption review, starting with:
 - `SynTrail-LM`: preserve native Windows/file I/O/trainer behavior as `OVERRIDE`.
 - `lyric_reader_page`: preserve reader/writer and mobile gates as `OVERRIDE`.
 
-This report intentionally stops before `knt migrate --apply`. Applying a Default
-requires an active repository decision and a clean, repository-specific test
-run.
+This report intentionally stops before `knt migrate --apply`. Applying a
+Default still requires an active repository-local Manifest, an explicit pack
+selection, and a clean repository-specific test run. For the five Canaries
+above, validation supports preserving existing behavior rather than adding
+generated helpers.
