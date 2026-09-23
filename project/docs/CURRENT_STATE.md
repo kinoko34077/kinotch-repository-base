@@ -30,8 +30,8 @@ Last verified: 2026-09-23 — self-test 61/61; doctor, base-check, and verify pa
 - `knt migrate` catalog-driven dry-run / explicit apply with `OVERRIDE` and `DISABLED` preservation
 - Phase 4 Canary shape validation with existing-equivalent `OVERRIDE` detection
 - Phase 4A read-only verification completed; Phase 4B adoption has now been
-  completed for the first four clean Canaries: `jev-audit`, `kinotch-api`,
-  `lyric_reader_page`, and `weather-widget`
+  completed for five clean Canaries: `jev-audit`, `kinotch-api`,
+  `lyric_reader_page`, `weather-widget`, and `memory-game`
 - Default implementation templates for `ci-test`, `pwa`, `generated-integrity`, and `file-io`
 - Surface Default helpers for `cli`, `windows`, `mcp`, and `api`
 - `knt verify` integration for selected PWA and generated-integrity checks
@@ -78,9 +78,9 @@ Last verified: 2026-09-23 — self-test 61/61; doctor, base-check, and verify pa
 - Default-first standardization has completed the safe Phase 3B implementation
   slice and Phase 4A read-only Canary validation. Phase 4B adoption-safety
   hardening is implemented for Base v0.3.5. Phase 4C adoption is active for
-  `jev-audit`, `kinotch-api`, `lyric_reader_page`, and `weather-widget`;
-  existing CLI/MCP/API/generated/browser/PWA behavior was preserved as
-  `OVERRIDE`.
+  `jev-audit`, `kinotch-api`, `lyric_reader_page`, `weather-widget`, and
+  `memory-game`; existing CLI/MCP/API/generated/browser/PWA behavior was
+  preserved as `OVERRIDE`.
 - The canonical four-layer policy is `.kinotch/meta/06_DEFAULT_FIRST_STANDARD.md`.
 - The Default Catalog is `.kinotch/defaults/catalog.json`; it is the single
   source for supported Surface / Tool Default identifiers and aliases.
