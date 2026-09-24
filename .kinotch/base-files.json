@@ -40,7 +40,7 @@
     },
     {
       "path": ".kinotch/README_BASE.md",
-      "sha256": "e8ebaefe130a1e598b68774f38597bb744a196b8377b9ccdf01001770bb560f2"
+      "sha256": "cedc4a09badf8137d1f2f388a2c91e721fc62eef84fbc41c402840ef24c3302b"
     },
     {
       "path": ".kinotch/REPOSITORY_STANDARD.md",
@@ -56,7 +56,7 @@
     },
     {
       "path": ".kinotch/docs/BASE_ROADMAP.md",
-      "sha256": "efd83cd9db4d264346125b07f4c6b4ebfd16ef46ce612302b9a7913d999b574e"
+      "sha256": "612170f717a863efc7e32981f03ee3d85d6dbd3f7ff37e69aa0494dbe9d41d44"
     },
     {
       "path": ".kinotch/meta/00_CONTEXT.md",
@@ -68,7 +68,7 @@
     },
     {
       "path": ".kinotch/meta/02_ROADMAP.md",
-      "sha256": "3a5f0741f49a1f688b70e2aad16ac9a8eac27bbe70602505d2e5908c705f5b11"
+      "sha256": "51b16525cb72be36f36bcf643d0af82bde79a98b46faf0e333ee107f5b7159ae"
     },
     {
       "path": ".kinotch/meta/03_GUARDRAILS.md",
@@ -84,7 +84,7 @@
     },
     {
       "path": ".kinotch/meta/06_DEFAULT_FIRST_STANDARD.md",
-      "sha256": "718b0128a178a84ab6d100545c360d44a0e574dc67df82e62ed21aa10b671b58"
+      "sha256": "1ea8c0126047f1fa72d12c7410389dc64d92d8ed3fea4cc3a9fc3ba8c810fae5"
     },
     {
       "path": ".kinotch/meta/07_PHASE5_OPERATIONS.md",
