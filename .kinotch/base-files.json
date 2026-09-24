@@ -12,7 +12,7 @@
     },
     {
       "path": ".github/workflows/verify.yml",
-      "sha256": "bf1e83775391751036f77ef90eb1a5de4272a10e402403057a4dd9b6e39c2059"
+      "sha256": "6c5142ae7bf0606dbf44e6c4caee59c5bb322a53ded810ef0e6e3c8e77eb291f"
     },
     {
       "path": ".gitignore",
@@ -32,7 +32,7 @@
     },
     {
       "path": ".kinotch/FILE_INVENTORY.txt",
-      "sha256": "843804d35b7a8ecf95db87fcbdb3dbe5885fa9bee7674b09fdf37796f95a3f63"
+      "sha256": "457b0a8a3d2d640ba8647d9e361d13574d3e7d93256a67ec5ba224282d6d6d7f"
     },
     {
       "path": ".kinotch/PROJECT_BOUNDARY.md",
@@ -195,6 +195,10 @@
       "sha256": "5837c762f930b57b648ab6ea6e9e3a6e4180abaeaee25722a065b23d15f19532"
     },
     {
+      "path": ".kinotch/templates/defaults/agent/tools/agent-default.ps1",
+      "sha256": "9a8a9c419fad31dec2d448fa2010c04c5e3771586f2b04ce3a658e95f4b1876c"
+    },
+    {
       "path": ".kinotch/templates/defaults/api/contracts/api-error-envelope.json",
       "sha256": "b93bea9ee790911be9c147cd83a4072025b56ee0076132f6ef470e29571749f2"
     },
@@ -204,7 +208,7 @@
     },
     {
       "path": ".kinotch/templates/defaults/ci-test/.github/workflows/kinotch-default.yml",
-      "sha256": "55928741352c0c7de63a9a5182baa6efd6701ff23e87f7b1a9d5382fbcec9636"
+      "sha256": "7f67b0fe41f7449e2b7bb0139b2da0407821c8be190674784382406d9d1c3362"
     },
     {
       "path": ".kinotch/templates/defaults/cli/tools/cli-default.ps1",
@@ -233,6 +237,10 @@
     {
       "path": ".kinotch/templates/defaults/mcp/contracts/mcp-tools.json",
       "sha256": "e709e7fe7bfabba4cf14bc0c978a338462eb47fccaaf0a4e429177cc58da29e1"
+    },
+    {
+      "path": ".kinotch/templates/defaults/mcp/tools/mcp-default.ps1",
+      "sha256": "256f38cda0054eb5aff029b9513f7165c882cf134a6baca573426517e58072bb"
     },
     {
       "path": ".kinotch/templates/defaults/pwa/public/manifest.webmanifest",
@@ -392,7 +400,7 @@
     },
     {
       "path": ".kinotch/tests/run-tests.ps1",
-      "sha256": "238d4a87398a05548fc18960460c827f235b3ed1dce8bd30b0a03bb79eef19eb"
+      "sha256": "e2c7ce8fb7ae90666565c1db5c19366446d58ec2a32032a349545d9c7afd70de"
     },
     {
       "path": "AGENTS.md",

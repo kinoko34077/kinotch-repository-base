@@ -1126,6 +1126,75 @@ Invoke-TestCase "MCP Surface Kit describes reusable boundary hooks without a sec
         Assert-True ($descriptor.dispatch.use_existing_framework -eq $true) "MCP descriptor requests a second dispatcher"
     }
 }
+Invoke-TestCase "MCP executable Surface Kit provides safe boundary helpers" {
+    Invoke-KntInitFixture -Profiles @("mcp") -AssertOutput {
+        param($root, $output)
+        $helper = Join-Path $root "project/tools/mcp-default.ps1"
+        Assert-True (Test-Path -LiteralPath $helper -PathType Leaf) "MCP executable helper was not materialized"
+        $probe = Join-Path $root "mcp-kit-probe.ps1"
+        $probeText = @'
+param([Parameter(Mandatory=$true)][string]$HelperPath,[Parameter(Mandatory=$true)][string]$ProjectRoot)
+$ErrorActionPreference = "Stop"
+. $HelperPath
+if (-not (Test-McpToolName -Name "text.transform")) { throw "valid MCP tool name was rejected" }
+if (Test-McpToolName -Name "Invalid Tool") { throw "invalid MCP tool name was accepted" }
+$validated = Invoke-McpInputValidator -InputObject ([pscustomobject]@{ value = 1 }) -Validator { param($value) $script:validatorCalled = $true; return $value }
+if (-not $script:validatorCalled -or $validated.value -ne 1) { throw "MCP validator callback was not invoked" }
+$resolved = Resolve-McpProjectPath -ProjectRoot $ProjectRoot -RelativePath "src"
+if (-not $resolved.StartsWith($ProjectRoot, [StringComparison]::OrdinalIgnoreCase)) { throw "MCP path was not resolved under Project root" }
+try { Resolve-McpProjectPath -ProjectRoot $ProjectRoot -RelativePath "../outside"; throw "MCP path escape was accepted" } catch { if ($_.Exception.Message -notmatch "relative|boundary|escape") { throw } }
+$diagnostic = New-McpDiagnostic -Level "info" -Message "ready" -Data @{ source = "test" }
+$errorEnvelope = New-McpErrorEnvelope -Code "invalid_input" -Message "bad" -Details @{ field = "value" }
+$capabilities = New-McpCapabilities -Version "1.0.0" -Capabilities @("diagnostics")
+if ($diagnostic.message -ne "ready" -or $errorEnvelope.error -ne "invalid_input" -or $capabilities.version -ne "1.0.0") { throw "MCP boundary helper output was incomplete" }
+Write-Output "mcp-kit-ok"
+'@
+        Set-Content -LiteralPath $probe -Value $probeText -Encoding UTF8
+        $probeOutput = @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $probe -HelperPath $helper -ProjectRoot (Join-Path $root "project") 2>&1)
+        Assert-Equal 0 $LASTEXITCODE "MCP executable helper probe exit code"
+        Assert-True (($probeOutput -join "`n") -match "mcp-kit-ok") "MCP executable helper probe did not complete"
+        $helperText = Get-Content -Raw -Encoding UTF8 $helper
+        Assert-True ($helperText -notmatch "ActionRegistry|Tool Registry|function .*Dispatcher") "MCP helper introduced a second registry or dispatcher"
+    }
+}
+Invoke-TestCase "Agent Surface Kit provides a dependency-free boundary" {
+    Invoke-KntInitFixture -Profiles @("agent") -AssertOutput {
+        param($root, $output)
+        $helper = Join-Path $root "project/tools/agent-default.ps1"
+        Assert-True (Test-Path -LiteralPath $helper -PathType Leaf) "Agent helper was not materialized"
+        $probe = Join-Path $root "agent-kit-probe.ps1"
+        $probeText = @'
+param([Parameter(Mandatory=$true)][string]$HelperPath)
+$ErrorActionPreference = "Stop"
+. $HelperPath
+$context = New-AgentInvocationContext -RequestId "req-1" -CorrelationId "corr-1" -InputObject @{ task = "run" } -Metadata @{ source = "test" }
+if ($context.requestId -ne "req-1" -or $context.correlationId -ne "corr-1" -or $context.input.task -ne "run" -or $context.metadata.source -ne "test") { throw "Agent invocation context was not preserved" }
+$diagnostic = New-AgentDiagnostic -Level "info" -Message "ready"
+$report = New-AgentCapabilityReport -Version "1.0.0" -Capabilities @("invoke")
+$hooked = Invoke-AgentBoundaryHook -Name "before" -Value "input" -Hook { param($value, $name) return ($value + "-" + $name) }
+if ($diagnostic.message -ne "ready" -or $report.version -ne "1.0.0" -or $hooked -ne "input-before") { throw "Agent boundary helper output was incomplete" }
+Write-Output "agent-kit-ok"
+'@
+        Set-Content -LiteralPath $probe -Value $probeText -Encoding UTF8
+        $probeOutput = @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $probe -HelperPath $helper 2>&1)
+        Assert-Equal 0 $LASTEXITCODE "Agent helper probe exit code"
+        Assert-True (($probeOutput -join "`n") -match "agent-kit-ok") "Agent helper probe did not complete"
+        $helperText = Get-Content -Raw -Encoding UTF8 $helper
+        Assert-True ($helperText -notmatch "Planner|Memory|AgentBackend|ResourceLedger") "Agent helper captured Project-owned policy"
+    }
+}
+Invoke-TestCase "Base CI workflow covers Ubuntu pwsh and Windows PowerShell hosts" {
+    foreach ($workflowPath in @(
+        (Join-Path $RepoRoot ".github/workflows/verify.yml"),
+        (Join-Path $RepoRoot ".kinotch/templates/defaults/ci-test/.github/workflows/kinotch-default.yml")
+    )) {
+        $workflow = Get-Content -Raw -Encoding UTF8 $workflowPath
+        Assert-True ($workflow -match "ubuntu-latest") "CI workflow is missing Ubuntu"
+        Assert-True ($workflow -match "windows-latest") "CI workflow is missing Windows"
+        Assert-True ($workflow -match "powershell") "CI workflow is missing Windows PowerShell 5.1"
+        Assert-True ($workflow -match "pwsh") "CI workflow is missing PowerShell Core"
+    }
+}
 Invoke-TestCase "API Default envelope remains a permissive boundary descriptor" {
     $schema = Get-Content -Raw -Encoding UTF8 (Join-Path $RepoRoot ".kinotch/templates/defaults/api/contracts/api-error-envelope.json") | ConvertFrom-Json
     Assert-True (@($schema.required) -notcontains "details") "API Default made details mandatory"
