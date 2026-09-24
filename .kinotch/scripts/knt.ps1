@@ -38,6 +38,11 @@ if (-not (Test-Path -LiteralPath $BaseIndexScriptPath -PathType Leaf)) {
     throw "Base index script not found: $BaseIndexScriptPath"
 }
 . $BaseIndexScriptPath
+$PathContainmentPath = Join-Path $BaseDir "scripts/path-containment.ps1"
+if (-not (Test-Path -LiteralPath $PathContainmentPath -PathType Leaf)) {
+    throw "Path containment helper not found: $PathContainmentPath"
+}
+. $PathContainmentPath
 
 function Write-Knt([string]$Message) {
     Write-Host "[knt] $Message"
@@ -67,6 +72,53 @@ function Assert-RepositoryWriteAllowed([string]$Operation) {
 
 function Get-Manifest {
     return Get-KntJson -Path $ManifestPath
+}
+
+function Resolve-KntContainedPath {
+    param(
+        [Parameter(Mandatory=$true)][string]$BaseRoot,
+        [Parameter(Mandatory=$true)][string]$RelativePath,
+        [Parameter(Mandatory=$true)][string]$Description,
+        [switch]$AllowRoot
+    )
+
+    if ([string]::IsNullOrWhiteSpace($RelativePath)) {
+        throw "$Description must not be empty"
+    }
+    $candidateText = [string]$RelativePath
+    if ([IO.Path]::IsPathRooted($candidateText) -or $candidateText -match '^(?:[A-Za-z]:)?[\\/]') {
+        throw "$Description must be a relative path inside the repository boundary: $RelativePath"
+    }
+    $basePath = [IO.Path]::GetFullPath($BaseRoot)
+    $candidatePath = [IO.Path]::GetFullPath((Join-Path $basePath $candidateText))
+    $contained = if ($AllowRoot) {
+        Test-KntProjectPathContained -Root $basePath -Candidate $candidatePath -AllowRoot
+    }
+    else {
+        Test-KntProjectPathContained -Root $basePath -Candidate $candidatePath
+    }
+    if (-not $contained) {
+        throw "$Description escapes its root boundary: $RelativePath"
+    }
+    return $candidatePath
+}
+
+function Resolve-KntManifestProjectPath {
+    param(
+        [Parameter(Mandatory=$true)]$Manifest,
+        [Parameter(Mandatory=$true)][string]$Name,
+        [string]$Default = "."
+    )
+    $relative = Get-ManifestPathValue -Manifest $Manifest -Name $Name -Default $Default
+    return Resolve-KntContainedPath -BaseRoot (Join-Path $Root "project") -RelativePath $relative -Description "Manifest path '$Name'" -AllowRoot
+}
+
+function Resolve-KntCommandWorkingDirectory {
+    param(
+        [Parameter(Mandatory=$true)][string]$RelativePath,
+        [string]$CommandName = "command"
+    )
+    return Resolve-KntContainedPath -BaseRoot $Root -RelativePath $RelativePath -Description "Command '$CommandName' cwd" -AllowRoot
 }
 
 function Test-DefaultCatalogSemantics($Catalog) {
@@ -108,8 +160,12 @@ function Test-DefaultCatalogSemantics($Catalog) {
 
 function Get-ProjectDefaultState($Manifest, [string]$DefaultId) {
     if (-not $Manifest) { return $null }
-    $relative = Get-ManifestPathValue $Manifest "defaults" "defaults.json"
-    $path = Join-Path (Join-Path $Root "project") $relative
+    try {
+        $path = Resolve-KntManifestProjectPath -Manifest $Manifest -Name "defaults" -Default "defaults.json"
+    }
+    catch {
+        return $null
+    }
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return $null }
     $defaults = Get-KntJson -Path $path
     $property = $defaults.packs.PSObject.Properties[$DefaultId]
@@ -156,6 +212,47 @@ function Get-DefaultCompatibilityError($Entry, [string[]]$SelectedSurfaces) {
         return "Default '$($Entry.id)' is not compatible with the selected Surface profile(s)"
     }
     return $null
+}
+
+function Get-DefaultCompatibilityKeys {
+    param(
+        $Catalog,
+        [string[]]$ProfileIds = @(),
+        [string[]]$SurfaceIds = @(),
+        $ProfileEntries = @()
+    )
+
+    $keys = New-Object System.Collections.Generic.List[string]
+    foreach ($profileId in @($ProfileIds)) {
+        if (-not [string]::IsNullOrWhiteSpace([string]$profileId) -and [string]$profileId -notin $keys) {
+            [void]$keys.Add([string]$profileId)
+        }
+    }
+    foreach ($entry in @($ProfileEntries)) {
+        if ([string]$entry.kind -ne "surface") { continue }
+        foreach ($value in @([string]$entry.id) + @($entry.compatible_surfaces)) {
+            if (-not [string]::IsNullOrWhiteSpace([string]$value) -and [string]$value -notin $keys) {
+                [void]$keys.Add([string]$value)
+            }
+        }
+    }
+    foreach ($surfaceId in @($SurfaceIds)) {
+        if (-not [string]::IsNullOrWhiteSpace([string]$surfaceId) -and [string]$surfaceId -notin $keys) {
+            [void]$keys.Add([string]$surfaceId)
+        }
+        try {
+            $entry = Find-DefaultCatalogEntry -Catalog $Catalog -Identifier ([string]$surfaceId) -Kind "surface"
+            foreach ($value in @([string]$entry.id) + @($entry.compatible_surfaces)) {
+                if (-not [string]::IsNullOrWhiteSpace([string]$value) -and [string]$value -notin $keys) {
+                    [void]$keys.Add([string]$value)
+                }
+            }
+        }
+        catch {
+            # Existing custom Surface IDs remain visible as raw compatibility keys.
+        }
+    }
+    return @($keys.ToArray())
 }
 
 function Find-DefaultCatalogEntry($Catalog, [string]$Identifier, [string]$Kind) {
@@ -231,7 +328,7 @@ function Get-DefaultOptions([string]$CommandName) {
     return [pscustomobject]@{ profiles = @($profiles); defaults = @($defaults); apply = $apply }
 }
 
-function Resolve-DefaultSelections($Options, $Catalog, [bool]$RequireProfile, [string[]]$ExistingSurfaces = @()) {
+function Resolve-DefaultSelections($Options, $Catalog, [bool]$RequireProfile, [string[]]$ExistingSurfaces = @(), [string[]]$ExistingProfiles = @()) {
     $profileEntries = @()
     foreach ($profileName in @($Options.profiles)) {
         $profileEntries += Find-DefaultCatalogEntry -Catalog $Catalog -Identifier ([string]$profileName) -Kind "surface"
@@ -244,10 +341,7 @@ function Resolve-DefaultSelections($Options, $Catalog, [bool]$RequireProfile, [s
     foreach ($defaultName in @($Options.defaults)) {
         $toolEntries += Find-DefaultCatalogEntry -Catalog $Catalog -Identifier ([string]$defaultName) -Kind "tool"
     }
-    $selectedSurfaces = @($profileEntries | ForEach-Object { @($_.compatible_surfaces) } | Select-Object -Unique)
-    if ($ExistingSurfaces.Count -gt 0) {
-        $selectedSurfaces = @($selectedSurfaces + @($ExistingSurfaces) | Select-Object -Unique)
-    }
+    $selectedSurfaces = @(Get-DefaultCompatibilityKeys -Catalog $Catalog -ProfileIds @($ExistingProfiles + @($Options.profiles)) -SurfaceIds $ExistingSurfaces -ProfileEntries $profileEntries)
     foreach ($tool in $toolEntries) {
         $compatibilityError = Get-DefaultCompatibilityError -Entry $tool -SelectedSurfaces $selectedSurfaces
         if ($compatibilityError) { throw $compatibilityError }
@@ -280,20 +374,7 @@ function Add-RepositoryShapeSurface($SurfaceIds, $SurfaceStates, [string]$Surfac
 }
 
 function Get-ShapeCompatibleSurfaceValues($Catalog, [string[]]$SurfaceIds) {
-    $values = New-Object System.Collections.Generic.List[string]
-    foreach ($surfaceId in @($SurfaceIds | Select-Object -Unique)) {
-        try {
-            $entry = Find-DefaultCatalogEntry -Catalog $Catalog -Identifier $surfaceId -Kind "surface"
-            foreach ($value in @($entry.compatible_surfaces)) {
-                if ($value -notin $values) { [void]$values.Add([string]$value) }
-            }
-        }
-        catch {
-            # Shape detection may find a non-catalog marker. It is reported as
-            # a surface candidate but cannot authorize a Tool Default.
-        }
-    }
-    return @($values)
+    return @(Get-DefaultCompatibilityKeys -Catalog $Catalog -SurfaceIds $SurfaceIds)
 }
 
 function Test-IsBaseVerificationWorkflow([string]$Path) {
@@ -467,7 +548,14 @@ function Get-ManifestSurfaceIds($Manifest) {
 function Get-MigrateToolEntries($Manifest, $Catalog, $Options, $Shape) {
     if (@($Options.defaults).Count -gt 0) {
         $existingSurfaces = if ($Manifest) { @(Get-ManifestSurfaceIds -Manifest $Manifest) } else { @() }
-        return @(Resolve-DefaultSelections -Options $Options -Catalog $Catalog -RequireProfile $false -ExistingSurfaces $existingSurfaces).toolEntries
+        $existingProfiles = if ($Manifest -and $Manifest.PSObject.Properties["profiles"] -and @($Manifest.profiles).Count -gt 0) {
+            @($Manifest.profiles | ForEach-Object { [string]$_ })
+        }
+        elseif ($Manifest -and -not [string]::IsNullOrWhiteSpace([string]$Manifest.profile)) {
+            @([string]$Manifest.profile)
+        }
+        else { @() }
+        return @(Resolve-DefaultSelections -Options $Options -Catalog $Catalog -RequireProfile $false -ExistingSurfaces $existingSurfaces -ExistingProfiles $existingProfiles).toolEntries
     }
 
     if ($Shape -and @($Shape.toolIds).Count -gt 0) {
@@ -703,10 +791,15 @@ function Invoke-Migrate($Manifest) {
     }
     $profileEntries = @(Get-MigrateProfileEntries -Manifest $Manifest -Catalog $catalog -Options $options -Shape $shape)
     $toolEntries = @(Get-MigrateToolEntries -Manifest $Manifest -Catalog $catalog -Options $options -Shape $shape)
-    $selectedSurfaceValues = @($profileEntries | ForEach-Object { @($_.compatible_surfaces) } | Select-Object -Unique)
+    $manifestSurfaceIds = if ($Manifest) { @(Get-ManifestSurfaceIds -Manifest $Manifest) } else { @() }
+    $manifestProfileIds = if ($Manifest) {
+        if ($Manifest.PSObject.Properties["profiles"] -and @($Manifest.profiles).Count -gt 0) { @($Manifest.profiles | ForEach-Object { [string]$_ }) }
+        elseif (-not [string]::IsNullOrWhiteSpace([string]$Manifest.profile)) { @([string]$Manifest.profile) }
+        else { @() }
+    }
+    else { @() }
+    $selectedSurfaceValues = @(Get-DefaultCompatibilityKeys -Catalog $Catalog -ProfileIds @($manifestProfileIds + @($Options.profiles)) -SurfaceIds $manifestSurfaceIds -ProfileEntries $profileEntries)
     if ($Manifest) {
-        $manifestSurfaceIds = @(Get-ManifestSurfaceIds -Manifest $Manifest)
-        $selectedSurfaceValues = @($selectedSurfaceValues + $manifestSurfaceIds | Select-Object -Unique)
         foreach ($profileEntry in @($profileEntries)) {
             $requiredSurfaces = @($profileEntry.compatible_surfaces)
             if ($requiredSurfaces.Count -eq 0) { continue }
@@ -730,7 +823,12 @@ function Invoke-Migrate($Manifest) {
 
     $projectRoot = Join-Path $Root "project"
     $defaultsRelative = Get-ManifestPathValue $Manifest "defaults" "defaults.json"
-    $defaultsPath = Join-Path $projectRoot $defaultsRelative
+    $defaultsPath = if ($Manifest) {
+        Resolve-KntManifestProjectPath -Manifest $Manifest -Name "defaults" -Default "defaults.json"
+    }
+    else {
+        Join-Path $projectRoot $defaultsRelative
+    }
     $defaultsSchema = Get-KntJson -Path (Join-Path $BaseDir "schemas/defaults.schema.json")
     $defaults = $null
     $createdDefaults = $false
@@ -900,7 +998,13 @@ function Invoke-ProjectCommand($Manifest, [string]$Name) {
         Write-Knt "Command '$Name' is not configured for this project."
         return 0
     }
-    $cwd = Join-Path $Root $spec.cwd
+    try {
+        $cwd = Resolve-KntCommandWorkingDirectory -RelativePath ([string]$spec.cwd) -CommandName $Name
+    }
+    catch {
+        Write-Host "[command] $($_.Exception.Message)" -ForegroundColor Red
+        return 1
+    }
     if (-not (Test-Path -LiteralPath $cwd -PathType Container)) {
         Write-Host "[doctor] MISSING command cwd: $($spec.cwd)" -ForegroundColor Red
         return 1
@@ -1074,19 +1178,25 @@ function Invoke-Doctor($Manifest) {
     $projectRoot = Join-Path $Root "project"
     $actionRelative = Get-ManifestPathValue $Manifest "actions" "contracts/actions.json"
     $surfaceRelative = Get-ManifestPathValue $Manifest "surfaces" "contracts/surfaces.json"
-    $actionPath = Join-Path $projectRoot $actionRelative
-    $surfacePath = Join-Path $projectRoot $surfaceRelative
-    if (Test-Path -LiteralPath $actionPath -PathType Leaf) {
+    $actionPath = $null
+    $surfacePath = $null
+    try { $actionPath = Resolve-KntManifestProjectPath -Manifest $Manifest -Name "actions" -Default "contracts/actions.json" }
+    catch { [void]$schemaErrors.Add($_.Exception.Message) }
+    try { $surfacePath = Resolve-KntManifestProjectPath -Manifest $Manifest -Name "surfaces" -Default "contracts/surfaces.json" }
+    catch { [void]$schemaErrors.Add($_.Exception.Message) }
+    if ($actionPath -and (Test-Path -LiteralPath $actionPath -PathType Leaf)) {
         Add-DoctorSchemaErrors $schemaErrors (Get-KntJson -Path $actionPath) $actionSchema $actionRelative
     }
-    if (Test-Path -LiteralPath $surfacePath -PathType Leaf) {
+    if ($surfacePath -and (Test-Path -LiteralPath $surfacePath -PathType Leaf)) {
         Add-DoctorSchemaErrors $schemaErrors (Get-KntJson -Path $surfacePath) $surfaceSchema $surfaceRelative
     }
     $defaultsRelative = Get-ManifestPathValue $Manifest "defaults" ""
     $defaultsDataForImplementation = $null
     if (-not [string]::IsNullOrWhiteSpace($defaultsRelative)) {
-        $defaultsPath = Join-Path $projectRoot $defaultsRelative
-        if (Test-Path -LiteralPath $defaultsPath -PathType Leaf) {
+        $defaultsPath = $null
+        try { $defaultsPath = Resolve-KntManifestProjectPath -Manifest $Manifest -Name "defaults" -Default "defaults.json" }
+        catch { [void]$schemaErrors.Add($_.Exception.Message) }
+        if ($defaultsPath -and (Test-Path -LiteralPath $defaultsPath -PathType Leaf)) {
             $defaultsData = Get-KntJson -Path $defaultsPath
             $defaultsDataForImplementation = $defaultsData
             Add-DoctorSchemaErrors $schemaErrors $defaultsData $defaultsSchema $defaultsRelative
@@ -1114,6 +1224,14 @@ function Invoke-Doctor($Manifest) {
     if (-not (Test-SelectedDefaultImplementations -DefaultsData $defaultsDataForImplementation)) { $ok = $false }
     if ($defaultsDataForImplementation) {
         $manifestSurfaces = @(Get-ManifestSurfaceIds -Manifest $Manifest)
+        $manifestProfileIds = if ($Manifest.PSObject.Properties["profiles"] -and @($Manifest.profiles).Count -gt 0) {
+            @($Manifest.profiles | ForEach-Object { [string]$_ })
+        }
+        elseif (-not [string]::IsNullOrWhiteSpace([string]$Manifest.profile)) {
+            @([string]$Manifest.profile)
+        }
+        else { @() }
+        $manifestCompatibilityKeys = @(Get-DefaultCompatibilityKeys -Catalog $catalog -ProfileIds $manifestProfileIds -SurfaceIds $manifestSurfaces)
         foreach ($packProperty in @($defaultsDataForImplementation.packs.PSObject.Properties)) {
             $state = [string](Get-KntJsonProperty $packProperty.Value "state")
             if ($state -ne "DEFAULT") { continue }
@@ -1127,7 +1245,7 @@ function Invoke-Doctor($Manifest) {
                     else { $null }
                 }
                 else {
-                    Get-DefaultCompatibilityError -Entry $entry -SelectedSurfaces $manifestSurfaces
+                    Get-DefaultCompatibilityError -Entry $entry -SelectedSurfaces $manifestCompatibilityKeys
                 }
                 if ($compatibilityError) {
                     Write-Host "[doctor] $compatibilityError" -ForegroundColor Red
@@ -1186,18 +1304,33 @@ function Invoke-Doctor($Manifest) {
 
     foreach ($pathProperty in @($Manifest.paths.PSObject.Properties)) {
         if ([string]::IsNullOrWhiteSpace([string]$pathProperty.Value)) { continue }
-        $candidate = Join-Path $projectRoot ([string]$pathProperty.Value)
-        if (-not (Test-Path -LiteralPath $candidate)) {
-            Write-Host "[doctor] MISSING path: $($pathProperty.Value) ($($pathProperty.Name))" -ForegroundColor Red
+        try {
+            $candidate = Resolve-KntManifestProjectPath -Manifest $Manifest -Name ([string]$pathProperty.Name) -Default ([string]$pathProperty.Value)
+            if (-not (Test-Path -LiteralPath $candidate)) {
+                Write-Host "[doctor] MISSING path: $($pathProperty.Value) ($($pathProperty.Name))" -ForegroundColor Red
+                $ok = $false
+            }
+        }
+        catch {
+            Write-Host "[doctor] $($_.Exception.Message)" -ForegroundColor Red
             $ok = $false
         }
     }
 
     foreach ($commandProperty in @($Manifest.commands.PSObject.Properties)) {
         $spec = Resolve-Command $Manifest $commandProperty.Name
-        if ($spec -and -not (Test-Path -LiteralPath (Join-Path $Root $spec.cwd) -PathType Container)) {
-            Write-Host "[doctor] MISSING command cwd: $($spec.cwd) ($($commandProperty.Name))" -ForegroundColor Red
-            $ok = $false
+        if ($spec) {
+            try {
+                $cwd = Resolve-KntCommandWorkingDirectory -RelativePath ([string]$spec.cwd) -CommandName ([string]$commandProperty.Name)
+                if (-not (Test-Path -LiteralPath $cwd -PathType Container)) {
+                    Write-Host "[doctor] MISSING command cwd: $($spec.cwd) ($($commandProperty.Name))" -ForegroundColor Red
+                    $ok = $false
+                }
+            }
+            catch {
+                Write-Host "[doctor] $($_.Exception.Message)" -ForegroundColor Red
+                $ok = $false
+            }
         }
     }
 

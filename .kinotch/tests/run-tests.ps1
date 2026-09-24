@@ -330,6 +330,57 @@ Invoke-TestCase "Project path containment is OS-aware and rejects sibling escape
 Invoke-TestCase "valid minimal project passes doctor" {
     Invoke-KntFixture -Name "valid-minimal" -Command "doctor" -ExpectedExit 0
 }
+Invoke-TestCase "Manifest paths reject Project-root escapes" {
+    Invoke-KntFixture -Name "valid-minimal" -Command "doctor" -ExpectedExit 1 -Prepare {
+        param($root)
+        $outside = Join-Path (Split-Path -Parent $root) ((Split-Path -Leaf $root) + "-outside")
+        New-Item -ItemType Directory -Path (Join-Path $outside "docs") -Force | Out-Null
+        $manifestPath = Join-Path $root "project/project.json"
+        $manifest = Get-Content -Raw -Encoding UTF8 $manifestPath | ConvertFrom-Json
+        $manifest.paths.docs = "..\$((Split-Path -Leaf $outside))/docs"
+        [IO.File]::WriteAllText($manifestPath, (ConvertTo-Json $manifest -Depth 20) + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
+    } -AssertOutput {
+        param($root, $output)
+        Assert-True ($output -match "outside.*Project|contain|boundary|relative") "Manifest path escape was not rejected"
+    }
+    Invoke-KntFixture -Name "valid-minimal" -Command "doctor" -ExpectedExit 1 -Prepare {
+        param($root)
+        $outside = Join-Path (Split-Path -Parent $root) ((Split-Path -Leaf $root) + "-absolute-outside")
+        New-Item -ItemType Directory -Path (Join-Path $outside "docs") -Force | Out-Null
+        $manifestPath = Join-Path $root "project/project.json"
+        $manifest = Get-Content -Raw -Encoding UTF8 $manifestPath | ConvertFrom-Json
+        $manifest.paths.docs = Join-Path $outside "docs"
+        [IO.File]::WriteAllText($manifestPath, (ConvertTo-Json $manifest -Depth 20) + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
+    } -AssertOutput {
+        param($root, $output)
+        Assert-True ($output -match "outside.*Project|contain|boundary|relative") "Absolute Manifest path was not rejected"
+    }
+}
+Invoke-TestCase "command cwd rejects Repository-root escapes before execution" {
+    Invoke-KntFixture -Name "valid-minimal" -Command "test" -ExpectedExit 1 -Prepare {
+        param($root)
+        $outside = Join-Path (Split-Path -Parent $root) ((Split-Path -Leaf $root) + "-command-outside")
+        New-Item -ItemType Directory -Path $outside -Force | Out-Null
+        $manifestPath = Join-Path $root "project/project.json"
+        $manifest = Get-Content -Raw -Encoding UTF8 $manifestPath | ConvertFrom-Json
+        $manifest.commands.test = [pscustomobject]@{
+            exec = "pwsh"
+            args = @("-NoProfile", "-Command", "Write-Output escaped")
+            cwd = "..\$((Split-Path -Leaf $outside))"
+            forward_args = $false
+        }
+        [IO.File]::WriteAllText($manifestPath, (ConvertTo-Json $manifest -Depth 20) + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
+    } -AssertOutput {
+        param($root, $output)
+        Assert-True ($output -match "outside.*Repository|contain|boundary|cwd") "Command cwd escape was not rejected"
+        Assert-True ($output -notmatch "escaped") "Escaped command was executed"
+    }
+}
+Invoke-TestCase "Base manifest keeps Runtime modules empty" {
+    $manifest = Get-Content -Raw -Encoding UTF8 (Join-Path $RepoRoot "project/project.json") | ConvertFrom-Json
+    Assert-Equal "repository-base" $manifest.project.type "Base project type"
+    Assert-Equal 0 @($manifest.runtime.modules).Count "Base Runtime module declaration"
+}
 Invoke-TestCase "valid command string remains accepted" {
     Invoke-KntFixture -Name "valid-minimal" -Command "doctor" -ExpectedExit 0
 }
@@ -432,6 +483,11 @@ Invoke-TestCase "init creates a doctor-valid multi-profile Project" {
     }
 }
 Invoke-TestCase "Tool Defaults require a compatible selected Surface" {
+    Invoke-KntInitFixture -Profiles @("minimal") -Defaults @("ci-test") -RemoveExistingCi -AssertOutput {
+        param($root, $output)
+        $defaults = Get-Content -Raw -Encoding UTF8 (Join-Path $root "project/defaults.json") | ConvertFrom-Json
+        Assert-Equal "DEFAULT" $defaults.packs."ci-test".state "minimal + ci-test state"
+    }
     Invoke-KntInitFixture -Profiles @("minimal") -Defaults @("pwa") -ExpectedExit 2 -AssertOutput {
         param($root, $output)
         Assert-True ($output -match "not compatible|requires.*Surface") "minimal + pwa was accepted"
@@ -444,6 +500,11 @@ Invoke-TestCase "Tool Defaults require a compatible selected Surface" {
         param($root, $output)
         $defaults = Get-Content -Raw -Encoding UTF8 (Join-Path $root "project/defaults.json") | ConvertFrom-Json
         Assert-Equal "DEFAULT" $defaults.packs.pwa.state "web-app + pwa state"
+    }
+    Invoke-KntInitFixture -Profiles @("windows-gui") -Defaults @("file-io") -AssertOutput {
+        param($root, $output)
+        $defaults = Get-Content -Raw -Encoding UTF8 (Join-Path $root "project/defaults.json") | ConvertFrom-Json
+        Assert-Equal "DEFAULT" $defaults.packs."file-io".state "windows + file-io state"
     }
 }
 Invoke-TestCase "init accepts all catalog surface profiles without Runtime injection" {
@@ -1206,7 +1267,7 @@ Invoke-TestCase "base-refresh indexes new common file" {
     }
 }
 
-Invoke-TestCase "Base documentation and profile status are finalized" {
+Invoke-TestCase "Base documentation and profile metadata are finalized" {
     $spec = Get-Content -Raw (Join-Path $RepoRoot "project/docs/SPEC.md")
     $state = Get-Content -Raw (Join-Path $RepoRoot "project/docs/CURRENT_STATE.md")
     $runtime = Get-Content -Raw (Join-Path $RepoRoot ".kinotch/RUNTIME_INTEGRATION.md")
@@ -1222,6 +1283,7 @@ Invoke-TestCase "Base documentation and profile status are finalized" {
     Assert-True ($runtime -match "Action Result") "Runtime defined-contract content is missing"
     Assert-True ($runtime -match "ActionRequest") "Runtime candidate-contract content is missing"
     Assert-True ($workflow -match "knt\.ps1 setup") "Base CI setup step is missing"
+    Assert-True ($workflow -match "actions/checkout@[0-9a-f]{40}(?:\s+#\s+v4)?") "Base Verify checkout action is not pinned to a full commit SHA"
     Assert-Equal 0 @($surfaceRegistry.surfaces.PSObject.Properties).Count "Base Surface Registry should be empty"
     Assert-Equal "0.4.0" $baseVersion "Base version"
     Assert-True ($baseReadme -match "Surface Default Kit") "README_BASE Surface Kit wording is missing"
@@ -1230,7 +1292,7 @@ Invoke-TestCase "Base documentation and profile status are finalized" {
     Assert-Equal 4 @($catalog.defaults | Where-Object { $_.kind -eq "tool" }).Count "Active Tool Default catalog count"
     foreach ($profileFile in Get-ChildItem (Join-Path $RepoRoot ".kinotch/profiles") -File) {
         $profile = Get-Content -Raw -Encoding UTF8 $profileFile.FullName | ConvertFrom-Json
-        Assert-Equal "planned" $profile.status "$($profileFile.Name) profile status"
+        Assert-True (-not $profile.PSObject.Properties["status"]) "$($profileFile.Name) has stale profile lifecycle metadata"
     }
 }
 
