@@ -1,6 +1,6 @@
 # KiNoTch. Repository Base Specification
 
-Status: active for Base v0.5.0
+Status: active for Base v0.5.1
 
 ## Purpose
 
@@ -55,7 +55,7 @@ Inputs are the repository files, project/project.json, contract registries, Base
 
 - Runtime packages are not required for Base use.
 - Surface Profiles do not imply Runtime modules. Existing explicit Runtime module declarations remain Project-owned.
-- Default Catalog entries are low-risk, removable Surface or Tool conveniences; only entries with actual materialized behavior are cataloged, and they do not define Runtime execution semantics. The v0.5.0 Tool catalog is exactly `ci-test`, `generated-integrity`, `file-io`, `pwa`, `config`, and `logging`.
+- Default Catalog entries are low-risk, removable Surface or Tool conveniences; only entries with actual materialized behavior are cataloged, and they do not define Runtime execution semantics. The v0.5.1 Tool catalog is exactly `ci-test`, `generated-integrity`, `file-io`, `pwa`, `config`, and `logging`.
 - Production deployment policy remains Project-owned.
 - Surface adapters must not duplicate Domain Core behavior.
 - Generated artifacts must be regenerated from their canonical source and remain inside the Project root.

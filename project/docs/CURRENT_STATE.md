@@ -1,8 +1,8 @@
 # Current State
 
-Base version: `0.5.0`
+Base version: `0.5.1`
 
-Last verified: 2026-09-24 — self-test 86/86; doctor, base-check, and verify passed locally after the Base v0.5.0 index refresh
+Last verified: 2026-09-24 — local self-test 86/86; Hosted CI workflow repair pending verification
 
 ## Implemented
 
@@ -110,7 +110,7 @@ Last verified: 2026-09-24 — self-test 86/86; doctor, base-check, and verify pa
   `2bit-cell-automaton`, and `colony-ai`; existing
   CLI/MCP/API/generated/browser/PWA/Streamlit behavior remains Project-owned
   as `OVERRIDE`.
-- Base v0.5.0 is the current Surface Default Kit feature release; existing adopted repositories
+- Base v0.5.1 is the current Surface Default Kit bugfix release; existing adopted repositories
   are synchronized only during their normal maintenance cycle.
 - Surface Default Kit expansion is complete for the v0.5.0 safe slice: CLI, Windows,
   MCP, API, Agent, Config, and Logging helpers are implemented and ready for normal
@@ -165,7 +165,7 @@ Last verified: 2026-09-24 — self-test 86/86; doctor, base-check, and verify pa
 - Production deploy policy remains project-specific.
 - Base-wide Meta belongs under .kinotch/meta/.
 - New repositories use .kinotch/templates/project/ as their generation source.
-- Base v0.5.0 is the current Phase 5 feature baseline; Runtime semantics remain
+- Base v0.5.1 is the current Phase 5 feature baseline; Runtime semantics remain
   unchanged and existing repositories are not bulk-migrated.
 
 ## Next work
