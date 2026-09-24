@@ -190,7 +190,7 @@ normal repository maintenance.
 ## Phase 5 Default adoption canary
 
 On 2026-09-24 a dedicated repository, `kinotch-default-canary`, was created
-with `knt init` and finalized against Base v0.5.1. It selected `cli`,
+with `knt init` and finalized against Base v0.5.2. It selected `cli`,
 `ci-test`, `config`, and `logging` as `DEFAULT` packs and recorded source Base
 version plus final materialized-file hashes in `project/defaults.json`.
 
@@ -201,7 +201,7 @@ generated helpers remain unchanged. Its targeted gates passed:
 - `knt base-check`
 - `knt verify`
 
-The canary is committed at `6595a5f` and published as the private
+The canary is committed at `355aaa3` and published as the private
 `kinoko34077/kinotch-default-canary` repository. Both the Base Verify and
 generated Default Verify workflows passed on the initial push. It is evidence
 for new-repository initialization, not a claim that an existing repository has
