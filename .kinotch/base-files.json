@@ -20,7 +20,7 @@
     },
     {
       "path": ".kinotch/AGENT_RULES.md",
-      "sha256": "5185e1e923767f820a1716f6624b7d85856132244ac33f960ba60222489d2b4b"
+      "sha256": "524b8dbb32050bc8feeebca9712220928e4018b98ee171015e958ff695d9aef1"
     },
     {
       "path": ".kinotch/BASE_VERSION",
@@ -32,7 +32,7 @@
     },
     {
       "path": ".kinotch/FILE_INVENTORY.txt",
-      "sha256": "90db2fc27fadb18e1d0de965c75ac97af7de644af4cecd76cc8768817817e31e"
+      "sha256": "33024fdc48974d34183fac74ec59ab03487df6a35d2036d9c39ded96faed1d13"
     },
     {
       "path": ".kinotch/PROJECT_BOUNDARY.md",
@@ -91,8 +91,12 @@
       "sha256": "ba0111eaceb2ecdec606bc52fb34a59113a81d313849682c3a527cc4e326f372"
     },
     {
+      "path": ".kinotch/meta/08_GITHUB_DEVELOPMENT_CONTROL.md",
+      "sha256": "667c18c3bad2d45cc267edd01fb45fce69be7fb988fba7157f2668e3967c54c6"
+    },
+    {
       "path": ".kinotch/meta/README.md",
-      "sha256": "bf4a787218fbb6a4ad2bfbf4cff810e4fe82b0fc8519a7f5650523be2e8b6dac"
+      "sha256": "368efcd6d94ed40278f7072766dafc2ce2020e0e408b5ff697f2db21ff538acb"
     },
     {
       "path": ".kinotch/profiles/agent.json",
