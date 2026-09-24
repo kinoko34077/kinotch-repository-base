@@ -635,6 +635,58 @@ Invoke-TestCase "init materializes safe Default implementations" {
         Assert-Equal 1 $LASTEXITCODE "generated-integrity source-stale exit code"
     }
 }
+Invoke-TestCase "materialized Defaults record final file provenance" {
+    Invoke-KntInitFixture -Profiles @("web-app") -Defaults @("pwa") -AssertOutput {
+        param($root, $output)
+        $defaults = Get-Content -Raw -Encoding UTF8 (Join-Path $root "project/defaults.json") | ConvertFrom-Json
+        $pack = $defaults.packs.pwa
+        $baseVersion = (Get-Content -Raw -Encoding UTF8 (Join-Path $root ".kinotch/BASE_VERSION")).Trim()
+        Assert-Equal $baseVersion $pack.source_base_version "PWA Default source Base version"
+        $manifestFile = @($pack.materialized_files | Where-Object { $_.path -eq "project/public/manifest.webmanifest" })
+        Assert-Equal 1 $manifestFile.Count "PWA manifest provenance entry"
+        Assert-True ([string]$manifestFile[0].sha256 -match "^[0-9a-f]{64}$") "PWA provenance hash"
+    }
+}
+Invoke-TestCase "doctor rejects a modified provenance-tracked Default" {
+    Invoke-KntInitFixture -Profiles @("web-app") -Defaults @("pwa") -AssertOutput {
+        param($root, $output)
+        Add-Content -LiteralPath (Join-Path $root "project/public/service-worker.js") -Value "// project modification"
+        $router = Join-Path $root ".kinotch/scripts/knt.ps1"
+        $doctorOutput = @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $router -RootOverride $root doctor 2>&1)
+        Assert-Equal 1 $LASTEXITCODE "modified Default doctor exit code"
+        Assert-True (($doctorOutput -join "`n") -match "DEFAULT implementation was modified|provenance|OVERRIDE") "modified Default was not reported"
+    }
+}
+Invoke-TestCase "PWA init and migrate use the same finalization" {
+    $script:pwaInitParity = $null
+    Invoke-KntInitFixture -Profiles @("web-app") -Defaults @("pwa") -AssertOutput {
+        param($root, $output)
+        $manifest = Get-Content -Raw -Encoding UTF8 (Join-Path $root "project/public/manifest.webmanifest") | ConvertFrom-Json
+        $script:pwaInitParity = @{
+            name = [string]$manifest.name
+            short_name = [string]$manifest.short_name
+            start_url = [string]$manifest.start_url
+            display = [string]$manifest.display
+        }
+    }
+    Invoke-KntFixture -Name "valid-minimal" -Command "doctor" -ExpectedExit 0 -Prepare {
+        param($root)
+        $manifestPath = Join-Path $root "project/project.json"
+        $manifest = Get-Content -Raw -Encoding UTF8 $manifestPath | ConvertFrom-Json
+        $manifest.project.name = $script:pwaInitParity.name
+        $manifest.surfaces.web = $true
+        [IO.File]::WriteAllText($manifestPath, (ConvertTo-Json $manifest -Depth 20) + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
+    } -AssertOutput {
+        param($root, $output)
+        $router = Join-Path $root ".kinotch/scripts/knt.ps1"
+        @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $router -RootOverride $root migrate --apply --default pwa 2>&1) | Out-Null
+        Assert-Equal 0 $LASTEXITCODE "PWA migrate apply exit code"
+        $manifest = Get-Content -Raw -Encoding UTF8 (Join-Path $root "project/public/manifest.webmanifest") | ConvertFrom-Json
+        foreach ($field in @("name", "short_name", "start_url", "display")) {
+            Assert-Equal $script:pwaInitParity[$field] ([string]$manifest.$field) "PWA parity $field"
+        }
+    }
+}
 Invoke-TestCase "Default materialization is atomic when an init template conflicts" {
     Invoke-KntInitFixture -Profiles @("web-app") -Defaults @("pwa") -Prepare {
         param($root)

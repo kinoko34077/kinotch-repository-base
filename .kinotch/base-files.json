@@ -140,7 +140,7 @@
     },
     {
       "path": ".kinotch/schemas/defaults.schema.json",
-      "sha256": "34aa0e96e7d0428d333584d9db70ce330ba1988f1b7b04168d6233d426c115da"
+      "sha256": "016d6adb367b5b5047c676c4a10d8694bca21449440789e28fb1244f4aae44c8"
     },
     {
       "path": ".kinotch/schemas/error.schema.json",
@@ -172,7 +172,7 @@
     },
     {
       "path": ".kinotch/scripts/knt.ps1",
-      "sha256": "c560ae261883c6d3de32a79ba1f7c3cfaa24c80592f1694c21d4ba0a8051bacd"
+      "sha256": "1d68add5c83e505ec2a2cc17d190528ae16d38ccc28121ec9914a79fb3f22139"
     },
     {
       "path": ".kinotch/scripts/path-containment.ps1",
@@ -392,7 +392,7 @@
     },
     {
       "path": ".kinotch/tests/run-tests.ps1",
-      "sha256": "0af523cd28c750d70349508074332d05743c8b6a2e7b3c1239a7f5c286df8413"
+      "sha256": "8b06673aa3c7c14279558c4e5ca7786c5ef9e77363b352f7328b2d71ac47d98b"
     },
     {
       "path": "AGENTS.md",

@@ -598,9 +598,61 @@ function Write-KntJsonFile([string]$Path, $Value) {
     [IO.File]::WriteAllText($Path, $json + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
 }
 
-function Get-DefaultImplementationPlan([string]$DefaultId, [string]$ProjectRoot, [string]$Kind = "Tool") {
+function Get-KntBaseVersion {
+    return (Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $BaseDir "BASE_VERSION")).Trim()
+}
+
+function Get-DefaultMaterializedFileMetadata($Plan) {
+    $metadata = New-Object System.Collections.Generic.List[object]
+    foreach ($item in @($Plan | Where-Object { $null -ne $_ })) {
+        if (-not (Test-Path -LiteralPath $item.destination -PathType Leaf)) { continue }
+        [void]$metadata.Add([pscustomobject]@{
+            path = (ConvertTo-BaseRelativePath -Root $Root -AbsolutePath $item.destination)
+            sha256 = (Get-BaseFileHash -Path $item.destination)
+        })
+    }
+    return @($metadata.ToArray())
+}
+
+function Set-DefaultProvenance($PackEntry, $Plan) {
+    $planItems = @($Plan | Where-Object { $null -ne $_ })
+    if ($planItems.Count -eq 0) { return $false }
+    $metadata = @(Get-DefaultMaterializedFileMetadata -Plan $planItems)
+    if ($metadata.Count -ne $planItems.Count) { return $false }
+    $before = ConvertTo-Json $PackEntry -Depth 20 -Compress
+    $PackEntry | Add-Member -NotePropertyName source_base_version -NotePropertyValue (Get-KntBaseVersion) -Force
+    $PackEntry | Add-Member -NotePropertyName materialized_files -NotePropertyValue $metadata -Force
+    $after = ConvertTo-Json $PackEntry -Depth 20 -Compress
+    return ($before -ne $after)
+}
+
+function Finalize-DefaultImplementation([string]$DefaultId, $Manifest, [string]$ProjectRoot) {
+    if ($DefaultId -ne "pwa") { return }
+    $pwaManifestPath = Join-Path $ProjectRoot "public/manifest.webmanifest"
+    if (-not (Test-Path -LiteralPath $pwaManifestPath -PathType Leaf)) { return }
+    $pwaManifest = Get-KntJson -Path $pwaManifestPath
+    $projectName = [string]$Manifest.project.name
+    if ([string]::IsNullOrWhiteSpace($projectName)) { $projectName = "KiNoTch. Project" }
+    $pwaManifest.name = $projectName
+    $pwaManifest.short_name = $projectName
+    if ([string]::IsNullOrWhiteSpace([string]$pwaManifest.start_url) -or [string]$pwaManifest.start_url -match '^[\\/]|^[a-zA-Z][a-zA-Z0-9+.-]*:') {
+        $pwaManifest.start_url = "."
+    }
+    if ([string]::IsNullOrWhiteSpace([string]$pwaManifest.display)) { $pwaManifest.display = "standalone" }
+    Write-KntJsonFile -Path $pwaManifestPath -Value $pwaManifest
+}
+
+function Get-DefaultImplementationPlan([string]$DefaultId, [string]$ProjectRoot, [string]$Kind = "Tool", $ExistingState = $null) {
     $templateRoot = Join-Path $BaseDir ("templates/defaults/" + $DefaultId)
     if (-not (Test-Path -LiteralPath $templateRoot -PathType Container)) { return @() }
+    $recordedHashes = @{}
+    if ($ExistingState -and $ExistingState.PSObject.Properties["materialized_files"]) {
+        foreach ($recorded in @($ExistingState.materialized_files)) {
+            if (-not [string]::IsNullOrWhiteSpace([string]$recorded.path)) {
+                $recordedHashes[[string]$recorded.path] = [string]$recorded.sha256
+            }
+        }
+    }
     $plan = New-Object System.Collections.Generic.List[object]
     foreach ($templateFile in @(Get-ChildItem -LiteralPath $templateRoot -Recurse -File -Force | Sort-Object FullName)) {
         $relative = ConvertTo-BaseRelativePath -Root $templateRoot -AbsolutePath $templateFile.FullName
@@ -610,21 +662,37 @@ function Get-DefaultImplementationPlan([string]$DefaultId, [string]$ProjectRoot,
         else {
             $destination = Join-Path $ProjectRoot $relative
         }
+        $repositoryRelative = ConvertTo-BaseRelativePath -Root $Root -AbsolutePath $destination
         $status = "MISSING"
         if (Test-Path -LiteralPath $destination) {
-            $sameContent = $false
+            $currentHash = $null
+            $templateHash = Get-BaseFileHash -Path $templateFile.FullName
             try {
-                $sameContent = (Test-Path -LiteralPath $destination -PathType Leaf) -and ((Get-BaseFileHash -Path $templateFile.FullName) -eq (Get-BaseFileHash -Path $destination))
+                $currentHash = if (Test-Path -LiteralPath $destination -PathType Leaf) { Get-BaseFileHash -Path $destination } else { $null }
             }
             catch {
-                $sameContent = $false
+                $currentHash = $null
             }
-            $status = if ($sameContent) { "IDENTICAL" } else { "CONFLICT" }
+            if ($recordedHashes.ContainsKey($repositoryRelative)) {
+                if ($currentHash -ne $recordedHashes[$repositoryRelative]) {
+                    $status = "CONFLICT"
+                }
+                elseif ($currentHash -eq $templateHash) {
+                    $status = "IDENTICAL"
+                }
+                else {
+                    $status = "UPGRADABLE"
+                }
+            }
+            else {
+                $status = if ($currentHash -eq $templateHash) { "IDENTICAL" } else { "CONFLICT" }
+            }
         }
         [void]$plan.Add([pscustomobject]@{
             default_id = $DefaultId
             kind = $Kind
             relative = $relative
+            repository_relative = $repositoryRelative
             template = $templateFile.FullName
             destination = $destination
             status = $status
@@ -658,6 +726,7 @@ function Apply-DefaultImplementationPlan($Plan, [System.Collections.Generic.List
         Copy-Item -LiteralPath $item.template -Destination $item.destination -Force
         Write-Knt "$kind Default '$defaultId' added: $($item.relative)"
     }
+    return [pscustomobject]@{ default_id = $defaultId; conflict = $false }
 }
 
 function Invoke-GeneratedDefaultScript([string]$ScriptRelativePath, [string]$CommandLabel) {
@@ -742,6 +811,7 @@ function Invoke-Init {
     $surfaceNames = New-Object System.Collections.Generic.List[string]
     $defaults = [pscustomobject]@{ schema_version = 1; packs = [pscustomobject]@{} }
     $conflictingDefaults = New-Object System.Collections.Generic.List[string]
+    $materializationPlans = @{}
     foreach ($profileEntry in $profileEntries) {
         $profileName = Get-DefaultProfileName $profileEntry
         $profilePath = Join-Path $BaseDir ("profiles/" + $profileName + ".json")
@@ -751,12 +821,14 @@ function Invoke-Init {
         }
         $defaults.packs | Add-Member -NotePropertyName ([string]$profileEntry.id) -NotePropertyValue (Get-DefaultStateEntry "DEFAULT") -Force
         $plan = Get-DefaultImplementationPlan -DefaultId ([string]$profileEntry.id) -ProjectRoot $projectRoot -Kind "Surface"
-        Apply-DefaultImplementationPlan -Plan $plan -ConflictingDefaults $conflictingDefaults
+        $materializationPlans[[string]$profileEntry.id] = @($plan)
+        [void](Apply-DefaultImplementationPlan -Plan $plan -ConflictingDefaults $conflictingDefaults)
     }
     foreach ($toolEntry in $toolEntries) {
         $defaults.packs | Add-Member -NotePropertyName ([string]$toolEntry.id) -NotePropertyValue (Get-DefaultStateEntry "DEFAULT") -Force
         $plan = Get-DefaultImplementationPlan -DefaultId ([string]$toolEntry.id) -ProjectRoot $projectRoot -Kind "Tool"
-        Apply-DefaultImplementationPlan -Plan $plan -ConflictingDefaults $conflictingDefaults
+        $materializationPlans[[string]$toolEntry.id] = @($plan)
+        [void](Apply-DefaultImplementationPlan -Plan $plan -ConflictingDefaults $conflictingDefaults)
     }
     foreach ($conflictingDefault in @($conflictingDefaults | Select-Object -Unique)) {
         $defaults.packs.$conflictingDefault.state = "OVERRIDE"
@@ -765,13 +837,11 @@ function Invoke-Init {
     foreach ($surface in @($manifest.surfaces.PSObject.Properties)) {
         $surface.Value = ($surface.Name -in $surfaceNames)
     }
-    if ($toolEntries.id -contains "pwa") {
-        $pwaManifestPath = Join-Path $projectRoot "public/manifest.webmanifest"
-        if (Test-Path -LiteralPath $pwaManifestPath -PathType Leaf) {
-            $pwaManifest = Get-KntJson -Path $pwaManifestPath
-            $pwaManifest.name = [string]$manifest.project.name
-            $pwaManifest.short_name = [string]$manifest.project.name
-            Write-KntJsonFile -Path $pwaManifestPath -Value $pwaManifest
+    foreach ($entry in @($profileEntries + $toolEntries)) {
+        $packEntry = $defaults.packs.PSObject.Properties[[string]$entry.id]
+        if ($packEntry -and [string](Get-KntJsonProperty $packEntry.Value "state") -eq "DEFAULT") {
+            Finalize-DefaultImplementation -DefaultId ([string]$entry.id) -Manifest $manifest -ProjectRoot $projectRoot
+            [void](Set-DefaultProvenance -PackEntry $packEntry.Value -Plan $materializationPlans[[string]$entry.id])
         }
     }
     Write-KntJsonFile -Path $ManifestPath -Value $manifest
@@ -849,6 +919,7 @@ function Invoke-Migrate($Manifest) {
 
     $changedDefaults = $false
     $conflictingDefaults = New-Object System.Collections.Generic.List[string]
+    $materializationPlans = @{}
     foreach ($entry in $selectedEntries) {
         $packName = [string]$entry.id
         $packProperty = $defaults.packs.PSObject.Properties[$packName]
@@ -883,13 +954,22 @@ function Invoke-Migrate($Manifest) {
         $state = if ($packProperty) { [string](Get-KntJsonProperty $packProperty.Value "state") } else { "DEFAULT" }
         if ($state -eq "DEFAULT") {
             $kind = if ([string]$entry.kind -eq "surface") { "Surface" } else { "Tool" }
-            $plan = Get-DefaultImplementationPlan -DefaultId ([string]$entry.id) -ProjectRoot $projectRoot -Kind $kind
-            Apply-DefaultImplementationPlan -Plan $plan -ConflictingDefaults $conflictingDefaults
+            $materializationPlans[[string]$entry.id] = @(Get-DefaultImplementationPlan -DefaultId ([string]$entry.id) -ProjectRoot $projectRoot -Kind $kind -ExistingState $packProperty.Value)
+            [void](Apply-DefaultImplementationPlan -Plan $materializationPlans[[string]$entry.id] -ConflictingDefaults $conflictingDefaults)
         }
     }
     foreach ($conflictingDefault in @($conflictingDefaults | Select-Object -Unique)) {
         $defaults.packs.$conflictingDefault.state = "OVERRIDE"
         $changedDefaults = $true
+    }
+
+    foreach ($entry in $selectedEntries) {
+        $packProperty = $defaults.packs.PSObject.Properties[[string]$entry.id]
+        if (-not $packProperty -or [string](Get-KntJsonProperty $packProperty.Value "state") -ne "DEFAULT") { continue }
+        Finalize-DefaultImplementation -DefaultId ([string]$entry.id) -Manifest $Manifest -ProjectRoot $projectRoot
+        if (Set-DefaultProvenance -PackEntry $packProperty.Value -Plan $materializationPlans[[string]$entry.id]) {
+            $changedDefaults = $true
+        }
     }
 
     $changedManifest = $false
@@ -1072,67 +1152,50 @@ function Test-SelectedDefaultImplementations($DefaultsData) {
     if (-not $DefaultsData) { return $true }
     $projectRoot = Join-Path $Root "project"
     foreach ($packProperty in @($DefaultsData.packs.PSObject.Properties)) {
+        $defaultId = [string]$packProperty.Name
         $state = [string](Get-KntJsonProperty $packProperty.Value "state")
         if ($state -ne "DEFAULT") { continue }
-        $defaultId = [string]$packProperty.Name
-        switch ($defaultId) {
-            "cli" {
-                if (-not (Test-Path -LiteralPath (Join-Path $projectRoot "tools/cli-default.ps1") -PathType Leaf)) {
-                    Write-Host "[doctor] MISSING implementation for Surface Default 'cli'" -ForegroundColor Red
-                    $ok = $false
-                }
+
+        $templateRoot = Join-Path $BaseDir ("templates/defaults/" + $defaultId)
+        if (-not (Test-Path -LiteralPath $templateRoot -PathType Container)) {
+            # Profile-only Defaults intentionally have no materialized files.
+            continue
+        }
+
+        $plan = @(Get-DefaultImplementationPlan -DefaultId $defaultId -ProjectRoot $projectRoot -Kind "Default" -ExistingState $packProperty.Value)
+        foreach ($item in $plan) {
+            if (-not (Test-Path -LiteralPath $item.destination -PathType Leaf)) {
+                Write-Host "[doctor] MISSING implementation for Default '$defaultId': $($item.repository_relative)" -ForegroundColor Red
+                $ok = $false
             }
-            "windows" {
-                if (-not (Test-Path -LiteralPath (Join-Path $projectRoot "tools/windows-shell.ps1") -PathType Leaf)) {
-                    Write-Host "[doctor] MISSING implementation for Surface Default 'windows'" -ForegroundColor Red
-                    $ok = $false
-                }
+        }
+
+        $provenanceProperty = $packProperty.Value.PSObject.Properties["materialized_files"]
+        $hasProvenance = $null -ne $provenanceProperty -and @($packProperty.Value.materialized_files).Count -gt 0
+        if (-not $hasProvenance) {
+            Write-Host "[doctor] WARNING Default '$defaultId': legacy DEFAULT provenance unknown; preserve files or mark OVERRIDE before updating" -ForegroundColor Yellow
+            continue
+        }
+
+        foreach ($recorded in @($packProperty.Value.materialized_files)) {
+            $recordedPath = [string]$recorded.path
+            try {
+                $recordedAbsolute = Resolve-KntContainedPath -BaseRoot $Root -RelativePath $recordedPath -Description "Default '$defaultId' provenance path" -AllowRoot
             }
-            "mcp" {
-                if (-not (Test-Path -LiteralPath (Join-Path $projectRoot "contracts/mcp-tools.json") -PathType Leaf)) {
-                    Write-Host "[doctor] MISSING implementation for Surface Default 'mcp'" -ForegroundColor Red
-                    $ok = $false
-                }
+            catch {
+                Write-Host "[doctor] DEFAULT '$defaultId' has invalid provenance path '$recordedPath': $($_.Exception.Message)" -ForegroundColor Red
+                $ok = $false
+                continue
             }
-            "api" {
-                if (-not (Test-Path -LiteralPath (Join-Path $projectRoot "contracts/api-error-envelope.json") -PathType Leaf)) {
-                    Write-Host "[doctor] MISSING implementation for Surface Default 'api'" -ForegroundColor Red
-                    $ok = $false
-                }
-                if (-not (Test-Path -LiteralPath (Join-Path $projectRoot "tools/api-default.ps1") -PathType Leaf)) {
-                    Write-Host "[doctor] MISSING implementation for Surface Default 'api': project/tools/api-default.ps1" -ForegroundColor Red
-                    $ok = $false
-                }
+            if (-not (Test-Path -LiteralPath $recordedAbsolute -PathType Leaf)) {
+                Write-Host "[doctor] DEFAULT implementation was modified: $recordedPath is missing; restore the Default implementation or mark the pack OVERRIDE" -ForegroundColor Red
+                $ok = $false
+                continue
             }
-            "ci-test" {
-                if (-not (Test-Path -LiteralPath (Join-Path $Root ".github/workflows/kinotch-default.yml") -PathType Leaf)) {
-                    Write-Host "[doctor] MISSING implementation for Default 'ci-test'" -ForegroundColor Red
-                    $ok = $false
-                }
-            }
-            "pwa" {
-                foreach ($relative in @("public/manifest.webmanifest", "public/service-worker.js", "src/pwa/register.js", "tools/pwa-check.ps1")) {
-                    if (-not (Test-Path -LiteralPath (Join-Path $projectRoot $relative) -PathType Leaf)) {
-                        Write-Host "[doctor] MISSING implementation for Default 'pwa': project/$relative" -ForegroundColor Red
-                        $ok = $false
-                    }
-                }
-            }
-            "generated-integrity" {
-                foreach ($relative in @("generated-integrity.json", "tools/check-generated.ps1", "tools/update-generated-integrity.ps1")) {
-                    if (-not (Test-Path -LiteralPath (Join-Path $projectRoot $relative) -PathType Leaf)) {
-                        Write-Host "[doctor] MISSING implementation for Default 'generated-integrity': project/$relative" -ForegroundColor Red
-                        $ok = $false
-                    }
-                }
-            }
-            "file-io" {
-                foreach ($relative in @("contracts/file-io.json", "tools/file-io.ps1")) {
-                    if (-not (Test-Path -LiteralPath (Join-Path $projectRoot $relative) -PathType Leaf)) {
-                        Write-Host "[doctor] MISSING implementation for Default 'file-io': project/$relative" -ForegroundColor Red
-                        $ok = $false
-                    }
-                }
+            $currentHash = Get-BaseFileHash -Path $recordedAbsolute
+            if ($currentHash -ne [string]$recorded.sha256) {
+                Write-Host "[doctor] DEFAULT implementation was modified: $recordedPath; restore the Default implementation or mark the pack OVERRIDE" -ForegroundColor Red
+                $ok = $false
             }
         }
     }
