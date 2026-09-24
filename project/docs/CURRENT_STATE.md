@@ -2,7 +2,7 @@
 
 Base version: `0.5.1`
 
-Last verified: 2026-09-24 — local self-test 86/86; Hosted CI workflow repair pending verification
+Last verified: 2026-09-24 — self-test 86/86; doctor, base-check, and verify passed locally; Hosted CI run 35967196616 passed on Ubuntu PowerShell, Windows PowerShell Core, and Windows PowerShell 5.1
 
 ## Implemented
 
