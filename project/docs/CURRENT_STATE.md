@@ -76,6 +76,10 @@ Last verified: 2026-09-24 — self-test 86/86; doctor, base-check, and verify pa
 - CLI `--` option termination preserves Project arguments; API error details accept any JSON value and named hooks remain backward-compatible
 - MCP executable helper, Agent Surface Kit, Config Default, and Logging Default are materialized without adding a dispatcher, planner, secret policy, or Runtime dependency
 - The common CI workflow and generated `ci-test` workflow verify on Ubuntu PowerShell, Windows PowerShell Core, and Windows PowerShell 5.1
+- A new local-only `kinotch-default-canary` was created with `knt init` using
+  `cli`, `ci-test`, `config`, and `logging` as `DEFAULT` packs. Its generated
+  provenance, `doctor`, `base-check`, and `verify` gates pass; it has no remote
+  and is not an existing-repository migration.
 
 ## In progress
 
@@ -132,6 +136,8 @@ Last verified: 2026-09-24 — self-test 86/86; doctor, base-check, and verify pa
   4C operation state are kept in `project/docs/DEFAULT_ROLLOUT_DRY_RUN.md`.
   That table records adoption state, not Default maturity. No bulk migration
   is planned.
+- Phase 5 now includes a local `knt init` adoption canary so Default behavior
+  is exercised before any additional existing repository is changed.
 - `knt init` now generates a safe multi-profile Project Overlay, and `knt migrate`
   reports Default Pack candidates by default and applies them only with explicit
   `--apply`, preserving existing `OVERRIDE` / `DISABLED` states.
@@ -164,17 +170,20 @@ Last verified: 2026-09-24 — self-test 86/86; doctor, base-check, and verify pa
 
 ## Next work
 
-1. Return to normal Phase 5 maintenance; do not run a periodic full-repository
+1. Keep using `kinotch-default-canary` as the local evidence point for the
+   selected CLI, CI, Config, and Logging Defaults; add a remote only after an
+   explicit repository destination is chosen.
+2. Return to normal Phase 5 maintenance; do not run a periodic full-repository
    audit or bulk synchronization.
-2. Preserve existing `OVERRIDE` / `DISABLED` implementations and do not
+3. Preserve existing `OVERRIDE` / `DISABLED` implementations and do not
    bulk-rewrite existing repositories.
-3. Keep Default behavior removable and Project-owned; do not add Domain
+4. Keep Default behavior removable and Project-owned; do not add Domain
    behavior or a universal Surface library.
-4. Keep Runtime provisional until additional heterogeneous repositories
+5. Keep Runtime provisional until additional heterogeneous repositories
    validate the same Portable meanings.
-5. Do not add Runtime modules or Domain adapters to Base merely because a
+6. Do not add Runtime modules or Domain adapters to Base merely because a
    Surface Kit helper exists.
-6. Treat `refil-viewer`, `standby-display`, and `SynTrail-LM` as STAGED, and
+7. Treat `refil-viewer`, `standby-display`, and `SynTrail-LM` as STAGED, and
    keep `dev_agent` / `IDS-Composit` as NOT_ADOPTED until active work creates a
    concrete adoption reason.
 

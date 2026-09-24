@@ -13,8 +13,9 @@ was not available in the local checkout.
 
 The scan checked repository identity, `.kinotch/`, package/Cargo/Python
 markers, source/test directories, public/static assets, and GitHub workflows.
-The current Catalog contains four Tool Defaults: `ci-test`,
-`generated-integrity`, `file-io`, and `pwa`; `knt verify` remains an L1 command.
+The current Catalog contains six Tool Defaults: `ci-test`,
+`generated-integrity`, `file-io`, `pwa`, `config`, and `logging`; `knt verify`
+remains an L1 command.
 It was evidence for adoption planning, not an authorization to rewrite any
 Project.
 
@@ -185,3 +186,22 @@ merge review; `SynTrail-LM` remains staged without touching its dirty worktree;
 and `dev_agent`, `IDS-Composit`, and unavailable GitHub-only repositories are
 not automatically migrated. Phase 5 now governs future adoption as part of
 normal repository maintenance.
+
+## Phase 5 local Default adoption canary
+
+On 2026-09-24 a new local repository, `kinotch-default-canary`, was created
+from the Base v0.5.0 `knt init` path. It selected `cli`, `ci-test`, `config`,
+and `logging` as `DEFAULT` packs and recorded source Base version plus final
+materialized-file hashes in `project/defaults.json`.
+
+The canary contains only a small Project-owned verification script. The
+generated helpers remain unchanged. Its targeted gates passed:
+
+- `knt doctor`
+- `knt base-check`
+- `knt verify`
+
+The canary is committed locally at `9fc68a3` and has no configured remote.
+It is evidence for new-repository initialization, not a claim that an
+existing repository has been adopted. Existing repositories remain governed
+by their recorded `OVERRIDE`, `STAGED`, `NOT_ADOPTED`, or `N/A` decisions.
