@@ -76,10 +76,11 @@ Last verified: 2026-09-24 — self-test 86/86; doctor, base-check, and verify pa
 - CLI `--` option termination preserves Project arguments; API error details accept any JSON value and named hooks remain backward-compatible
 - MCP executable helper, Agent Surface Kit, Config Default, and Logging Default are materialized without adding a dispatcher, planner, secret policy, or Runtime dependency
 - The common CI workflow and generated `ci-test` workflow verify on Ubuntu PowerShell, Windows PowerShell Core, and Windows PowerShell 5.1
-- A new local-only `kinotch-default-canary` was created with `knt init` using
-  `cli`, `ci-test`, `config`, and `logging` as `DEFAULT` packs. Its generated
-  provenance, `doctor`, `base-check`, and `verify` gates pass; it has no remote
-  and is not an existing-repository migration.
+- A dedicated private `kinoko34077/kinotch-default-canary` repository was
+  created with `knt init` using `cli`, `ci-test`, `config`, and `logging` as
+  `DEFAULT` packs. Its generated provenance, local `doctor`, `base-check`, and
+  `verify` gates pass, and its initial Base Verify plus generated Default Verify
+  workflows passed. It is not an existing-repository migration.
 
 ## In progress
 
@@ -170,9 +171,9 @@ Last verified: 2026-09-24 — self-test 86/86; doctor, base-check, and verify pa
 
 ## Next work
 
-1. Keep using `kinotch-default-canary` as the local evidence point for the
-   selected CLI, CI, Config, and Logging Defaults; add a remote only after an
-   explicit repository destination is chosen.
+1. Keep using the private `kinoko34077/kinotch-default-canary` repository as
+   the evidence point for the selected CLI, CI, Config, and Logging Defaults;
+   do not treat it as an existing-repository migration.
 2. Return to normal Phase 5 maintenance; do not run a periodic full-repository
    audit or bulk synchronization.
 3. Preserve existing `OVERRIDE` / `DISABLED` implementations and do not

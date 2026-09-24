@@ -187,12 +187,12 @@ and `dev_agent`, `IDS-Composit`, and unavailable GitHub-only repositories are
 not automatically migrated. Phase 5 now governs future adoption as part of
 normal repository maintenance.
 
-## Phase 5 local Default adoption canary
+## Phase 5 Default adoption canary
 
-On 2026-09-24 a new local repository, `kinotch-default-canary`, was created
-from the Base v0.5.0 `knt init` path. It selected `cli`, `ci-test`, `config`,
-and `logging` as `DEFAULT` packs and recorded source Base version plus final
-materialized-file hashes in `project/defaults.json`.
+On 2026-09-24 a dedicated repository, `kinotch-default-canary`, was created
+with `knt init` and finalized against Base v0.5.1. It selected `cli`,
+`ci-test`, `config`, and `logging` as `DEFAULT` packs and recorded source Base
+version plus final materialized-file hashes in `project/defaults.json`.
 
 The canary contains only a small Project-owned verification script. The
 generated helpers remain unchanged. Its targeted gates passed:
@@ -201,7 +201,9 @@ generated helpers remain unchanged. Its targeted gates passed:
 - `knt base-check`
 - `knt verify`
 
-The canary is committed locally at `9fc68a3` and has no configured remote.
-It is evidence for new-repository initialization, not a claim that an
-existing repository has been adopted. Existing repositories remain governed
-by their recorded `OVERRIDE`, `STAGED`, `NOT_ADOPTED`, or `N/A` decisions.
+The canary is committed at `6595a5f` and published as the private
+`kinoko34077/kinotch-default-canary` repository. Both the Base Verify and
+generated Default Verify workflows passed on the initial push. It is evidence
+for new-repository initialization, not a claim that an existing repository has
+been adopted. Existing repositories remain governed by their recorded
+`OVERRIDE`, `STAGED`, `NOT_ADOPTED`, or `N/A` decisions.
