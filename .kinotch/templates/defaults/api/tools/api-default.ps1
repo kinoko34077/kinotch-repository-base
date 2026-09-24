@@ -64,5 +64,12 @@ function Invoke-ApiHook {
     )
 
     if ($null -eq $Hook) { return $Value }
+    $parameterCount = 0
+    if ($Hook.Ast -and $Hook.Ast.ParamBlock) {
+        $parameterCount = @($Hook.Ast.ParamBlock.Parameters).Count
+    }
+    if ($parameterCount -ge 2) {
+        return (& $Hook $Value $Name)
+    }
     return (& $Hook $Value)
 }

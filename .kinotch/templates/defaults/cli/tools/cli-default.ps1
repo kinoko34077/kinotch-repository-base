@@ -15,8 +15,14 @@ function Get-CliCommonOptions {
         Yes = $false
         RemainingArgs = @()
     }
+    $afterTerminator = $false
     foreach ($argument in @($Arguments)) {
+        if ($afterTerminator) {
+            [void]$remaining.Add([string]$argument)
+            continue
+        }
         switch ([string]$argument) {
+            "--" { $afterTerminator = $true; [void]$remaining.Add("--"); continue }
             "--help" { $options.Help = $true; continue }
             "--version" { $options.Version = $true; continue }
             "--json" { $options.Json = $true; continue }

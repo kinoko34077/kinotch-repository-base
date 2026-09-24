@@ -552,6 +552,9 @@ switch ($Mode) {
         $options = Get-CliCommonOptions @("--json", "--quiet", "--verbose", "--dry-run", "--yes", "--domain-value")
         if (-not $options.Json -or -not $options.Quiet -or -not $options.Verbose -or -not $options.DryRun -or -not $options.Yes) { throw "common flags were not parsed" }
         if ($options.RemainingArgs.Count -ne 1 -or $options.RemainingArgs[0] -ne "--domain-value") { throw "Project argument was consumed" }
+        $terminated = Get-CliCommonOptions @("--json", "--", "--help", "--domain")
+        if (-not $terminated.Json -or $terminated.Help) { throw "CLI option terminator changed Default option parsing" }
+        if ($terminated.RemainingArgs.Count -ne 3 -or $terminated.RemainingArgs[0] -ne "--" -or $terminated.RemainingArgs[1] -ne "--help" -or $terminated.RemainingArgs[2] -ne "--domain") { throw "CLI option terminator did not preserve Project arguments" }
         Write-Output "parse-ok"
     }
     "output" {
@@ -1127,6 +1130,17 @@ Invoke-TestCase "API Default envelope remains a permissive boundary descriptor" 
     $schema = Get-Content -Raw -Encoding UTF8 (Join-Path $RepoRoot ".kinotch/templates/defaults/api/contracts/api-error-envelope.json") | ConvertFrom-Json
     Assert-True (@($schema.required) -notcontains "details") "API Default made details mandatory"
     Assert-True ($schema.additionalProperties -eq $true) "API Default rejects Project-owned extensions"
+    Assert-True ($null -eq $schema.properties.details.type) "API Default details is narrower than the helper"
+    $envelopes = @(
+        [pscustomobject]@{ error = "invalid_input"; message = "bad"; details = @{ field = "value" } },
+        [pscustomobject]@{ error = "invalid_input"; message = "bad"; details = @("value") },
+        [pscustomobject]@{ error = "invalid_input"; message = "bad"; details = "value" },
+        [pscustomobject]@{ error = "invalid_input"; message = "bad"; details = 7 },
+        [pscustomobject]@{ error = "invalid_input"; message = "bad" }
+    )
+    foreach ($envelope in $envelopes) {
+        Assert-Equal 0 @(Test-KntSchema -Data $envelope -Schema $schema -Path "fixture.api-error").Count "API envelope schema compatibility"
+    }
 }
 Invoke-TestCase "API Surface Kit provides replaceable context, health, envelope, and hooks" {
     Invoke-KntInitFixture -Profiles @("api") -AssertOutput {
@@ -1148,6 +1162,8 @@ $errorEnvelope = New-ApiErrorEnvelope -Code "invalid_input" -Message "bad input"
 if ($errorEnvelope.error -ne "invalid_input" -or $errorEnvelope.message -ne "bad input" -or $errorEnvelope.requestId -ne "req-1") { throw "error envelope was not preserved" }
 $hooked = Invoke-ApiHook -Name "validation" -Value "input" -Hook { param($value) return ($value + "-checked") }
 if ($hooked -ne "input-checked") { throw "API hook was not invoked" }
+$namedHook = Invoke-ApiHook -Name "auth" -Value "input" -Hook { param($value, $name) return ($value + "-" + $name) }
+if ($namedHook -ne "input-auth") { throw "API hook name was not forwarded" }
 $unchanged = Invoke-ApiHook -Name "auth" -Value "input"
 if ($unchanged -ne "input") { throw "missing API hook changed the value" }
 Write-Output "api-kit-ok"
