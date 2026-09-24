@@ -1,8 +1,8 @@
 # Current State
 
-Base version: `0.5.1`
+Base version: `0.5.2`
 
-Last verified: 2026-09-24 — self-test 86/86; doctor, base-check, and verify passed locally; Hosted CI run 35967196616 passed on Ubuntu PowerShell, Windows PowerShell Core, and Windows PowerShell 5.1
+Last verified: 2026-09-24 — self-test 96/96; doctor, base-check, and verify passed locally; Hosted CI validation for v0.5.2 is pending after release push.
 
 ## Implemented
 
@@ -15,7 +15,7 @@ Last verified: 2026-09-24 — self-test 86/86; doctor, base-check, and verify pa
 - Profile existence and Profile / Surface contradiction diagnostics
 - Manifest path and command cwd diagnostics
 - Strict Base hash index and deterministic refresh
-- Base self-test runner with 86 passing cases
+- Base self-test runner with filesystem-boundary and Default-lifecycle regression coverage
 - Base and Runtime Meta under .kinotch/meta/
 - New Repository templates under .kinotch/templates/project/
 - Runtime Contractの確定済み / Runtime Phase 1候補の区別
@@ -71,6 +71,10 @@ Last verified: 2026-09-24 — self-test 86/86; doctor, base-check, and verify pa
 - Common Cloudflare build outputs such as `.wrangler/` and `artifacts/` are ignored by the Base root hygiene rules
 - Common Python audit/cache and browser test-report outputs are ignored by the Base root hygiene rules
 - Default provenance records the Base version and final materialized-file SHA-256 values; doctor protects unchanged DEFAULT implementations from silent edits
+- Default materialization and generated helper writes reject symlink, junction, and reparse-point traversal below trusted roots
+- Materialization plans compare current templates with recorded provenance, safely remove unchanged stale files, and preserve modified stale files as `OVERRIDE`
+- `DISABLED` Defaults reconcile tracked unchanged files through dry-run/apply without deleting modified Project files
+- Project `ci-test` finalization selects one runner from the Manifest (`gui_windows` → Windows PowerShell; otherwise Ubuntu PowerShell); the Base workflow retains its three-environment matrix
 - Default implementation checks are derived from `.kinotch/templates/defaults/<id>/` instead of a second hardcoded doctor inventory
 - PWA init, migrate, and Default upgrade share one finalization path
 - CLI `--` option termination preserves Project arguments; API error details accept any JSON value and named hooks remain backward-compatible
@@ -111,7 +115,7 @@ Last verified: 2026-09-24 — self-test 86/86; doctor, base-check, and verify pa
   `2bit-cell-automaton`, and `colony-ai`; existing
   CLI/MCP/API/generated/browser/PWA/Streamlit behavior remains Project-owned
   as `OVERRIDE`.
-- Base v0.5.1 is the current Surface Default Kit bugfix release; existing adopted repositories
+- Base v0.5.2 is the current Surface Default Kit safety/lifecycle release; existing adopted repositories
   are synchronized only during their normal maintenance cycle.
 - Surface Default Kit expansion is complete for the v0.5.0 safe slice: CLI, Windows,
   MCP, API, Agent, Config, and Logging helpers are implemented and ready for normal
@@ -157,8 +161,9 @@ Last verified: 2026-09-24 — self-test 86/86; doctor, base-check, and verify pa
 - The Base smoke command is intentionally unconfigured because Base itself has no production entry point.
 - The generated file-io helper is intentionally UTF-8 text-only; binary format
   handling remains Project-owned through the callback boundary.
-- Symlink and junction resolution is not fully guaranteed by the text path
-  containment helpers; this remains a documented platform boundary.
+- Base and generated Default helpers reject link traversal below trusted roots;
+  Projects that require symlink/junction-based layouts remain responsible for
+  their own `OVERRIDE` implementation.
 
 ## Current constraints
 
@@ -166,7 +171,7 @@ Last verified: 2026-09-24 — self-test 86/86; doctor, base-check, and verify pa
 - Production deploy policy remains project-specific.
 - Base-wide Meta belongs under .kinotch/meta/.
 - New repositories use .kinotch/templates/project/ as their generation source.
-- Base v0.5.1 is the current Phase 5 feature baseline; Runtime semantics remain
+- Base v0.5.2 is the current Phase 5 safety baseline; Runtime semantics remain
   unchanged and existing repositories are not bulk-migrated.
 
 ## Next work

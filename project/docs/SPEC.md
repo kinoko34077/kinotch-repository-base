@@ -1,6 +1,6 @@
 # KiNoTch. Repository Base Specification
 
-Status: active for Base v0.5.1
+Status: active for Base v0.5.2
 
 ## Purpose
 
@@ -32,6 +32,8 @@ The Base reduces the effort to create, read, repair, and verify a repository wit
 20. Default materialization records final file provenance and doctor rejects modified provenance-tracked DEFAULT files without changing their state automatically.
 21. Template-backed Default integrity checks are derived from the Default template tree; adding a template does not require a second doctor switch.
 22. CLI, Windows, MCP, API, Agent, Config, and Logging helpers remain removable Surface/Tool conveniences and do not change Runtime semantics or Project-owned policy.
+23. Manifest paths, command working directories, Default materialization targets, and generated helper paths remain inside their trusted roots and reject link/reparse-point traversal.
+24. Default upgrade planning compares the current template tree with recorded provenance, removes only unchanged stale files, preserves modified stale files, and reconciles `DISABLED` cleanup only after explicit `--apply`.
 
 ## Fixed read order
 
@@ -55,7 +57,7 @@ Inputs are the repository files, project/project.json, contract registries, Base
 
 - Runtime packages are not required for Base use.
 - Surface Profiles do not imply Runtime modules. Existing explicit Runtime module declarations remain Project-owned.
-- Default Catalog entries are low-risk, removable Surface or Tool conveniences; only entries with actual materialized behavior are cataloged, and they do not define Runtime execution semantics. The v0.5.1 Tool catalog is exactly `ci-test`, `generated-integrity`, `file-io`, `pwa`, `config`, and `logging`.
+- Default Catalog entries are low-risk, removable Surface or Tool conveniences; only entries with actual materialized behavior are cataloged, and they do not define Runtime execution semantics. The v0.5.2 Tool catalog is exactly `ci-test`, `generated-integrity`, `file-io`, `pwa`, `config`, and `logging`.
 - Production deployment policy remains Project-owned.
 - Surface adapters must not duplicate Domain Core behavior.
 - Generated artifacts must be regenerated from their canonical source and remain inside the Project root.
