@@ -1,8 +1,8 @@
 # Current State
 
-Base version: `0.4.0`
+Base version: `0.5.0`
 
-Last verified: 2026-09-24 — self-test 75/75; doctor, base-check, and verify passed locally after the Base v0.4.0 index refresh
+Last verified: 2026-09-24 — self-test 86/86; doctor, base-check, and verify passed locally after the Base v0.5.0 index refresh
 
 ## Implemented
 
@@ -15,7 +15,7 @@ Last verified: 2026-09-24 — self-test 75/75; doctor, base-check, and verify pa
 - Profile existence and Profile / Surface contradiction diagnostics
 - Manifest path and command cwd diagnostics
 - Strict Base hash index and deterministic refresh
-- Base self-test runner with 71 passing cases
+- Base self-test runner with 86 passing cases
 - Base and Runtime Meta under .kinotch/meta/
 - New Repository templates under .kinotch/templates/project/
 - Runtime Contractの確定済み / Runtime Phase 1候補の区別
@@ -70,6 +70,12 @@ Last verified: 2026-09-24 — self-test 75/75; doctor, base-check, and verify pa
 - Common Python build metadata such as `*.egg-info/` is ignored by the Base root hygiene rules
 - Common Cloudflare build outputs such as `.wrangler/` and `artifacts/` are ignored by the Base root hygiene rules
 - Common Python audit/cache and browser test-report outputs are ignored by the Base root hygiene rules
+- Default provenance records the Base version and final materialized-file SHA-256 values; doctor protects unchanged DEFAULT implementations from silent edits
+- Default implementation checks are derived from `.kinotch/templates/defaults/<id>/` instead of a second hardcoded doctor inventory
+- PWA init, migrate, and Default upgrade share one finalization path
+- CLI `--` option termination preserves Project arguments; API error details accept any JSON value and named hooks remain backward-compatible
+- MCP executable helper, Agent Surface Kit, Config Default, and Logging Default are materialized without adding a dispatcher, planner, secret policy, or Runtime dependency
+- The common CI workflow and generated `ci-test` workflow verify on Ubuntu PowerShell, Windows PowerShell Core, and Windows PowerShell 5.1
 
 ## In progress
 
@@ -100,10 +106,11 @@ Last verified: 2026-09-24 — self-test 75/75; doctor, base-check, and verify pa
   `2bit-cell-automaton`, and `colony-ai`; existing
   CLI/MCP/API/generated/browser/PWA/Streamlit behavior remains Project-owned
   as `OVERRIDE`.
-- Base v0.4.0 is the current Surface Default Kit feature release; existing adopted repositories
+- Base v0.5.0 is the current Surface Default Kit feature release; existing adopted repositories
   are synchronized only during their normal maintenance cycle.
-- Surface Default Kit expansion is a Phase 5 Base feature slice; CLI, Windows,
-  MCP, and API Kits are implemented and ready for final release gating.
+- Surface Default Kit expansion is complete for the v0.5.0 safe slice: CLI, Windows,
+  MCP, API, Agent, Config, and Logging helpers are implemented and ready for normal
+  Phase 5 maintenance.
 - `refil-viewer` remains `STAGED`: its Base v0.3.8 files pass doctor and
   base-check, while its existing Vite source still fails on a duplicate
   `pageIndex` declaration. This is a Project bug and is not hidden or fixed by
@@ -152,26 +159,22 @@ Last verified: 2026-09-24 — self-test 75/75; doctor, base-check, and verify pa
 - Production deploy policy remains project-specific.
 - Base-wide Meta belongs under .kinotch/meta/.
 - New repositories use .kinotch/templates/project/ as their generation source.
-- Base v0.4.0 is the current Phase 5 feature baseline; Runtime semantics remain
+- Base v0.5.0 is the current Phase 5 feature baseline; Runtime semantics remain
   unchanged and existing repositories are not bulk-migrated.
 
 ## Next work
 
-1. Complete the MCP and API Surface Kit slices without changing
-   Runtime semantics or adding fine-grained Catalog entries.
-2. Run `doctor`, `base-check`, and the existing Project verification after
-   each Surface Kit slice.
-3. Preserve existing `OVERRIDE` / `DISABLED` implementations and do not
+1. Return to normal Phase 5 maintenance; do not run a periodic full-repository
+   audit or bulk synchronization.
+2. Preserve existing `OVERRIDE` / `DISABLED` implementations and do not
    bulk-rewrite existing repositories.
-4. Keep Default behavior removable and Project-owned; do not add Domain
+3. Keep Default behavior removable and Project-owned; do not add Domain
    behavior or a universal Surface library.
-5. Keep Runtime provisional until additional heterogeneous repositories
+4. Keep Runtime provisional until additional heterogeneous repositories
    validate the same Portable meanings.
-6. Do not add Runtime modules or Domain adapters to Base merely because a
+5. Do not add Runtime modules or Domain adapters to Base merely because a
    Surface Kit helper exists.
-7. After the feature slice, return to normal Phase 5 maintenance and do not
-   run a periodic full-repository audit or bulk synchronization.
-8. Treat `refil-viewer`, `standby-display`, and `SynTrail-LM` as STAGED, and
+6. Treat `refil-viewer`, `standby-display`, and `SynTrail-LM` as STAGED, and
    keep `dev_agent` / `IDS-Composit` as NOT_ADOPTED until active work creates a
    concrete adoption reason.
 

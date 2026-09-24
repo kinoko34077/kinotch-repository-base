@@ -1420,7 +1420,7 @@ Common commands:
   doctor      Base/project structure and schema diagnostics
   init        Create a Project from catalog Surface/Tool Defaults
               --profile minimal|web-app|cli|windows-gui|mcp|api|agent|library
-              --default ci-test|generated-integrity|file-io|pwa
+              --default ci-test|generated-integrity|file-io|pwa|config|logging
   migrate     Show or explicitly record catalog Default candidates
   base-check  Detect modifications in common Base files
   base-refresh Regenerate Base file hashes (repository-base only)

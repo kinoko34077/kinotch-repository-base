@@ -1,6 +1,6 @@
 # KiNoTch. Repository Base Specification
 
-Status: active for Base v0.4.0
+Status: active for Base v0.5.0
 
 ## Purpose
 
@@ -29,6 +29,9 @@ The Base reduces the effort to create, read, repair, and verify a repository wit
 17. Selecting `cli`, `windows`, `mcp`, or `api` materializes only removable helpers or permissive boundary descriptors; it does not add a framework, dispatch registry, HTTP policy, or Domain behavior.
 18. `knt migrate` can perform a read-only repository-shape probe without a Project Manifest and refuses `--apply` until both a Project Manifest and repository-local `.kinotch/` Base exist; an external Base override is read-only, explicit apply materializes only missing safe helpers, validates Defaults against existing Manifest Surfaces, and preserves overrides.
 19. `ci-test` provides a separate doctor → setup → verify workflow, generated-integrity checks both source and artifact hashes, PWA defaults are relative-base-path safe, and the generated file-io helper is explicitly UTF-8 text-only.
+20. Default materialization records final file provenance and doctor rejects modified provenance-tracked DEFAULT files without changing their state automatically.
+21. Template-backed Default integrity checks are derived from the Default template tree; adding a template does not require a second doctor switch.
+22. CLI, Windows, MCP, API, Agent, Config, and Logging helpers remain removable Surface/Tool conveniences and do not change Runtime semantics or Project-owned policy.
 
 ## Fixed read order
 
@@ -52,7 +55,7 @@ Inputs are the repository files, project/project.json, contract registries, Base
 
 - Runtime packages are not required for Base use.
 - Surface Profiles do not imply Runtime modules. Existing explicit Runtime module declarations remain Project-owned.
-- Default Catalog entries are low-risk, removable Surface or Tool conveniences; only entries with actual materialized behavior are cataloged, and they do not define Runtime execution semantics.
+- Default Catalog entries are low-risk, removable Surface or Tool conveniences; only entries with actual materialized behavior are cataloged, and they do not define Runtime execution semantics. The v0.5.0 Tool catalog is exactly `ci-test`, `generated-integrity`, `file-io`, `pwa`, `config`, and `logging`.
 - Production deployment policy remains Project-owned.
 - Surface adapters must not duplicate Domain Core behavior.
 - Generated artifacts must be regenerated from their canonical source and remain inside the Project root.
@@ -68,4 +71,4 @@ KiNoTch. Base owns repository structure, Agent entry points, and implementation 
 
 ## Tests
 
-Base self-tests under .kinotch/tests/ cover manifest and registry schema validation, Default state validation, required paths, profile checks, init/migrate safety, command routing, verify fallback, Base hash protection, and fixture isolation. The CI gate runs doctor followed by verify.
+Base self-tests under .kinotch/tests/ cover manifest and registry schema validation, Default state and provenance validation, required paths, profile checks, init/migrate safety, command routing, verify fallback, Surface Kit helpers, Base hash protection, CI host declarations, and fixture isolation. The CI gate runs doctor followed by setup and verify on Ubuntu PowerShell, Windows PowerShell Core, and Windows PowerShell 5.1.
