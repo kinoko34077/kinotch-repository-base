@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "base_version": "0.3.9",
+  "base_version": "0.4.0",
   "files": [
     {
       "path": ".editorconfig",
@@ -24,7 +24,7 @@
     },
     {
       "path": ".kinotch/BASE_VERSION",
-      "sha256": "6fe6f0c68d9a83ebbdb529c1782664c4934fb9f5a63215ab5ad29250d72fe5ed"
+      "sha256": "40b8eb4000a913a7791090535f291d3d369874162a89ef3c9e3d4e887a1b9e79"
     },
     {
       "path": ".kinotch/DEVELOPMENT_FLOW.md",
@@ -32,7 +32,7 @@
     },
     {
       "path": ".kinotch/FILE_INVENTORY.txt",
-      "sha256": "774993bff8af573209c26953ff96232b5e05ee0ba10e27530763d8b88be8fdc6"
+      "sha256": "843804d35b7a8ecf95db87fcbdb3dbe5885fa9bee7674b09fdf37796f95a3f63"
     },
     {
       "path": ".kinotch/PROJECT_BOUNDARY.md",
@@ -40,7 +40,7 @@
     },
     {
       "path": ".kinotch/README_BASE.md",
-      "sha256": "1fe07179c1c70d658237b383a7609c57ce6b6df0abdde02e1a8e711d4ca21579"
+      "sha256": "5b96a56fce3e75c655f40e69c5225cb639ce948a1a9def5104b34ace21b0299d"
     },
     {
       "path": ".kinotch/REPOSITORY_STANDARD.md",
@@ -56,7 +56,7 @@
     },
     {
       "path": ".kinotch/docs/BASE_ROADMAP.md",
-      "sha256": "ed6967556f989556ee0c811623314fde1ac5361f464b83a4cba897490456f18f"
+      "sha256": "915df86e206bccf1f37eab3fe49f8b672f3e7fdafb0d6a8e1e93ccc7e9840826"
     },
     {
       "path": ".kinotch/meta/00_CONTEXT.md",
@@ -68,7 +68,7 @@
     },
     {
       "path": ".kinotch/meta/02_ROADMAP.md",
-      "sha256": "3b51d5f027abbaf84dae4cbf89843dd87415da9112d19ef82c92e624ad779ed6"
+      "sha256": "b84d944c2f7b799bb12e270fbfff05c63f072454066133fb295f458746774fcd"
     },
     {
       "path": ".kinotch/meta/03_GUARDRAILS.md",
@@ -88,7 +88,7 @@
     },
     {
       "path": ".kinotch/meta/07_PHASE5_OPERATIONS.md",
-      "sha256": "1ad0e54110fc82d6a71d14ba52437f17f4a8066f67a58e9a27576b241f4466b8"
+      "sha256": "ba0111eaceb2ecdec606bc52fb34a59113a81d313849682c3a527cc4e326f372"
     },
     {
       "path": ".kinotch/meta/README.md",
@@ -172,7 +172,7 @@
     },
     {
       "path": ".kinotch/scripts/knt.ps1",
-      "sha256": "ef3624be2fbb57fb1bc2ce482b73f86ee2f4453ce7ebf8a432ab2031f32a3159"
+      "sha256": "2d50c7ed9be5911af0e8c3b74df446493770d5a06280005e69714d5c1daa6d41"
     },
     {
       "path": ".kinotch/scripts/path-containment.ps1",
@@ -197,6 +197,10 @@
     {
       "path": ".kinotch/templates/defaults/api/contracts/api-error-envelope.json",
       "sha256": "636987f45fc171821f234d4fd6d287f68f358e5aca8cad976d4d1cd96a314797"
+    },
+    {
+      "path": ".kinotch/templates/defaults/api/tools/api-default.ps1",
+      "sha256": "c35ad61d13820ed7756e981ff0b36d1f490a8d1831862dc9108ed7e47308b9dd"
     },
     {
       "path": ".kinotch/templates/defaults/ci-test/.github/workflows/kinotch-default.yml",
@@ -388,7 +392,7 @@
     },
     {
       "path": ".kinotch/tests/run-tests.ps1",
-      "sha256": "10a5a5747cd444cc6b31aad3b2fad7a4c2f7b51ddd884dbb9fc20382dceb542f"
+      "sha256": "b8f938524d32dc33013df23461e5e242805086c3656fef93c58e24860b66a177"
     },
     {
       "path": "AGENTS.md",

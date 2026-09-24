@@ -995,6 +995,10 @@ function Test-SelectedDefaultImplementations($DefaultsData) {
                     Write-Host "[doctor] MISSING implementation for Surface Default 'api'" -ForegroundColor Red
                     $ok = $false
                 }
+                if (-not (Test-Path -LiteralPath (Join-Path $projectRoot "tools/api-default.ps1") -PathType Leaf)) {
+                    Write-Host "[doctor] MISSING implementation for Surface Default 'api': project/tools/api-default.ps1" -ForegroundColor Red
+                    $ok = $false
+                }
             }
             "ci-test" {
                 if (-not (Test-Path -LiteralPath (Join-Path $Root ".github/workflows/kinotch-default.yml") -PathType Leaf)) {

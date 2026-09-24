@@ -1015,6 +1015,36 @@ Invoke-TestCase "API Default envelope remains a permissive boundary descriptor" 
     Assert-True (@($schema.required) -notcontains "details") "API Default made details mandatory"
     Assert-True ($schema.additionalProperties -eq $true) "API Default rejects Project-owned extensions"
 }
+Invoke-TestCase "API Surface Kit provides replaceable context, health, envelope, and hooks" {
+    Invoke-KntInitFixture -Profiles @("api") -AssertOutput {
+        param($root, $output)
+        $helper = Join-Path $root "project/tools/api-default.ps1"
+        Assert-True (Test-Path -LiteralPath $helper -PathType Leaf) "API Surface Kit helper was not materialized"
+        $probe = Join-Path $root "api-kit-probe.ps1"
+        $probeText = @'
+param([Parameter(Mandatory=$true)][string]$HelperPath)
+$ErrorActionPreference = "Stop"
+. $HelperPath
+$context = New-ApiRequestContext -RequestId "req-1" -CorrelationId "corr-1"
+if ($context.requestId -ne "req-1" -or $context.correlationId -ne "corr-1") { throw "request context was not preserved" }
+$generated = New-ApiRequestContext
+if ([string]::IsNullOrWhiteSpace($generated.requestId) -or [string]::IsNullOrWhiteSpace($generated.correlationId)) { throw "request context IDs were not generated" }
+$health = New-ApiHealthResponse -Name "sample"
+if ($health.status -ne "ok" -or $health.name -ne "sample") { throw "health response was not created" }
+$errorEnvelope = New-ApiErrorEnvelope -Code "invalid_input" -Message "bad input" -Details @{ field = "value" } -RequestId "req-1"
+if ($errorEnvelope.error -ne "invalid_input" -or $errorEnvelope.message -ne "bad input" -or $errorEnvelope.requestId -ne "req-1") { throw "error envelope was not preserved" }
+$hooked = Invoke-ApiHook -Name "validation" -Value "input" -Hook { param($value) return ($value + "-checked") }
+if ($hooked -ne "input-checked") { throw "API hook was not invoked" }
+$unchanged = Invoke-ApiHook -Name "auth" -Value "input"
+if ($unchanged -ne "input") { throw "missing API hook changed the value" }
+Write-Output "api-kit-ok"
+'@
+        Set-Content -LiteralPath $probe -Value $probeText -Encoding UTF8
+        $probeOutput = @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $probe -HelperPath $helper 2>&1)
+        Assert-Equal 0 $LASTEXITCODE "API Surface Kit probe exit code"
+        Assert-True (($probeOutput -join "`n") -match "api-kit-ok") "API Surface Kit probe did not complete"
+    }
+}
 Invoke-TestCase "oneOf requires exactly one matching schema" {
     $schema = [pscustomobject]@{
         oneOf = @(
@@ -1180,6 +1210,7 @@ Invoke-TestCase "Base documentation and profile status are finalized" {
     $spec = Get-Content -Raw (Join-Path $RepoRoot "project/docs/SPEC.md")
     $state = Get-Content -Raw (Join-Path $RepoRoot "project/docs/CURRENT_STATE.md")
     $runtime = Get-Content -Raw (Join-Path $RepoRoot ".kinotch/RUNTIME_INTEGRATION.md")
+    $baseReadme = Get-Content -Raw (Join-Path $RepoRoot ".kinotch/README_BASE.md")
     $workflow = Get-Content -Raw (Join-Path $RepoRoot ".github/workflows/verify.yml")
     $surfaceRegistry = Get-Content -Raw (Join-Path $RepoRoot "project/contracts/surfaces.json") | ConvertFrom-Json
     $catalog = Get-Content -Raw (Join-Path $RepoRoot ".kinotch/defaults/catalog.json") | ConvertFrom-Json
@@ -1192,7 +1223,9 @@ Invoke-TestCase "Base documentation and profile status are finalized" {
     Assert-True ($runtime -match "ActionRequest") "Runtime candidate-contract content is missing"
     Assert-True ($workflow -match "knt\.ps1 setup") "Base CI setup step is missing"
     Assert-Equal 0 @($surfaceRegistry.surfaces.PSObject.Properties).Count "Base Surface Registry should be empty"
-    Assert-Equal "0.3.9" $baseVersion "Base version"
+    Assert-Equal "0.4.0" $baseVersion "Base version"
+    Assert-True ($baseReadme -match "Surface Default Kit") "README_BASE Surface Kit wording is missing"
+    Assert-True ($baseReadme -match "OVERRIDE") "README_BASE override boundary is missing"
     Assert-True (@($catalog.defaults | Where-Object { $_.kind -eq "surface" }).Count -ge 8) "Surface Default catalog entries are incomplete"
     Assert-Equal 4 @($catalog.defaults | Where-Object { $_.kind -eq "tool" }).Count "Active Tool Default catalog count"
     foreach ($profileFile in Get-ChildItem (Join-Path $RepoRoot ".kinotch/profiles") -File) {

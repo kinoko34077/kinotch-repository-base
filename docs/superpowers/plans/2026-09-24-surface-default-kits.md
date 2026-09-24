@@ -185,7 +185,7 @@ git push origin main
 - Consumes: optional Project scriptblocks for validation, authentication, rate limiting, logging, and CORS.
 - Produces: `New-ApiRequestContext`, `New-ApiHealthResponse`, `New-ApiErrorEnvelope`, and `Invoke-ApiHook` in the materialized helper. These functions return plain objects and do not decide HTTP status, auth mechanism, rate values, provider retry, or Cloudflare policy.
 
-- [ ] **Step 1: Write failing API helper and descriptor tests**
+- [x] **Step 1: Write failing API helper and descriptor tests**
 
 Initialize an `api` Project and assert that `project/tools/api-default.ps1` exists. Dot-source it and assert:
 
@@ -202,19 +202,19 @@ Assert-Equal 'req-1' $error.requestId 'error request ID'
 
 Test `Invoke-ApiHook` with a supplied scriptblock and with no hook; the latter must return the input unchanged. Keep the envelope schema permissive and do not require `details`.
 
-- [ ] **Step 2: Run the self-test and verify it fails**
+- [x] **Step 2: Run the self-test and verify it fails**
 
 Expected: the API helper file is missing and the new assertions fail.
 
-- [ ] **Step 3: Implement the hook-oriented API helper**
+- [x] **Step 3: Implement the hook-oriented API helper**
 
 Use plain PSCustomObjects/hashtables. `New-ApiRequestContext` generates a GUID only when no request ID is supplied; it does not validate or rewrite Project IDs. `New-ApiHealthResponse` returns a small data object. `New-ApiErrorEnvelope` preserves the caller’s code/message/details/requestId. `Invoke-ApiHook` accepts `-Hook`, `-Value`, and `-Name`, calls the hook when present, and otherwise returns `Value`. Add the template file to doctor’s selected API implementation list.
 
-- [ ] **Step 4: Run tests and inspect the materialized API files**
+- [x] **Step 4: Run tests and inspect the materialized API files**
 
 Expected: API helper tests, schema tests, doctor, and existing Base tests pass; no HTTP server or Runtime package is introduced.
 
-- [ ] **Step 5: Commit the API slice**
+- [x] **Step 5: Commit the API slice**
 
 ```powershell
 git add .kinotch/templates/defaults/api .kinotch/scripts/knt.ps1 .kinotch/tests/run-tests.ps1 project/docs/CURRENT_STATE.md
@@ -236,11 +236,11 @@ git push origin main
 - Consumes: completed CLI, Windows, MCP, and API template kits.
 - Produces: a self-describing Base v0.4.0 release only when all four kits and their tests are complete; otherwise preserves v0.3.9 and records the partial feature slice accurately.
 
-- [ ] **Step 1: Add documentation assertions**
+- [x] **Step 1: Add documentation assertions**
 
 Add a self-test that confirms the Base docs state that Surface Kits provide Domain-neutral helpers, existing frameworks may remain OVERRIDE, and Runtime contracts are not expanded by this feature. Keep the assertion small and phrase-based.
 
-- [ ] **Step 2: Run the full verification gate before versioning**
+- [x] **Step 2: Run the full verification gate before versioning**
 
 Run:
 
@@ -253,13 +253,13 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .kinotch/scripts/knt.ps1 verify
 
 Expected: all tests and commands pass. If the complete feature slice is shipped, update `.kinotch/BASE_VERSION` and matching documentation to `0.4.0`; otherwise keep `0.3.9` and document the exact completed subset.
 
-- [ ] **Step 3: Refresh the protected Base index**
+- [x] **Step 3: Refresh the protected Base index**
 
 Run: `pwsh -NoProfile -ExecutionPolicy Bypass -File .kinotch/scripts/knt.ps1 base-refresh`
 
 Expected: `base-files.json` and `FILE_INVENTORY.txt` are regenerated deterministically and `base-check` passes.
 
-- [ ] **Step 4: Inspect Git state and commit the release slice**
+- [x] **Step 4: Inspect Git state and commit the release slice**
 
 Run:
 
@@ -271,6 +271,6 @@ git diff --check
 
 Then commit and push the documentation/version/index changes with `chore: release Surface Default Kit feature slice` and verify local `HEAD` equals `origin/main`.
 
-- [ ] **Step 5: Record the final boundary**
+- [x] **Step 5: Record the final boundary**
 
 Update `CURRENT_STATE` to state which kits are implemented, that existing repo adoption remains out of scope, Runtime remains 0.1.0, and the next operation is canary use in a selected Project—not bulk migration.

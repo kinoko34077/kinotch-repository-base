@@ -61,6 +61,8 @@
 - `windows` Explorer/clipboard shell boundary
 - `mcp` tool boundary descriptor without a second registry
 - `api` permissive error-envelope schema without HTTP policy
+- v0.4.0 Surface Default Kits: CLI common options/output, Windows picker/drop/progress/cancel,
+  MCP boundary hooks, and API context/health/error/hook helpers
 - No Domain format, deploy policy, or Runtime module is generated.
 
 ## Phase 4 — init / migrate and existing repository adoption (complete)

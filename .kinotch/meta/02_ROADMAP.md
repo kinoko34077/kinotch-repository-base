@@ -4,7 +4,7 @@ Current position: Phase 5 — gradual repository adoption / maintenance.
 Phase 3B safe Default behavior, Phase 4A read-only Canary validation, Phase 4B
 adoption-safety hardening, and the Phase 4C adoption decision review are
 complete. Eight repositories are recorded as cleanly adopted at Base v0.3.8;
-Base v0.3.9 is the current maintenance release. Additional
+Base v0.4.0 is the current Surface Default Kit feature release. Additional
 repositories are explicitly staged, not adopted, or unavailable according to
 the operation-state table in `project/docs/DEFAULT_ROLLOUT_DRY_RUN.md`.
 Phase 2A Portable Contract validation remains independent and provisional;
@@ -212,13 +212,13 @@ fileは自動書換えしない。Manifestなしのshape probeでは、既存相
 overrideはshape probe専用で、既存repoのapplyには使用しない。
 
 完了条件は全repoへのBase導入ではなく、代表repoごとの採用可否、Project
-failureとBase failureの分離、全repoの運用状態記録、およびBase v0.3.9の
-検証済み状態である。
+failureとBase failureの分離、全repoの運用状態記録、およびBase v0.4.0の
+Surface Default Kit検証済み状態である。
 
 ## Phase 5 — 既存repoへの段階導入 / maintenance (current)
 
 専用adoption campaignを継続せず、通常のProject作業に同期判断を組み込む。
-Base v0.3.9を当面の基準版として固定し、全repoを一括書換えしない。
+Base v0.4.0を当面の基準版として固定し、全repoを一括書換えしない。
 
 - 改修するrepoから順次適用
 - project固有ロジックは無理に移動しない

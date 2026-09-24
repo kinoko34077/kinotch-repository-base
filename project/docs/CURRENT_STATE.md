@@ -1,8 +1,8 @@
 # Current State
 
-Base version: `0.3.9`
+Base version: `0.4.0`
 
-Last verified: 2026-09-24 — self-test 74/74; doctor, base-check, and verify passed locally after the Base v0.3.9 index refresh
+Last verified: 2026-09-24 — self-test 75/75; doctor, base-check, and verify passed locally after the Base v0.4.0 index refresh
 
 ## Implemented
 
@@ -43,6 +43,8 @@ Last verified: 2026-09-24 — self-test 74/74; doctor, base-check, and verify pa
   progress state, cooperative cancel flag, Explorer/clipboard, and error-dialog boundary
 - MCP Surface Kit boundary descriptor for input validation, working-directory and
   resource-path resolution, diagnostics, generic error conversion, and host-owned dispatch
+- API Surface Kit plain-object request/correlation context, health response,
+  permissive error envelope, and replaceable validation/auth/rate/logging hook boundary
 - `knt verify` integration for selected PWA and generated-integrity checks
 - Manifest-less read-only `knt migrate` repository-shape probe using package, Cargo,
   Python, workflow, and web-asset markers
@@ -98,10 +100,10 @@ Last verified: 2026-09-24 — self-test 74/74; doctor, base-check, and verify pa
   `2bit-cell-automaton`, and `colony-ai`; existing
   CLI/MCP/API/generated/browser/PWA/Streamlit behavior remains Project-owned
   as `OVERRIDE`.
-- Base v0.3.9 is the current maintenance release; existing adopted repositories
+- Base v0.4.0 is the current Surface Default Kit feature release; existing adopted repositories
   are synchronized only during their normal maintenance cycle.
 - Surface Default Kit expansion is a Phase 5 Base feature slice; CLI, Windows,
-  and MCP Kits are implemented, while the API Kit expansion remains next.
+  MCP, and API Kits are implemented and ready for final release gating.
 - `refil-viewer` remains `STAGED`: its Base v0.3.8 files pass doctor and
   base-check, while its existing Vite source still fails on a duplicate
   `pageIndex` declaration. This is a Project bug and is not hidden or fixed by
@@ -150,9 +152,8 @@ Last verified: 2026-09-24 — self-test 74/74; doctor, base-check, and verify pa
 - Production deploy policy remains project-specific.
 - Base-wide Meta belongs under .kinotch/meta/.
 - New repositories use .kinotch/templates/project/ as their generation source.
-- Base v0.3.9 remains the current Phase 5 maintenance baseline while the
-  Surface Default Kit feature slice is evaluated; Runtime semantics remain
-  unchanged.
+- Base v0.4.0 is the current Phase 5 feature baseline; Runtime semantics remain
+  unchanged and existing repositories are not bulk-migrated.
 
 ## Next work
 

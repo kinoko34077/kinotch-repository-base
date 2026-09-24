@@ -47,6 +47,7 @@
 .kinotch/templates/CURRENT_STATE.md
 .kinotch/templates/SPEC.md
 .kinotch/templates/defaults/api/contracts/api-error-envelope.json
+.kinotch/templates/defaults/api/tools/api-default.ps1
 .kinotch/templates/defaults/ci-test/.github/workflows/kinotch-default.yml
 .kinotch/templates/defaults/cli/tools/cli-default.ps1
 .kinotch/templates/defaults/file-io/contracts/file-io.json
