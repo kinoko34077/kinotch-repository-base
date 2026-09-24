@@ -202,8 +202,9 @@ generated helpers remain unchanged. Its targeted gates passed:
 - `knt verify`
 
 The canary is committed at `355aaa3` and published as the private
-`kinoko34077/kinotch-default-canary` repository. Both the Base Verify and
-generated Default Verify workflows passed on the initial push. It is evidence
+`kinoko34077/kinotch-default-canary` repository. The Base Verify run
+`36012972464` and generated Default Verify run `36012972686` both passed on
+the Base v0.5.2 sync push. It is evidence
 for new-repository initialization, not a claim that an existing repository has
 been adopted. Existing repositories remain governed by their recorded
 `OVERRIDE`, `STAGED`, `NOT_ADOPTED`, or `N/A` decisions.

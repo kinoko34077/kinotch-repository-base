@@ -2,7 +2,7 @@
 
 Base version: `0.5.2`
 
-Last verified: 2026-09-24 — self-test 96/96; doctor, base-check, and verify passed locally; Hosted CI validation for v0.5.2 is pending after release push.
+Last verified: 2026-09-24 — self-test 96/96; doctor, base-check, and verify passed locally; Hosted CI run 36013331097 passed on Ubuntu PowerShell, Windows PowerShell Core, and Windows PowerShell 5.1.
 
 ## Implemented
 
