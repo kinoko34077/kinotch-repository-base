@@ -18,6 +18,18 @@
 
 Base-wide MetaとTemplateは共通層に置く。個別Projectの情報を `.kinotch/` へ書かない。
 
+## Cross-repository GitHub workflow
+
+複数Repositoryの横断管理、GitHub Issue / PRを使った監査・実装運用、またはAgentのGitHub操作境界を扱う場合は、`.kinotch/meta/08_GITHUB_DEVELOPMENT_CONTROL.md` を参照する。
+
+通常のGitHub変更はdefault branchへ直接書かず、専用branchからPull Requestを作成する。
+
+要件が十分に定義されている場合、現行版取得、監査、Issue / Work Order作成、branch作成、実装、検証、PR作成、PR再監査までは継続してよい。
+
+merge、release、deploy、publication、破壊的削除その他の確定的・復元困難な操作は実行前にユーザー確認を得る。
+
+監査ではAudit SHAを残す。P0 / P1 findingは原則としてIssue化し、P2 / P3は監査結果への集約を既定とする。
+
 ## Modification Boundary
 
 個別案件の作業では `README.md` / `project/**` を変更対象とする。Base / Runtimeそのものを変更するタスクでない限り共通層を触らない。
