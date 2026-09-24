@@ -1243,6 +1243,62 @@ Write-Output "api-kit-ok"
         Assert-True (($probeOutput -join "`n") -match "api-kit-ok") "API Surface Kit probe did not complete"
     }
 }
+Invoke-TestCase "Config Tool Default merges maps and redacts only explicit keys" {
+    Invoke-KntInitFixture -Profiles @("minimal") -Defaults @("config") -AssertOutput {
+        param($root, $output)
+        $helper = Join-Path $root "project/tools/config-default.ps1"
+        Assert-True (Test-Path -LiteralPath $helper -PathType Leaf) "Config Default helper was not materialized"
+        $probe = Join-Path $root "config-default-probe.ps1"
+        $probeText = @'
+param([Parameter(Mandatory=$true)][string]$HelperPath)
+$ErrorActionPreference = "Stop"
+. $HelperPath
+$defaults = [ordered]@{ value = "default"; keep = "yes"; empty = ""; token = "secret" }
+$file = [ordered]@{ value = "file"; fileOnly = $true; token = "file-secret" }
+$environment = [ordered]@{ value = "environment"; environmentOnly = $true }
+$cli = [ordered]@{ value = "cli"; cliOnly = $true }
+$merged = Merge-KntConfigMaps -Maps @($defaults, $file, $environment, $cli)
+if ($merged.value -ne "cli" -or $merged.keep -ne "yes" -or -not $merged.fileOnly -or -not $merged.environmentOnly -or -not $merged.cliOnly -or $merged.empty -ne "") { throw "Config precedence or unknown-key merge failed" }
+$protected = Protect-KntConfigForDisplay -Config $merged -SecretKeys @("token")
+if ($protected.token -ne "[REDACTED]" -or $merged.token -ne "file-secret" -or $defaults.token -ne "secret" -or $protected.keep -ne "yes") { throw "Config explicit redaction was not non-destructive" }
+Write-Output "config-default-ok"
+'@
+        Set-Content -LiteralPath $probe -Value $probeText -Encoding UTF8
+        $probeOutput = @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $probe -HelperPath $helper 2>&1)
+        Assert-Equal 0 $LASTEXITCODE "Config Default probe exit code"
+        Assert-True (($probeOutput -join "`n") -match "config-default-ok") "Config Default probe did not complete"
+    }
+}
+Invoke-TestCase "Logging Tool Default writes structured records to stderr" {
+    Invoke-KntInitFixture -Profiles @("minimal") -Defaults @("logging") -AssertOutput {
+        param($root, $output)
+        $helper = Join-Path $root "project/tools/logging-default.ps1"
+        Assert-True (Test-Path -LiteralPath $helper -PathType Leaf) "Logging Default helper was not materialized"
+        $probe = Join-Path $root "logging-default-probe.ps1"
+        $probeText = @'
+param([Parameter(Mandatory=$true)][string]$HelperPath)
+$ErrorActionPreference = "Stop"
+. $HelperPath
+$record = New-KntLogRecord -Level "warning" -Message "ready" -Data @{ source = "test" }
+if ($record.level -ne "warning" -or $record.message -ne "ready" -or [string]::IsNullOrWhiteSpace($record.timestamp)) { throw "Log record was incomplete" }
+[DateTimeOffset]::Parse($record.timestamp) | Out-Null
+$sinkSeen = $null
+$redacted = Invoke-KntLogSink -Record $record -Redactor { param($value) return [pscustomobject]@{ timestamp = $value.timestamp; level = $value.level; message = $value.message; data = @{ source = "redacted" } } } -Sink { param($value) $script:sinkSeen = $value; return $value }
+if ($null -eq $sinkSeen -or $sinkSeen.data.source -ne "redacted" -or $redacted.data.source -ne "redacted") { throw "Log sink or redactor hook was not invoked" }
+Write-KntConsoleLog -Record $record -Json
+[Console]::Out.WriteLine("stdout-marker")
+'@
+        Set-Content -LiteralPath $probe -Value $probeText -Encoding UTF8
+        $stderrPath = Join-Path $root "logging-default.stderr"
+        $stdout = @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $probe -HelperPath $helper 2> $stderrPath)
+        Assert-Equal 0 $LASTEXITCODE "Logging Default probe exit code"
+        Assert-True (($stdout -join "`n") -match "stdout-marker") "Logging probe did not complete"
+        $stderr = Get-Content -Raw -Encoding UTF8 $stderrPath | ConvertFrom-Json
+        Assert-Equal "warning" $stderr.level "structured log level"
+        Assert-Equal "ready" $stderr.message "structured log message"
+        Assert-True (-not (($stdout -join "`n") -match "ready|warning")) "Logging polluted stdout"
+    }
+}
 Invoke-TestCase "oneOf requires exactly one matching schema" {
     $schema = [pscustomobject]@{
         oneOf = @(
@@ -1426,7 +1482,9 @@ Invoke-TestCase "Base documentation and profile metadata are finalized" {
     Assert-True ($baseReadme -match "Surface Default Kit") "README_BASE Surface Kit wording is missing"
     Assert-True ($baseReadme -match "OVERRIDE") "README_BASE override boundary is missing"
     Assert-True (@($catalog.defaults | Where-Object { $_.kind -eq "surface" }).Count -ge 8) "Surface Default catalog entries are incomplete"
-    Assert-Equal 4 @($catalog.defaults | Where-Object { $_.kind -eq "tool" }).Count "Active Tool Default catalog count"
+    $toolIds = @($catalog.defaults | Where-Object { $_.kind -eq "tool" } | ForEach-Object { [string]$_.id } | Sort-Object)
+    Assert-Equal 6 $toolIds.Count "Active Tool Default catalog count"
+    Assert-Equal "ci-test,config,file-io,generated-integrity,logging,pwa" ($toolIds -join ",") "Active Tool Default catalog IDs"
     foreach ($profileFile in Get-ChildItem (Join-Path $RepoRoot ".kinotch/profiles") -File) {
         $profile = Get-Content -Raw -Encoding UTF8 $profileFile.FullName | ConvertFrom-Json
         Assert-True (-not $profile.PSObject.Properties["status"]) "$($profileFile.Name) has stale profile lifecycle metadata"

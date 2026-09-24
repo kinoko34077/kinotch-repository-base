@@ -32,7 +32,7 @@
     },
     {
       "path": ".kinotch/FILE_INVENTORY.txt",
-      "sha256": "457b0a8a3d2d640ba8647d9e361d13574d3e7d93256a67ec5ba224282d6d6d7f"
+      "sha256": "90db2fc27fadb18e1d0de965c75ac97af7de644af4cecd76cc8768817817e31e"
     },
     {
       "path": ".kinotch/PROJECT_BOUNDARY.md",
@@ -52,7 +52,7 @@
     },
     {
       "path": ".kinotch/defaults/catalog.json",
-      "sha256": "046be068a5f6294bbeb0cb41a4025bb2cf3033bb1a1589e02b7a5554a20f80dc"
+      "sha256": "47e7ce8f09facfe0e38e3270d425de7c6926f94109e8128e29c9f20b044b05d7"
     },
     {
       "path": ".kinotch/docs/BASE_ROADMAP.md",
@@ -215,6 +215,10 @@
       "sha256": "c3a8f47549971f3564ec93b2b0479a98d4ea20d8866b2275a38442d99f15e19d"
     },
     {
+      "path": ".kinotch/templates/defaults/config/tools/config-default.ps1",
+      "sha256": "73f3ccbd39fc89eda71fe628a89f026f31ed69e76d65ae4ce9dbc07bc80a80f1"
+    },
+    {
       "path": ".kinotch/templates/defaults/file-io/contracts/file-io.json",
       "sha256": "1e8a7831ad167b2a2ab3eab8c3448b3d55c52d298adf1c810d87d7648286b43e"
     },
@@ -233,6 +237,10 @@
     {
       "path": ".kinotch/templates/defaults/generated-integrity/tools/update-generated-integrity.ps1",
       "sha256": "d0e3e3657cb1457e10f1cd9a6a661fcd51502e9b0779bfcaf2acd6401cfe6840"
+    },
+    {
+      "path": ".kinotch/templates/defaults/logging/tools/logging-default.ps1",
+      "sha256": "b68a0baa9ba0de2c6845b1ae1045415efbb3f67c731521cc4aa210aaa1b42796"
     },
     {
       "path": ".kinotch/templates/defaults/mcp/contracts/mcp-tools.json",
@@ -400,7 +408,7 @@
     },
     {
       "path": ".kinotch/tests/run-tests.ps1",
-      "sha256": "e2c7ce8fb7ae90666565c1db5c19366446d58ec2a32032a349545d9c7afd70de"
+      "sha256": "c812e497fc725708140064b6163f5ef3106f957f1149714ceaa6eb9c45a33cc0"
     },
     {
       "path": "AGENTS.md",
