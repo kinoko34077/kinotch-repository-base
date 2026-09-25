@@ -1,8 +1,8 @@
 # Current State
 
-Base version: `0.5.3`
+Base version: `0.5.4`
 
-Last verified: 2026-09-25 — v0.5.3 hardening complete; Hosted CI passed 104/104 self-tests on Ubuntu PowerShell, Windows PowerShell Core, and Windows PowerShell 5.1.
+Last verified: 2026-09-25 — v0.5.4 command execution compatibility fix in progress; v0.5.3 Hosted CI had passed 104/104 self-tests on Ubuntu PowerShell, Windows PowerShell Core, and Windows PowerShell 5.1.
 
 ## Implemented
 
