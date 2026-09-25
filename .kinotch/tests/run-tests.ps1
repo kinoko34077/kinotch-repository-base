@@ -1685,6 +1685,24 @@ Invoke-TestCase "changed Base file fails base-check" {
     }
 }
 
+Invoke-TestCase "base-refresh rejects protected changes without a version bump" {
+    Invoke-KntFixture -Name "valid-minimal" -Command "base-refresh" -ExpectedExit 2 -Prepare {
+        param($root)
+        Set-FixtureAsBase $root
+        Set-FixtureBaseIndex $root
+        $expectedIndex = Join-Path $root "project/expected-base-files.json"
+        $expectedInventory = Join-Path $root "project/expected-file-inventory.txt"
+        Copy-Item -LiteralPath (Join-Path $root ".kinotch/base-files.json") -Destination $expectedIndex
+        Copy-Item -LiteralPath (Join-Path $root ".kinotch/FILE_INVENTORY.txt") -Destination $expectedInventory
+        Add-Content -LiteralPath (Join-Path $root ".kinotch/README_BASE.md") -Value "changed without version bump"
+    } -AssertOutput {
+        param($root, $output)
+        Assert-True ($output -match "protected Base content changed without BASE_VERSION bump") "same-version protected change was not rejected"
+        Assert-Equal (Get-Content -Raw -LiteralPath (Join-Path $root "project/expected-base-files.json")) (Get-Content -Raw -LiteralPath (Join-Path $root ".kinotch/base-files.json")) "base-files.json changed after rejected refresh"
+        Assert-Equal (Get-Content -Raw -LiteralPath (Join-Path $root "project/expected-file-inventory.txt")) (Get-Content -Raw -LiteralPath (Join-Path $root ".kinotch/FILE_INVENTORY.txt")) "FILE_INVENTORY.txt changed after rejected refresh"
+    }
+}
+
 Invoke-TestCase "base-refresh indexes new common file" {
     Invoke-KntFixture -Name "valid-minimal" -Command "base-refresh" -ExpectedExit 0 -Prepare {
         param($root)
