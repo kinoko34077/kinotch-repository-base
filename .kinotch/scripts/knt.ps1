@@ -57,6 +57,11 @@ function Assert-RepositoryWriteAllowed([string]$Operation) {
     if (-not (Test-Path -LiteralPath $localBaseDir -PathType Container)) {
         throw "$Operation requires a valid repository-local .kinotch/ Base"
     }
+    $localBaseItem = Get-Item -LiteralPath $localBaseDir -Force -ErrorAction Stop
+    if (($localBaseItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+        throw "$Operation rejects a symlink, junction, or reparse-point repository-local .kinotch/ Base"
+    }
+    [void](Assert-KntSafePath -Root $Root -Candidate $localBaseDir -Description "repository-local Base" -AllowRoot)
     foreach ($requiredFile in @("BASE_VERSION", "base-files.json", "scripts/knt.ps1")) {
         if (-not (Test-Path -LiteralPath (Join-Path $localBaseDir $requiredFile) -PathType Leaf)) {
             throw "$Operation requires a valid repository-local .kinotch/ Base"
@@ -1195,6 +1200,14 @@ function Test-BaseFiles {
         $path = Join-Path $Root $entry.path
         if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
             Write-Host "[base-check] MISSING  $($entry.path)" -ForegroundColor Red
+            $ok = $false
+            continue
+        }
+        try {
+            [void](Assert-KntSafePath -Root $Root -Candidate $path -Description "Base protected file")
+        }
+        catch {
+            Write-Host "[base-check] UNSAFE  $($entry.path): $($_.Exception.Message)" -ForegroundColor Red
             $ok = $false
             continue
         }

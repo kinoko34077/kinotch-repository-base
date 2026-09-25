@@ -1703,6 +1703,51 @@ Invoke-TestCase "base-refresh rejects protected changes without a version bump" 
     }
 }
 
+Invoke-TestCase "base-check rejects a protected symlink file" {
+    Invoke-KntFixture -Name "valid-minimal" -Command "base-check" -ExpectedExit 1 -Prepare {
+        param($root)
+        Set-FixtureBaseIndex $root
+        $outside = Join-Path $root "outside-base-file.txt"
+        Set-Content -LiteralPath $outside -Value "outside" -NoNewline
+        $protected = Join-Path $root ".kinotch/README_BASE.md"
+        Remove-Item -LiteralPath $protected -Force
+        try {
+            New-Item -ItemType SymbolicLink -Path $protected -Target $outside -ErrorAction Stop | Out-Null
+        }
+        catch {
+            $script:SkipCurrentTest = $true
+            Write-Host "[SKIP] symlink creation is unavailable: $($_.Exception.Message)" -ForegroundColor Yellow
+        }
+    } -AssertOutput {
+        param($root, $output)
+        if (-not $script:SkipCurrentTest) {
+            Assert-True ($output -match "UNSAFE|symlink|junction|reparse|boundary") "protected symlink was not rejected"
+        }
+    }
+}
+
+Invoke-TestCase "base-refresh rejects a symlinked .kinotch boundary" {
+    Invoke-KntFixture -Name "valid-minimal" -Command "base-refresh" -ExpectedExit 2 -Prepare {
+        param($root)
+        Set-FixtureAsBase $root
+        Set-FixtureBaseIndex $root
+        $realBase = Join-Path $root ".kinotch-real"
+        Move-Item -LiteralPath (Join-Path $root ".kinotch") -Destination $realBase
+        try {
+            New-Item -ItemType SymbolicLink -Path (Join-Path $root ".kinotch") -Target $realBase -ErrorAction Stop | Out-Null
+        }
+        catch {
+            $script:SkipCurrentTest = $true
+            Write-Host "[SKIP] symlink creation is unavailable: $($_.Exception.Message)" -ForegroundColor Yellow
+        }
+    } -AssertOutput {
+        param($root, $output)
+        if (-not $script:SkipCurrentTest) {
+            Assert-True ($output -match "symlink|junction|reparse|boundary") "symlinked .kinotch boundary was not rejected"
+        }
+    }
+}
+
 Invoke-TestCase "base-refresh indexes new common file" {
     Invoke-KntFixture -Name "valid-minimal" -Command "base-refresh" -ExpectedExit 0 -Prepare {
         param($root)
