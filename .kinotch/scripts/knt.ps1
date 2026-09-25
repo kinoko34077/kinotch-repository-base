@@ -161,6 +161,43 @@ function Test-DefaultCatalogSemantics($Catalog) {
             [void]$errors.Add("Default id/alias collision '$id'")
         }
     }
+    $currentOwners = @{}
+    foreach ($entry in @($Catalog.defaults)) {
+        $entryId = [string]$entry.id
+        foreach ($path in @(Get-DefaultTemplateRepositoryPaths -DefaultId $entryId)) {
+            $key = Get-KntRepositoryPathKey $path
+            if ($currentOwners.ContainsKey($key) -and $currentOwners[$key] -ne $entryId) {
+                [void]$errors.Add("Default template path '$path' is owned by both '$($currentOwners[$key])' and '$entryId'")
+            }
+            else {
+                $currentOwners[$key] = $entryId
+            }
+        }
+    }
+    foreach ($entry in @($Catalog.defaults)) {
+        $entryId = [string]$entry.id
+        $current = @{}
+        foreach ($path in @(Get-DefaultTemplateRepositoryPaths -DefaultId $entryId)) { $current[(Get-KntRepositoryPathKey $path)] = $true }
+        $retired = @{}
+        $retiredPaths = if ($entry.PSObject.Properties["retired_paths"]) { @($entry.retired_paths) } else { @() }
+        foreach ($retiredPath in $retiredPaths) {
+            $path = ConvertTo-KntRepositoryRelativePath ([string]$retiredPath)
+            $key = Get-KntRepositoryPathKey $path
+            if (-not (Test-KntRepositoryRelativePathSyntax $path)) {
+                [void]$errors.Add("Default '$entryId' retired path '$retiredPath' is not a repository-relative path")
+            }
+            if ($retired.ContainsKey($key)) {
+                [void]$errors.Add("Default '$entryId' retired path '$path' is duplicated")
+            }
+            else { $retired[$key] = $true }
+            if ($current.ContainsKey($key)) {
+                [void]$errors.Add("Default '$entryId' retired path '$path' is still a current template path")
+            }
+            if ($currentOwners.ContainsKey($key) -and $currentOwners[$key] -ne $entryId) {
+                [void]$errors.Add("Default '$entryId' retired path '$path' overlaps current Default '$($currentOwners[$key])'")
+            }
+        }
+    }
     return @($errors | Select-Object -Unique)
 }
 
@@ -290,6 +327,51 @@ function Get-DefaultProfileName($Entry) {
         return [string]$Entry.profile
     }
     return [string]$Entry.id
+}
+
+function ConvertTo-KntRepositoryRelativePath([string]$Path) {
+    return ([string]$Path).Replace('\', '/').TrimStart('/')
+}
+
+function Get-KntRepositoryPathKey([string]$Path) {
+    $canonical = ConvertTo-KntRepositoryRelativePath $Path
+    if ($env:OS -eq "Windows_NT") { return $canonical.ToLowerInvariant() }
+    return $canonical
+}
+
+function Test-KntRepositoryRelativePathSyntax([string]$Path) {
+    $value = [string]$Path
+    if ([string]::IsNullOrWhiteSpace($value)) { return $false }
+    if ([IO.Path]::IsPathRooted($value) -or $value -match '^(?:[A-Za-z]:)?[\\/]') { return $false }
+    $normalized = ConvertTo-KntRepositoryRelativePath $value
+    if ($normalized -match '(^|/)\.\.(/|$)' -or $normalized -eq '.') { return $false }
+    return $true
+}
+
+function Get-DefaultTemplateRepositoryPaths([string]$DefaultId) {
+    $templateRoot = Join-Path $BaseDir ("templates/defaults/" + $DefaultId)
+    if (-not (Test-Path -LiteralPath $templateRoot -PathType Container)) { return @() }
+    $paths = New-Object System.Collections.Generic.List[string]
+    foreach ($templateFile in @(Get-ChildItem -LiteralPath $templateRoot -Recurse -File -Force)) {
+        $relative = ConvertTo-BaseRelativePath -Root $templateRoot -AbsolutePath $templateFile.FullName
+        $repositoryRelative = if ($relative -like ".github/*") { $relative } else { "project/$relative" }
+        [void]$paths.Add((ConvertTo-KntRepositoryRelativePath $repositoryRelative))
+    }
+    return @($paths | Sort-Object -Unique)
+}
+
+function Get-DefaultTrustedOwnedPaths($Catalog, [string]$DefaultId) {
+    $entry = Find-AnyDefaultCatalogEntry -Catalog $Catalog -Identifier $DefaultId
+    $paths = @{}
+    foreach ($path in @(Get-DefaultTemplateRepositoryPaths -DefaultId ([string]$entry.id))) {
+        $paths[(Get-KntRepositoryPathKey $path)] = (ConvertTo-KntRepositoryRelativePath $path)
+    }
+    $retiredPaths = if ($entry.PSObject.Properties["retired_paths"]) { @($entry.retired_paths) } else { @() }
+    foreach ($retired in $retiredPaths) {
+        $canonical = ConvertTo-KntRepositoryRelativePath ([string]$retired)
+        $paths[(Get-KntRepositoryPathKey $canonical)] = $canonical
+    }
+    return $paths
 }
 
 function Get-DefaultOptions([string]$CommandName) {
@@ -698,6 +780,8 @@ jobs:
 function Get-DefaultImplementationPlan([string]$DefaultId, [string]$ProjectRoot, [string]$Kind = "Tool", $ExistingState = $null) {
     $templateRoot = Join-Path $BaseDir ("templates/defaults/" + $DefaultId)
     if (-not (Test-Path -LiteralPath $templateRoot -PathType Container)) { return @() }
+    $catalog = Get-DefaultCatalog
+    $trustedOwnedPaths = Get-DefaultTrustedOwnedPaths -Catalog $catalog -DefaultId $DefaultId
     $recordedHashes = @{}
     if ($ExistingState -and $ExistingState.PSObject.Properties["materialized_files"]) {
         foreach ($recorded in @($ExistingState.materialized_files)) {
@@ -756,6 +840,20 @@ function Get-DefaultImplementationPlan([string]$DefaultId, [string]$ProjectRoot,
     }
     foreach ($recordedPath in @($recordedHashes.Keys)) {
         if ($templateRepositoryPaths.Contains($recordedPath)) { continue }
+        $recordedKey = Get-KntRepositoryPathKey $recordedPath
+        if (-not $trustedOwnedPaths.ContainsKey($recordedKey)) {
+            [void]$plan.Add([pscustomobject]@{
+                default_id = $DefaultId
+                kind = $Kind
+                relative = $recordedPath
+                repository_relative = $recordedPath
+                template = $null
+                destination = $null
+                status = "UNTRUSTED"
+                action = "remove"
+            })
+            continue
+        }
         try {
             $destination = Resolve-KntContainedPath -BaseRoot $Root -RelativePath $recordedPath -Description "Default '$DefaultId' recorded path" -AllowRoot
         }
@@ -791,8 +889,24 @@ function Get-DefaultImplementationPlan([string]$DefaultId, [string]$ProjectRoot,
 function Get-DefaultRemovalPlan([string]$DefaultId, $ExistingState, [string]$Kind = "Tool") {
     $plan = New-Object System.Collections.Generic.List[object]
     if (-not $ExistingState -or -not $ExistingState.PSObject.Properties["materialized_files"]) { return @() }
+    $catalog = Get-DefaultCatalog
+    $trustedOwnedPaths = Get-DefaultTrustedOwnedPaths -Catalog $catalog -DefaultId $DefaultId
     foreach ($recorded in @($ExistingState.materialized_files)) {
         $recordedPath = [string]$recorded.path
+        $recordedKey = Get-KntRepositoryPathKey $recordedPath
+        if (-not $trustedOwnedPaths.ContainsKey($recordedKey)) {
+            [void]$plan.Add([pscustomobject]@{
+                default_id = $DefaultId
+                kind = $Kind
+                relative = $recordedPath
+                repository_relative = $recordedPath
+                template = $null
+                destination = $null
+                status = "UNTRUSTED"
+                action = "remove"
+            })
+            continue
+        }
         try {
             $destination = Resolve-KntContainedPath -BaseRoot $Root -RelativePath $recordedPath -Description "Default '$DefaultId' recorded path" -AllowRoot
         }
@@ -831,11 +945,12 @@ function Apply-DefaultImplementationPlan($Plan, [System.Collections.Generic.List
     Assert-RepositoryWriteAllowed "Default materialization"
     $defaultId = [string]$planItems[0].default_id
     $kind = [string]$planItems[0].kind
-    $conflicts = @($planItems | Where-Object { [string]$_.status -eq "CONFLICT" })
+    $conflicts = @($planItems | Where-Object { [string]$_.status -in @("CONFLICT", "UNTRUSTED") })
     if ($conflicts.Count -gt 0) {
         if ($null -ne $ConflictingDefaults -and $defaultId -notin $ConflictingDefaults) { [void]$ConflictingDefaults.Add($defaultId) }
         foreach ($conflict in $conflicts) {
-            Write-Knt "$kind Default '$defaultId' found conflicting existing path: $($conflict.relative); state OVERRIDE"
+            $reason = if ([string]$conflict.status -eq "UNTRUSTED") { "untrusted provenance path" } else { "conflicting existing path" }
+            Write-Knt "$kind Default '$defaultId' found $reason`: $($conflict.relative); state OVERRIDE"
         }
         Write-Knt "$kind Default '$defaultId' no Default files were materialized because the implementation plan contains conflicts"
         return
@@ -1052,10 +1167,9 @@ function Invoke-Migrate($Manifest) {
     $conflictingDefaults = New-Object System.Collections.Generic.List[string]
     $materializationPlans = @{}
     $disabledEntries = New-Object System.Collections.Generic.List[object]
-    $selectedIds = @($selectedEntries | ForEach-Object { [string]$_.id })
     foreach ($packProperty in @($defaults.packs.PSObject.Properties)) {
         $packState = [string](Get-KntJsonProperty $packProperty.Value "state")
-        if ($packState -ne "DISABLED" -or [string]$packProperty.Name -in $selectedIds) { continue }
+        if ($packState -ne "DISABLED") { continue }
         $disabledEntry = Find-AnyDefaultCatalogEntry -Catalog $catalog -Identifier ([string]$packProperty.Name)
         [void]$disabledEntries.Add([pscustomobject]@{ entry = $disabledEntry; property = $packProperty })
     }
@@ -1125,9 +1239,9 @@ function Invoke-Migrate($Manifest) {
     foreach ($disabled in @($disabledEntries.ToArray())) {
         $defaultId = [string]$disabled.entry.id
         $plan = @($disabledPlans[$defaultId])
-        $conflicts = @($plan | Where-Object { [string]$_.status -eq "CONFLICT" })
+        $conflicts = @($plan | Where-Object { [string]$_.status -in @("CONFLICT", "UNTRUSTED") })
         if ($conflicts.Count -gt 0) {
-            Write-Knt "$(if ([string]$disabled.entry.kind -eq 'surface') { 'Surface' } else { 'Tool' }) Default '$defaultId' DISABLED cleanup skipped because a materialized file was modified"
+            Write-Knt "$(if ([string]$disabled.entry.kind -eq 'surface') { 'Surface' } else { 'Tool' }) Default '$defaultId' DISABLED cleanup skipped because a materialized file is modified or untrusted"
             continue
         }
         [void](Apply-DefaultImplementationPlan -Plan $plan -ConflictingDefaults $null)
@@ -1339,14 +1453,16 @@ function Test-SelectedDefaultImplementations($DefaultsData) {
     $ok = $true
     if (-not $DefaultsData) { return $true }
     $projectRoot = Join-Path $Root "project"
+    $catalog = Get-DefaultCatalog
     foreach ($packProperty in @($DefaultsData.packs.PSObject.Properties)) {
         $defaultId = [string]$packProperty.Name
         $state = [string](Get-KntJsonProperty $packProperty.Value "state")
         if ($state -eq "DISABLED") {
             $disabledPlan = @(Get-DefaultRemovalPlan -DefaultId $defaultId -ExistingState $packProperty.Value -Kind "Default")
             foreach ($item in $disabledPlan) {
-                if ([string]$item.status -eq "CONFLICT") {
-                    Write-Host "[doctor] DISABLED Default implementation remains modified: $($item.repository_relative); mark the pack OVERRIDE or delete the file explicitly" -ForegroundColor Red
+                if ([string]$item.status -in @("CONFLICT", "UNTRUSTED")) {
+                    $reason = if ([string]$item.status -eq "UNTRUSTED") { "untrusted provenance path" } else { "modified" }
+                    Write-Host "[doctor] DISABLED Default implementation remains ${reason}: $($item.repository_relative); mark the pack OVERRIDE or delete the file explicitly" -ForegroundColor Red
                     $ok = $false
                 }
                 elseif ([string]$item.status -eq "STALE_UNCHANGED" -and $item.destination -and (Test-Path -LiteralPath $item.destination -PathType Leaf)) {
@@ -1381,6 +1497,12 @@ function Test-SelectedDefaultImplementations($DefaultsData) {
 
         foreach ($recorded in @($packProperty.Value.materialized_files)) {
             $recordedPath = [string]$recorded.path
+            $trustedOwnedPaths = Get-DefaultTrustedOwnedPaths -Catalog $catalog -DefaultId $defaultId
+            if (-not $trustedOwnedPaths.ContainsKey((Get-KntRepositoryPathKey $recordedPath))) {
+                Write-Host "[doctor] DEFAULT '$defaultId' has untrusted provenance path '$recordedPath'; mark the pack OVERRIDE" -ForegroundColor Red
+                $ok = $false
+                continue
+            }
             try {
                 $recordedAbsolute = Resolve-KntContainedPath -BaseRoot $Root -RelativePath $recordedPath -Description "Default '$defaultId' provenance path" -AllowRoot
             }
