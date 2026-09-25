@@ -2,7 +2,7 @@
 
 Base version: `0.5.3`
 
-Last verified: 2026-09-25 — v0.5.3 hardening verification is in progress; the final self-test count and hosted CI run are recorded after the release gate completes.
+Last verified: 2026-09-25 — v0.5.3 hardening complete; Hosted CI passed 104/104 self-tests on Ubuntu PowerShell, Windows PowerShell Core, and Windows PowerShell 5.1.
 
 ## Implemented
 
@@ -203,3 +203,4 @@ Last verified: 2026-09-25 — v0.5.3 hardening verification is in progress; the 
 - Project gate: knt verify
 - Smoke entry: knt smoke
 - Base self-tests: .kinotch/tests/run-tests.ps1
+- Hosted CI self-test result: 104/104 passed, 0 failed, 0 skipped across all three verification environments
