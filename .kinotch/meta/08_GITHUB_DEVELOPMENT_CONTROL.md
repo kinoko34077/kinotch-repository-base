@@ -2,42 +2,60 @@
 
 ## 目的
 
-本書は、KiNoTch. Repository Base と横断GitHub開発管理基盤の**接続境界**だけを定義する。
+本書は、KiNoTch. Repository Base と横断GitHub開発管理基盤devflowの**接続境界だけ**を定義する。
 
-横断的な状態語彙、Repository Control、Work Order、Audit level、Finding escalation、GitHub Project field、同期方式、Agent操作境界の正本は本Repositoryでは所有しない。
+横断的な状態語彙、Repository Control、Work Order、repo-local Issue lifecycle、Audit level、Finding escalation、GitHub Project field、同期方式、Agent操作境界の正本は本Repositoryでは所有しない。
 
-現在の横断正本:
+横断正本:
 
-- Repository: `kinoko34077/devflow-test`
+- Operational repository name: `devflow`
+- Current GitHub identity until rename: `kinoko34077/devflow-test`
+- Target GitHub identity after rename: `kinoko34077/devflow`
+- Agent start: `AGENTS.md`
 - Canonical specification: `docs/spec/CROSS_REPOSITORY_DEVELOPMENT_CONTROL.md`
+- Agent operations: `docs/operations/AGENT_OPERATING_MANUAL.md`
+- Repository-local Issue operations: `docs/operations/REPOSITORY_ISSUE_MANUAL.md`
 - Project synchronization operations: `docs/project/PROJECT_SYNC.md`
-- Machine-readable workflow definition: `.devflow/WORKFLOW.yaml`
-- Current cross-repository state: devflowのRepository Control Issue / Work Order
+- Machine-readable workflow: `.devflow/WORKFLOW.yaml`
+- Current cross-repository state: devflow Repository Control Issue / cross-repository Work Order
 - Derived display: GitHub Project `KiNoTch. Development Control`
 
 本書とdevflow正本が衝突する場合、devflow正本を優先する。
 
 ## 1. Authority boundary
 
-横断管理の権限方向は次のとおりとする。
-
 ```text
 individual repository canonical state
-  -> devflow canonical operational state
+  -> devflow canonical cross-repository summary
   -> Project synchronizer
   -> GitHub Project display
 ```
 
-GitHub Projectは表示・俯瞰層であり、横断Current Stateの正本ではない。
-Project値からRepositoryやdevflow Issueへ逆同期して正本化しない。
+各RepositoryのDomain仕様・実装・詳細Current State・repo-local Issue/PRは各Repository自身が所有する。
 
-各RepositoryのDomain仕様・実装・詳細Current Stateは各Repository自身が所有する。devflowは横断的な要約・監査SHA・優先度・Risk・Next Action等を保持し、詳細仕様を複製しない。
+devflowは横断要約、Audit SHA、状態、Priority/Risk、Active Work、Next Action、canonical entry pointsを保持する。詳細仕様・実装ログを複製しない。
 
-## 2. Repository Baseとの分離
+GitHub Projectは表示・俯瞰層であり、Project値からRepositoryやdevflow Issueへ逆同期して正本化しない。
+
+## 2. Base-adopted repositoryのAgent開始順
+
+managed repository上でGitHub開発作業を始めるAgentは:
+
+1. devflow root `AGENTS.md`を読む;
+2. 対象のopen `[REPO] <repository>` Control Issueを読む;
+3. Control IssueのAudit SHA / Active Work / Next Action / canonical entry pointsを確認する;
+4. 対象repoへ戻り、そのlocal `AGENTS.md`を読む;
+5. `project/project.json` → `project/docs/INDEX.md` → `project/docs/CURRENT_STATE.md` → active local Issue/PR → task-relevant materialの順へ進む。
+
+これによりdevflowは「どこを見るか」、Baseは「repo内でどう読むか」を所有し、同じ役割を二重化しない。
+
+横断Current Stateが結果へ影響しない明確なlocal-only作業では、不要なdevflow読取を強制しない。
+
+## 3. Repository Baseとの分離
 
 横断管理対象に登録されることとRepository Base adoptionは別概念である。
 
-Repository Control IssueやGitHub Project Itemが存在しても、以下を自動的には意味しない。
+Repository Control IssueやProject Itemが存在しても、以下を自動的には意味しない。
 
 - Base adoption
 - Base-managed fileの同期
@@ -46,85 +64,107 @@ Repository Control IssueやGitHub Project Itemが存在しても、以下を自�
 - Repository構造の統一
 - 定期FULL audit
 
-Base adoption stateは既存Phase 5規則どおり、必要な場合のみ以下で扱う。
+Base adoption stateは必要な場合のみ既存Phase 5規則の:
 
-```text
-ADOPTED / STAGED / NOT_ADOPTED / N/A
-```
+`ADOPTED / STAGED / NOT_ADOPTED / N/A`
 
-具体的なProject側の反復コストや共通問題が確認できない限り、一括adoptionや一括Base同期を行わない。
+で扱う。
 
-## 3. Repository onboarding
+`.kinotch/`がないmanaged Repositoryは、それだけで未完了扱いしない。既存正本・構造を尊重する。
 
-横断基盤へRepositoryを実運用化する初回監査では、Base adoptionより先に次を確認する。
+## 4. Repository onboarding
 
-1. default branchの具体的な監査SHA
-2. Repository固有の仕様・Current State・テスト/verify入口
-3. 現在のRepository State / Risk / Priority / Next Action
-4. PR-only運用が技術的または運用規則として成立しているか
-5. Base adoptionが既に存在するか、または具体的に必要か
+初回onboardingではBase adoptionより先に:
 
-`.kinotch/`がないRepositoryは、それだけを未完了扱いしない。まずread-only shape probe / STANDARD auditで既存構造を確認し、既存正本を尊重する。
+1. default branchの具体的なAudit SHAまたはno-SHA理由;
+2. repository固有のspec / Current State / test / build / runtime入口;
+3. Work Status / Repository State / Priority / Risk / Next Action;
+4. active local Issue/PR;
+5. PR-only運用の技術・process状態;
+6. Base adoptionが既にあるか、具体的に必要か;
 
-## 4. Project field compatibility
+を確認し、devflow Controlへ入口を記録する。
 
-Base文書内でProject fieldへ言及する必要がある場合、現行devflow mappingを参照する。
+Base構造を持たないrepoへ、onboardingだけを理由にBaseを導入しない。
 
-特に旧名称を正本として固定しない。
+## 5. Issue / Work Order boundary
+
+repo-local実装・調査・finding・仕様変更はowning repositoryのIssue / Work Order / PRを使う。
+
+devflow cross-repository Work Orderは、複数repoを一つのoperationとして調整する場合またはcontrol-plane自体を変更する場合に使う。
+
+Base採用repoでもlocal Issue templateをdevflowと完全一致させる必要はない。必要なdurable情報はdevflowの`REPOSITORY_ISSUE_MANUAL.md`に従う。
+
+Base自身に関する共通層変更は`kinotch-repository-base`のlocal Issue/PRとして扱い、必要ならdevflow parent Work Orderから参照する。
+
+## 6. Project field compatibility
+
+Project field mappingはdevflow正本から取得し、本書へ網羅的に複製しない。
+
+主要対応だけは接続確認用として:
 
 - devflow `Work Status` -> Project built-in `Status`
 - devflow `Type` -> Project custom `Work Type`
 - devflow `Repository` -> Project custom `Managed Repository`
 
-その他のfield、option、workflow設定はdevflow正本から取得し、本書へ複製しない。
+GitHub Projectは正本ではない。
 
-## 5. Audit / Work Order
+## 7. Audit / Base-specific conditions
 
-QUICK / STANDARD / FULL、Finding escalation、Work Order必須項目、Audit SHA等の横断運用定義はdevflow正本に従う。
+QUICK / STANDARD / FULL、Finding escalation、Work Order必須項目、Audit SHA、merge boundaryはdevflow正本に従う。
 
-Repository Base固有の追加条件は次のみである。
+Base固有の追加条件:
 
-- Base-managed fileとProject-owned fileの境界を確認する。
-- `DEFAULT / OVERRIDE / DISABLED`を既存実装へ強制上書きしない。
-- Base変更候補はPhase 5 return conditionを満たす場合にのみBaseへ昇格する。
-- 個別repoの問題をBase側の共通問題として推測で一般化しない。
+- Base-managed fileとProject-owned fileの境界を確認する;
+- `DEFAULT / OVERRIDE / DISABLED`を既存実装へ強制上書きしない;
+- Base変更候補はPhase 5 return conditionを満たす場合にのみBaseへ昇格する;
+- 個別repoの問題をBase共通問題として推測で一般化しない。
 
-## 6. Agent operation boundary
+FULL auditは定期実行しない。
 
-通常のRepository変更はdefault branchへ直接書かず、専用branchとPull Requestを経由する。
+## 8. Modification / safety boundary
 
-要件が十分に定義されている場合、Agentは現行取得、関連正本確認、QUICK/STANDARD監査、finding整理、Work Order、branch、実装、検証、PR、再監査まで継続してよい。
+通常変更はdedicated branch + Pull Requestを経由する。
 
-**既にユーザーから包括的に許可され、Riskが低く、致命的問題の可能性が低く、revert PRで安全に戻せるmergeは追加確認なしで進めてよい。**
+要件が定義済みなら、Agentは現行取得、関連正本確認、QUICK/STANDARD audit、必要なlocal Issue、branch、実装、検証、PR、再監査まで継続してよい。
 
-以下は引き続き実行前のユーザー確認を必要とする。
+現在のユーザー許可範囲で、検証済み・低致命性・security/destructive boundaryなし・revert PR可能なLOW/MEDIUM変更は追加確認なしでmergeしてよい。
+
+以下は実行前のユーザー確認を必要とする:
 
 - release
 - deploy
 - publication
-- destructive delete / history rewrite
-- security-sensitive permission / credential changes
-- その他、復元困難または外部へ確定的に反映される高Risk操作
+- destructive delete
+- shared history rewrite
+- security-sensitive permission / credential / session change
+- その他復元困難な操作
 
-問題がmerge後に発覚した場合、shared `main`を書き換えずdedicated rollback branch + revert PRで戻す。
+merge後の問題はshared `main`を書き換えずdedicated rollback branch + revert PRで戻す。
 
-FULL auditは定期実行せず、明示依頼または具体的必要性がある場合に限る。
+## 9. Verification handoff
 
-## 7. Verification handoff
-
-通常Chat等がPrivate GitHub Projectを直接確認できない場合、devflowの以下を通常確認経路とする。
+Private Projectを直接確認できない場合の通常確認経路:
 
 1. `[SYSTEM] GitHub Project Sync Health`
 2. 対象Repository Control Issue
-3. active Work Order / repo-local Issue / PR
+3. active cross-repository Work Order / repo-local Issue / PR
 4. 必要なActions run/log
 
-Project構造変更、APIで検証不能なUI条件、machine/UI不一致、`CODEX_REQUIRED`、明示要求がある場合のみCodex等のProject-capable agentへ直接確認をhandoffする。
+Project構造変更、APIで検証不能なUI条件、machine/UI不一致、`CODEX_REQUIRED`、repository identity migration、明示要求ではProject-capable pathへ直接確認をhandoffする。
 
-## 8. Phase 5との関係
+## 10. devflow renameとの関係
+
+`devflow-test` → `devflow` renameはdevflow側Work Orderで管理する。
+
+Base側ではrename完了前に旧GitHub identityを事実として保持しつつ、運用名を`devflow`へ統一する。rename完了後、current-identity参照を`kinoko34077/devflow`へ更新する。
+
+Baseからrepository rename、Project Auto-add、Project sync、secret/permission設定の完了を推定しない。devflow側のpost-rename verification evidenceを参照する。
+
+## 11. Phase 5との関係
 
 `.kinotch/meta/07_PHASE5_OPERATIONS.md`の方針を維持する。
 
-横断的な可視化・監査・Work Order運用を全Repositoryへ適用することは、全RepositoryをBase-managed構造へ変更することではない。
+横断的な可視化・監査・Issue/PR運用を全managed Repositoryへ適用することは、全RepositoryをBase-managed構造へ変更することではない。
 
 Baseは共通化の必要性が具体的に成立したときだけ同期・更新する。
