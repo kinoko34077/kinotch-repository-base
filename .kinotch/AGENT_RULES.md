@@ -4,11 +4,16 @@
 
 毎回全ファイルを読まない。`AGENTS.md` の読取順序から開始し、現在問に必要な資料だけ取得する。
 
+横断管理対象のGitHub作業では、`AGENTS.md`の指示どおり対象Repositoryのdevflow Control Issueを先に確認する。ローカルだけで完結し横断Current Stateが結果へ影響しない作業では不要な横断読取を増やさない。
+
 ## Source of Truth
 
+- 横断管理ルール / 横断Current State: devflow
 - 個別定義: `project/project.json`
 - 個別仕様: `project/docs/`
 - 現在状態: `project/docs/CURRENT_STATE.md`
+- repository-local task/finding: local Issue / Work Order
+- diff/verification: local PR / CI / tests
 - Action: `project/contracts/actions.json`
 - Surface差分: `project/contracts/surfaces.json`
 - Base Meta: `.kinotch/meta/`
@@ -20,23 +25,36 @@ Base-wide MetaとTemplateは共通層に置く。個別Projectの情報を `.kin
 
 ## Cross-repository GitHub workflow
 
-複数Repositoryの横断管理、GitHub Issue / PRを使った監査・実装運用、またはAgentのGitHub操作境界を扱う場合は、まず`.kinotch/meta/08_GITHUB_DEVELOPMENT_CONTROL.md`でBaseとの接続境界を確認し、横断運用の正本として`kinoko34077/devflow-test/docs/spec/CROSS_REPOSITORY_DEVELOPMENT_CONTROL.md`を参照する。
+横断管理の正本はdevflowに置く。本Baseでは状態語彙・Issue lifecycle・Project設定を第二の正本として再定義しない。
 
-GitHub Projectは表示層であり、横断Current Stateの正本ではない。横断Current StateはdevflowのRepository Control Issue / Work Orderを参照する。
+参照順:
+
+1. devflow root `AGENTS.md`
+2. 対象 `[REPO] <repository>` Control Issue
+3. 本Repositoryの`AGENTS.md`以降のlocal read order
+4. 必要に応じてdevflow `docs/operations/AGENT_OPERATING_MANUAL.md`
+5. Issue判断が必要ならdevflow `docs/operations/REPOSITORY_ISSUE_MANUAL.md`
+6. 横断仕様自体を扱う時だけdevflow `docs/spec/CROSS_REPOSITORY_DEVELOPMENT_CONTROL.md` / `.devflow/WORKFLOW.yaml`
+
+運用名は`devflow`。GitHub rename完了前のidentityは`kinoko34077/devflow-test`、rename後は`kinoko34077/devflow`。
+
+Baseとの接続境界は`.kinotch/meta/08_GITHUB_DEVELOPMENT_CONTROL.md`を参照する。
+
+GitHub Projectは表示層であり、横断Current Stateの正本ではない。横断Current Stateはdevflow Repository Control / Work Order、詳細技術状態は各repo自身を参照する。
 
 通常のGitHub変更はdefault branchへ直接書かず、専用branchからPull Requestを作成する。
 
-要件が十分に定義されている場合、現行版取得、監査、Issue / Work Order作成、branch作成、実装、検証、PR作成、PR再監査までは継続してよい。
+要件が十分に定義されている場合、現行版取得、監査、必要なrepo-local Issue / Work Order、branch、実装、検証、PR、再監査までは継続してよい。
 
-既にユーザーから包括的に許可され、Riskが低く、致命的問題の可能性が低く、revert PRで安全に戻せるmergeは追加確認なしで進めてよい。
+既にユーザーから包括的に許可され、現在の検証証拠があり、致命的問題の可能性が低く、security/destructive boundaryがなく、revert PRで安全に戻せるLOW/MEDIUM変更は追加確認なしでmergeしてよい。
 
-release、deploy、publication、破壊的削除、history rewrite、security-sensitive permission / credential変更、その他復元困難または高Riskの確定操作は実行前にユーザー確認を得る。
+release、deploy、publication、破壊的削除、shared history rewrite、security-sensitive permission / credential / session変更、その他復元困難な確定操作は実行前にユーザー確認を得る。
 
-監査ではAudit SHAを残す。P0 / P1 findingは原則としてIssue化し、P2 / P3は監査結果への集約を既定とする。
+監査ではAudit SHAを残す。P0/P1 findingは原則としてowning repositoryでIssue化し、P2/P3は監査/PRへの集約を既定とする。
 
 ## Modification Boundary
 
-個別案件の作業では `README.md` / `project/**` を変更対象とする。Base / Runtimeそのものを変更するタスクでない限り共通層を触らない。
+個別案件の作業では `README.md` / `project/**` / repository-local Issue・branch・PRを変更対象とする。Base / Runtimeそのものを変更するタスクでない限り共通層を触らない。
 
 ## Implementation
 
@@ -50,3 +68,5 @@ release、deploy、publication、破壊的削除、history rewrite、security-se
 ## Verification
 
 完了宣言の前に、利用可能なら `knt verify` を実行する。外部接続やUIを変更した場合は対応するsmoke/実利用経路も確認する。
+
+local taskの結果でdevflow ControlのAudit SHA / Work Status / Active Work / Next Action / canonical entry points / readinessが変わった場合だけ、検証後にControlを更新する。
