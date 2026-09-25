@@ -1,8 +1,8 @@
 # Current State
 
-Base version: `0.5.2`
+Base version: `0.5.3`
 
-Last verified: 2026-09-24 — self-test 96/96; doctor, base-check, and verify passed locally; Hosted CI run 36013331097 passed on Ubuntu PowerShell, Windows PowerShell Core, and Windows PowerShell 5.1.
+Last verified: 2026-09-25 — v0.5.3 hardening complete; Hosted CI passed 104/104 self-tests on Ubuntu PowerShell, Windows PowerShell Core, and Windows PowerShell 5.1.
 
 ## Implemented
 
@@ -74,6 +74,9 @@ Last verified: 2026-09-24 — self-test 96/96; doctor, base-check, and verify pa
 - Default materialization and generated helper writes reject symlink, junction, and reparse-point traversal below trusted roots
 - Materialization plans compare current templates with recorded provenance, safely remove unchanged stale files, and preserve modified stale files as `OVERRIDE`
 - `DISABLED` Defaults reconcile tracked unchanged files through dry-run/apply without deleting modified Project files
+- Base refresh rejects protected content changes without a `BASE_VERSION` bump and does not rewrite the existing index on rejection
+- Base-check, Default materialization, generated helpers, and lifecycle cleanup reject symlink, junction, and reparse-point traversal below trusted roots
+- Default cleanup trusts only current template paths and catalog-declared `retired_paths`; unrelated recorded provenance is preserved
 - Project `ci-test` finalization selects one runner from the Manifest (`gui_windows` → Windows PowerShell; otherwise Ubuntu PowerShell); the Base workflow retains its three-environment matrix
 - Default implementation checks are derived from `.kinotch/templates/defaults/<id>/` instead of a second hardcoded doctor inventory
 - PWA init, migrate, and Default upgrade share one finalization path
@@ -115,7 +118,7 @@ Last verified: 2026-09-24 — self-test 96/96; doctor, base-check, and verify pa
   `2bit-cell-automaton`, and `colony-ai`; existing
   CLI/MCP/API/generated/browser/PWA/Streamlit behavior remains Project-owned
   as `OVERRIDE`.
-- Base v0.5.2 is the current Surface Default Kit safety/lifecycle release; existing adopted repositories
+- Base v0.5.3 is the current Surface Default Kit safety/lifecycle release; existing adopted repositories
   are synchronized only during their normal maintenance cycle.
 - Surface Default Kit expansion is complete for the v0.5.0 safe slice: CLI, Windows,
   MCP, API, Agent, Config, and Logging helpers are implemented and ready for normal
@@ -171,7 +174,7 @@ Last verified: 2026-09-24 — self-test 96/96; doctor, base-check, and verify pa
 - Production deploy policy remains project-specific.
 - Base-wide Meta belongs under .kinotch/meta/.
 - New repositories use .kinotch/templates/project/ as their generation source.
-- Base v0.5.2 is the current Phase 5 safety baseline; Runtime semantics remain
+- Base v0.5.3 is the current Phase 5 safety baseline; Runtime semantics remain
   unchanged and existing repositories are not bulk-migrated.
 
 ## Next work
@@ -200,3 +203,4 @@ Last verified: 2026-09-24 — self-test 96/96; doctor, base-check, and verify pa
 - Project gate: knt verify
 - Smoke entry: knt smoke
 - Base self-tests: .kinotch/tests/run-tests.ps1
+- Hosted CI self-test result: 104/104 passed, 0 failed, 0 skipped across all three verification environments
