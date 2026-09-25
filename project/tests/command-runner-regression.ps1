@@ -79,6 +79,14 @@ Assert-Exit -Name "structured PowerShell command error is non-zero" -Command "te
     }
 } -AcceptExit { param($code) $code -ne 0 }
 
+Assert-Exit -Name "handled SilentlyContinue error remains successful" -Command "test" -Prepare {
+    param($manifest, $root)
+    $manifest.commands.test = [pscustomobject]@{
+        run = "Get-Item '__kinotch_missing_expected__' -ErrorAction SilentlyContinue | Out-Null; Write-Output 'handled'"
+        cwd = "."
+    }
+} -AcceptExit { param($code) $code -eq 0 }
+
 Assert-Exit -Name "native stderr with successful exit remains zero" -Command "test" -Prepare {
     param($manifest, $root)
     $manifest.commands.test = [pscustomobject]@{
