@@ -9,6 +9,7 @@
 - [Base v0.2 implementation plan](adr/0002-base-v02-implementation-plan.md)
 - [Base v0.2.1 final hardening plan](adr/0003-base-v021-final-hardening-plan.md)
 - [Default-first Surface Kits](adr/0004-default-first-surface-kits.md)
+- [Base v0.5.3 integrity boundaries](adr/0005-base-v053-integrity-boundaries.md)
 
 ## Base-wide Meta
 

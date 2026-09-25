@@ -134,8 +134,17 @@ Riskは作業の優先度とは独立して評価する。
 - `Next Action`
 - `Risk`
 - `Audit SHA`
+- `Audit Level`
 
 Repository Control itemでは`Repository State`を主に使用し、Work itemでは`Status`を主に使用する。
+
+`Audit Level`は次のいずれかとする。
+
+- `QUICK`: 既知の論点または局所差分だけを確認する。
+- `STANDARD`: 通常の現行版監査。指定がなければ既定値とする。
+- `FULL`: 仕様、実装、テスト、運用、主要境界を横断する明示的な全面監査。
+
+Audit Levelは監査範囲を示すfieldであり、Repository StateやWork Statusの代用にしない。
 
 ### Last Audit
 
@@ -206,6 +215,8 @@ Repository全体について、仕様、設計、実装、テスト、運用、�
 
 PR監査では原則として対象PRのhead SHAを使用する。
 
+Audit SHAは監査対象Repositoryの完全なcommit SHAを正本として保存する。表示上の短縮SHAは許可するが、短縮値だけを正本にしない。dirty worktreeの観察結果はAudit SHAの代わりにせず、未commit変更として別記録する。通常の「現行版確認」「監査」は`STANDARD`、明示的な全面監査またはその理由がある場合だけ`FULL`とする。
+
 次回監査では、前回Audit SHAと現在対象との差分を優先し、FULL auditが不要な場合にRepository全体を毎回再読しない。
 
 ## 13. Finding escalation
@@ -214,6 +225,25 @@ PR監査では原則として対象PRのhead SHAを使用する。
 
 - P0 / P1: GitHub Issueを自動作成する
 - P2 / P3: 監査結果へまとめて報告する
+
+Findingには公開可否を示す機密分類を付ける。
+
+- `NORMAL`: 通常の不具合、保守課題、公開しても秘密・個人情報・悪用手順を含まないもの。
+- `SENSITIVE`: Security vulnerability、credential/secret exposure、private data/privacy、exploit details、未公開の重大脆弱性を含むもの。
+
+P0/P1であっても`SENSITIVE`なfindingは公開Issueを自動作成しない。Private tracking、GitHub Security Advisory、またはユーザーの明示確認を使用し、それらを利用できない場合は公開せず報告だけに留める。Secret本文、credential、個人情報、再現に不要なexploit detailsをIssue、PR、Project、ログへ書き込まない。
+
+`NORMAL`なP0/P1だけが原則として公開Issueの自動作成対象となる。
+
+### 13.1 Idempotent control and finding identity
+
+Repository Control itemのcanonical keyは`owner/repository`とする。同じRepository Control itemが存在する場合は更新し、存在しない場合だけ作成する。タイトル一致だけをidentityにせず、Repository fieldも一致確認する。1RepositoryにつきControl itemを2件作らない。
+
+Findingには秘密や個人情報を含まない機械キーを付ける。例:
+
+`<!-- kinotch-finding-key: owner/repository|base-version-identity|common-layer -->`
+
+作成前に同じkeyを持つopen/unresolved Issueを検索し、存在すれば追記または参照する。新規Issueを並行作成しない。Work OrderとPRは元のIssueを参照し、別の状態管理正本を作らない。
 
 P2 / P3でも、以下の場合はIssue化できる。
 
