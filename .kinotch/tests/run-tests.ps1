@@ -1864,12 +1864,13 @@ Invoke-TestCase "base-refresh rejects a symlinked .kinotch boundary" {
     }
 }
 
-Invoke-TestCase "base-refresh indexes new common file" {
+Invoke-TestCase "base-refresh indexes new common file after version bump" {
     Invoke-KntFixture -Name "valid-minimal" -Command "base-refresh" -ExpectedExit 0 -Prepare {
         param($root)
         Set-FixtureAsBase $root
         Set-FixtureBaseIndex $root
         Set-Content -LiteralPath (Join-Path $root ".kinotch/new-common.txt") -Value "new common file" -NoNewline
+        Set-Content -LiteralPath (Join-Path $root ".kinotch/BASE_VERSION") -Value "0.5.4" -NoNewline
         $router = Join-Path $root ".kinotch/scripts/knt.ps1"
         $before = @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $router -RootOverride $root base-check 2>&1)
         if ($LASTEXITCODE -eq 0) { throw "unindexed Base file was not rejected: $($before -join ' ')" }
