@@ -39,6 +39,13 @@ function Get-BaseFileHash {
     param([Parameter(Mandatory=$true)][string]$Path)
 
     $content = [IO.File]::ReadAllText($Path)
+    return (Get-BaseTextHash -Text $content)
+}
+
+function Get-BaseTextHash {
+    param([Parameter(Mandatory=$true)][string]$Text)
+
+    $content = [string]$Text
     $canonical = $content.Replace("`r`n", "`n").Replace("`r", "`n")
     $encoding = New-Object System.Text.UTF8Encoding($false)
     $bytes = $encoding.GetBytes($canonical)
@@ -139,6 +146,7 @@ function Update-BaseIndex {
 
     $protectedPaths = @(Get-BaseProtectedPaths -Root $resolvedRoot)
     $version = (Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $resolvedRoot ".kinotch/BASE_VERSION")).Trim()
+    $inventoryContent = (($protectedPaths | Sort-Object) -join "`n") + "`n"
     $entries = New-Object System.Collections.Generic.List[object]
     foreach ($relative in $protectedPaths) {
         $path = Join-Path $resolvedRoot $relative
@@ -148,9 +156,15 @@ function Update-BaseIndex {
         if (Get-Command Assert-KntSafePath -ErrorAction SilentlyContinue) {
             [void](Assert-KntSafePath -Root $resolvedRoot -Candidate $path -Description "Base protected file")
         }
+        $hash = if ($relative -eq ".kinotch/FILE_INVENTORY.txt") {
+            Get-BaseTextHash -Text $inventoryContent
+        }
+        else {
+            Get-BaseFileHash -Path $path
+        }
         [void]$entries.Add([pscustomobject]@{
             path = $relative
-            sha256 = Get-BaseFileHash -Path $path
+            sha256 = $hash
         })
     }
     Assert-BaseIndexVersionIdentity -Root $resolvedRoot -ProtectedPaths $protectedPaths -Entries $entries.ToArray() -Version $version
@@ -166,7 +180,7 @@ function Update-BaseIndex {
         [void](Assert-KntSafeWritePath -Root $resolvedRoot -Candidate $inventoryPath -Description "Base inventory write")
         [void](Assert-KntSafeWritePath -Root $resolvedRoot -Candidate $indexPath -Description "Base index write")
     }
-    [IO.File]::WriteAllText($inventoryPath, (($protectedPaths | Sort-Object) -join "`n") + "`n", (New-Object System.Text.UTF8Encoding($false)))
+    [IO.File]::WriteAllText($inventoryPath, $inventoryContent, (New-Object System.Text.UTF8Encoding($false)))
     [IO.File]::WriteAllText($indexPath, $json + "`n", (New-Object System.Text.UTF8Encoding($false)))
 }
 

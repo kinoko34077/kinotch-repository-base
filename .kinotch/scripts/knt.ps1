@@ -1297,15 +1297,16 @@ function Test-BaseFiles {
         Write-Host "[base-check] VERSION  index=$($index.base_version) current=$currentVersion" -ForegroundColor Yellow
         $ok = $false
     }
+    $protectedPaths = @(Get-BaseProtectedPaths -Root $Root)
     $indexedPaths = @($index.files | ForEach-Object { [string]$_.path })
-    foreach ($expectedPath in @(Get-BaseProtectedPaths -Root $Root)) {
+    foreach ($expectedPath in $protectedPaths) {
         if ($expectedPath -notin $indexedPaths) {
             Write-Host "[base-check] UNINDEXED  $expectedPath" -ForegroundColor Yellow
             $ok = $false
         }
     }
     foreach ($indexedPath in $indexedPaths) {
-        if ($indexedPath -notin @(Get-BaseProtectedPaths -Root $Root)) {
+        if ($indexedPath -notin $protectedPaths) {
             Write-Host "[base-check] ORPHANED  $indexedPath" -ForegroundColor Yellow
             $ok = $false
         }
