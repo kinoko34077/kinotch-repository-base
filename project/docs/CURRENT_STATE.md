@@ -2,7 +2,7 @@
 
 Base version: `0.5.4`
 
-Last verified: 2026-09-25 — v0.5.4 command execution compatibility fix in progress; v0.5.3 Hosted CI had passed 104/104 self-tests on Ubuntu PowerShell, Windows PowerShell Core, and Windows PowerShell 5.1.
+Last verified: 2026-09-26 — v0.5.4 command execution compatibility fix complete; Hosted CI passed 105/105 self-tests on Ubuntu PowerShell, Windows PowerShell Core, and Windows PowerShell 5.1.
 
 ## Implemented
 
@@ -118,7 +118,7 @@ Last verified: 2026-09-25 — v0.5.4 command execution compatibility fix in prog
   `2bit-cell-automaton`, and `colony-ai`; existing
   CLI/MCP/API/generated/browser/PWA/Streamlit behavior remains Project-owned
   as `OVERRIDE`.
-- Base v0.5.3 is the current Surface Default Kit safety/lifecycle release; existing adopted repositories
+- Base v0.5.4 is the current Surface Default Kit safety/lifecycle release; existing adopted repositories
   are synchronized only during their normal maintenance cycle.
 - Surface Default Kit expansion is complete for the v0.5.0 safe slice: CLI, Windows,
   MCP, API, Agent, Config, and Logging helpers are implemented and ready for normal
@@ -174,7 +174,7 @@ Last verified: 2026-09-25 — v0.5.4 command execution compatibility fix in prog
 - Production deploy policy remains project-specific.
 - Base-wide Meta belongs under .kinotch/meta/.
 - New repositories use .kinotch/templates/project/ as their generation source.
-- Base v0.5.3 is the current Phase 5 safety baseline; Runtime semantics remain
+- Base v0.5.4 is the current Phase 5 safety baseline; Runtime semantics remain
   unchanged and existing repositories are not bulk-migrated.
 
 ## Next work
@@ -203,4 +203,4 @@ Last verified: 2026-09-25 — v0.5.4 command execution compatibility fix in prog
 - Project gate: knt verify
 - Smoke entry: knt smoke
 - Base self-tests: .kinotch/tests/run-tests.ps1
-- Hosted CI self-test result: 104/104 passed, 0 failed, 0 skipped across all three verification environments
+- Hosted CI self-test result: 105/105 passed, 0 failed, 0 skipped across all three verification environments
