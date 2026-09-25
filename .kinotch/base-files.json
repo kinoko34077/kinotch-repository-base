@@ -20,7 +20,7 @@
     },
     {
       "path": ".kinotch/AGENT_RULES.md",
-      "sha256": "524b8dbb32050bc8feeebca9712220928e4018b98ee171015e958ff695d9aef1"
+      "sha256": "b3aa521e8e7e9f14db50a88756a6b55b16e228f1ce2b8b8130ada4f8a15ccdef"
     },
     {
       "path": ".kinotch/BASE_VERSION",
@@ -92,7 +92,7 @@
     },
     {
       "path": ".kinotch/meta/08_GITHUB_DEVELOPMENT_CONTROL.md",
-      "sha256": "667c18c3bad2d45cc267edd01fb45fce69be7fb988fba7157f2668e3967c54c6"
+      "sha256": "845627ea6b98078e52ac82c63ae6e4900bc0ba1bc323ef992848b63e2c8ee933"
     },
     {
       "path": ".kinotch/meta/README.md",
