@@ -1,355 +1,130 @@
-# GitHub Development Control
+# GitHub Development Control — Repository Base Integration
 
 ## 目的
 
-本書は、KiNoTch.配下の複数RepositoryをGitHub上で横断管理するための共通運用規則を定義する。
+本書は、KiNoTch. Repository Base と横断GitHub開発管理基盤の**接続境界**だけを定義する。
 
-対象は、GitHub Projects / Issues / Pull Requestsを用いた現在状態の可視化、監査、Work Order、実装、検証、レビュー、およびAgentの操作境界である。
+横断的な状態語彙、Repository Control、Work Order、Audit level、Finding escalation、GitHub Project field、同期方式、Agent操作境界の正本は本Repositoryでは所有しない。
 
-本書は各RepositoryのDomain仕様や現在の実装状態を所有しない。それらは各Repositoryの正本を参照する。
+現在の横断正本:
 
-## 1. 正本の分離
+- Repository: `kinoko34077/devflow-test`
+- Canonical specification: `docs/spec/CROSS_REPOSITORY_DEVELOPMENT_CONTROL.md`
+- Project synchronization operations: `docs/project/PROJECT_SYNC.md`
+- Machine-readable workflow definition: `.devflow/WORKFLOW.yaml`
+- Current cross-repository state: devflowのRepository Control Issue / Work Order
+- Derived display: GitHub Project `KiNoTch. Development Control`
 
-- 横断的な運用規則: 本書
-- 横断的なlive state: GitHub Project `KiNoTch. Development Control`
-- 個別作業のlive state: 各Issue / Pull Request
-- 個別Repositoryの仕様・現在状態: 各Repositoryの正本
-- Repository Base adoption state: Base側の既存運用資料
+本書とdevflow正本が衝突する場合、devflow正本を優先する。
 
-同じlive stateをBase文書へ手動複製しない。
+## 1. Authority boundary
 
-## 2. GitHub Project
+横断管理の権限方向は次のとおりとする。
 
-Project名:
+```text
+individual repository canonical state
+  -> devflow canonical operational state
+  -> Project synchronizer
+  -> GitHub Project display
+```
 
-`KiNoTch. Development Control`
+GitHub Projectは表示・俯瞰層であり、横断Current Stateの正本ではない。
+Project値からRepositoryやdevflow Issueへ逆同期して正本化しない。
 
-Visibility:
+各RepositoryのDomain仕様・実装・詳細Current Stateは各Repository自身が所有する。devflowは横断的な要約・監査SHA・優先度・Risk・Next Action等を保持し、詳細仕様を複製しない。
 
-`Private`
+## 2. Repository Baseとの分離
 
-対象:
+横断管理対象に登録されることとRepository Base adoptionは別概念である。
 
-- ユーザー所有の開発Repository
-- ユーザー所有の資料・仕様Repository
+Repository Control IssueやGitHub Project Itemが存在しても、以下を自動的には意味しない。
 
-明示的な除外:
+- Base adoption
+- Base-managed fileの同期
+- Default Pack導入
+- Runtime統合
+- Repository構造の統一
+- 定期FULL audit
 
-- `pc-files`
-- `pc-files2`
+Base adoption stateは既存Phase 5規則どおり、必要な場合のみ以下で扱う。
 
-上記2Repositoryはバックアップ用途のため横断開発管理対象外とする。
+```text
+ADOPTED / STAGED / NOT_ADOPTED / N/A
+```
 
-将来追加される開発・資料Repositoryは、個別列挙を更新しなくても原則として対象に含める。
+具体的なProject側の反復コストや共通問題が確認できない限り、一括adoptionや一括Base同期を行わない。
 
-## 3. Repository Control item
+## 3. Repository onboarding
 
-対象Repositoryは、open Issue / PRが存在しない場合でもProject上から消えないよう、Project内に1件のRepository Control itemを持つ。
+横断基盤へRepositoryを実運用化する初回監査では、Base adoptionより先に次を確認する。
 
-Repository Control itemは作業Issueそのものではなく、Repository単位の現在状態を示す管理項目とする。
+1. default branchの具体的な監査SHA
+2. Repository固有の仕様・Current State・テスト/verify入口
+3. 現在のRepository State / Risk / Priority / Next Action
+4. PR-only運用が技術的または運用規則として成立しているか
+5. Base adoptionが既に存在するか、または具体的に必要か
 
-最低限、以下を追跡する。
+`.kinotch/`がないRepositoryは、それだけを未完了扱いしない。まずread-only shape probe / STANDARD auditで既存構造を確認し、既存正本を尊重する。
 
-- Repository State
-- Repository
-- Risk
-- Audit SHA
-- Next Action
+## 4. Project field compatibility
 
-Repository Control itemが存在すること自体は、そのRepositoryへの作業、Base adoption、Base同期、FULL auditの実施を意味しない。
+Base文書内でProject fieldへ言及する必要がある場合、現行devflow mappingを参照する。
 
-## 4. Repository State
+特に旧名称を正本として固定しない。
 
-Repository自体の運用状態はWork Statusと分離する。
+- devflow `Work Status` -> Project built-in `Status`
+- devflow `Type` -> Project custom `Work Type`
+- devflow `Repository` -> Project custom `Managed Repository`
 
-- `ACTIVE`: 通常の開発対象
-- `PARKED`: 存在するが現在は意図的に凍結・保留
-- `MAINTENANCE`: 新規開発を主目的とせず保守のみ行う
-- `DEPRECATED`: 残しているが将来的な廃止を予定
-- `CANCELLED`: 開発継続を行わないことを確定
+その他のfield、option、workflow設定はdevflow正本から取得し、本書へ複製しない。
 
-## 5. Work Status
+## 5. Audit / Work Order
 
-Issue / PR等の個別作業には以下を使用する。
+QUICK / STANDARD / FULL、Finding escalation、Work Order必須項目、Audit SHA等の横断運用定義はdevflow正本に従う。
 
-- `NEEDS_AUDIT`
-- `AUDITED`
-- `WORK_ORDER_READY`
-- `READY_FOR_IMPLEMENTATION`
-- `IMPLEMENTING`
-- `AWAITING_REVIEW`
-- `BLOCKED`
-- `NEEDS_REAUDIT`
-- `PARKED`
-- `DONE`
+Repository Base固有の追加条件は次のみである。
 
-Repository StateとWork Statusの`PARKED`は意味の階層が異なる。
+- Base-managed fileとProject-owned fileの境界を確認する。
+- `DEFAULT / OVERRIDE / DISABLED`を既存実装へ強制上書きしない。
+- Base変更候補はPhase 5 return conditionを満たす場合にのみBaseへ昇格する。
+- 個別repoの問題をBase側の共通問題として推測で一般化しない。
 
-- Repository State `PARKED`: Repository全体を現在の作業対象から外す
-- Work Status `PARKED`: 個別作業だけを保留する
+## 6. Agent operation boundary
 
-## 6. Priority
+通常のRepository変更はdefault branchへ直接書かず、専用branchとPull Requestを経由する。
 
-- `P0`: 緊急。重大な障害、損失、セキュリティ等で即時対応が必要
-- `P1`: 高。近い作業周期で優先して対応
-- `P2`: 通常。通常の優先順位で対応
-- `P3`: 低。急がず、必要性が生じた際に対応
+要件が十分に定義されている場合、Agentは現行取得、関連正本確認、QUICK/STANDARD監査、finding整理、Work Order、branch、実装、検証、PR、再監査まで継続してよい。
 
-Priorityは重要度・対応優先度を示し、Repository StateやWork Statusの代用にしない。
+**既にユーザーから包括的に許可され、Riskが低く、致命的問題の可能性が低く、revert PRで安全に戻せるmergeは追加確認なしで進めてよい。**
 
-## 7. Risk
+以下は引き続き実行前のユーザー確認を必要とする。
 
-- `LOW`: 失敗しても影響が局所的で、容易に復元できる
-- `MEDIUM`: 複数機能・設定・データへ影響し得る
-- `HIGH`: データ損失、互換性破壊、公開系変更、広範囲な回帰等の可能性がある
-- `CRITICAL`: 重大な破壊、セキュリティ、復旧困難性を伴う
-
-Riskは作業の優先度とは独立して評価する。
-
-## 8. Type
-
-初期分類は以下とする。
-
-- `FEATURE`: 新機能
-- `BUG`: 不具合修正
-- `SPEC`: 要件・仕様変更
-- `AUDIT`: 監査
-- `REFACTOR`: 外部挙動を原則変えない内部整理
-- `MAINTENANCE`: 依存更新・保守
-- `RESEARCH`: 実装前調査・比較検討
-- `INFRA`: CI、開発環境、共通基盤
-- `DOCS`: 文書のみ
-
-分類が繰り返し不足する場合のみTypeを追加する。
-
-## 9. Project fields
-
-横断Projectの基本fieldは以下とする。
-
-- `Status`: Work Status
-- `Repository State`
-- `Priority`
-- `Type`
-- `Repository`
-- `Next Action`
-- `Risk`
-- `Audit SHA`
-- `Audit Level`
-
-Repository Control itemでは`Repository State`を主に使用し、Work itemでは`Status`を主に使用する。
-
-`Audit Level`は次のいずれかとする。
-
-- `QUICK`: 既知の論点または局所差分だけを確認する。
-- `STANDARD`: 通常の現行版監査。指定がなければ既定値とする。
-- `FULL`: 仕様、実装、テスト、運用、主要境界を横断する明示的な全面監査。
-
-Audit Levelは監査範囲を示すfieldであり、Repository StateやWork Statusの代用にしない。
-
-### Last Audit
-
-`Last Audit`日付は独立した手入力fieldとして保持しない。
-
-最後に監査したcommitを`Audit SHA`へ記録し、必要な場合はGitHubのcommit metadataから日時を取得する。
-
-これにより、SHAと日付の二重更新を避ける。
-
-## 10. Next Action
-
-`Next Action`は自由記述とし、末尾へ検索可能な分類tagを1つ付ける。
-
-形式:
-
-`<具体的な次作業> [TAG]`
-
-例:
-
-- `PR #32をSTANDARD監査 [AUDIT]`
-- `Windows環境でverify [VERIFY]`
-- `ユーザー判断待ち [USER_DECISION]`
-
-初期tag:
-
-- `[AUDIT]`
-- `[SPECIFY]`
-- `[IMPLEMENT]`
-- `[VERIFY]`
-- `[REVIEW]`
-- `[MERGE]`
-- `[RELEASE]`
-- `[USER_DECISION]`
-- `[WAIT]`
-- `[NONE]`
-
-新しい分類が繰り返し必要になる場合のみtagを追加する。
-
-## 11. Audit level
-
-### QUICK
-
-既知の論点、小さな差分、局所的な修正を対象とする狭い監査。
-
-必要な関連資料と対象差分のみを確認する。
-
-### STANDARD
-
-通常の開発監査。
-
-最低限、現在状態、関連仕様、変更コード、関連テスト、影響境界を確認する。
-
-通常の「現行版確認」「監査」は、特に指定がなければSTANDARDを基準とする。
-
-### FULL
-
-Repository全体について、仕様、設計、実装、テスト、運用、主要境界を横断して確認する全面監査。
-
-以下を原則とする。
-
-- 明示的な必要性がある場合のみ行う
-- 定期的に自動実行しない
-- Repository Control itemが存在することをFULL auditの理由にしない
-
-## 12. Audit provenance
-
-監査結果には、監査対象の基準commitを`Audit SHA`として残す。
-
-PR監査では原則として対象PRのhead SHAを使用する。
-
-Audit SHAは監査対象Repositoryの完全なcommit SHAを正本として保存する。表示上の短縮SHAは許可するが、短縮値だけを正本にしない。dirty worktreeの観察結果はAudit SHAの代わりにせず、未commit変更として別記録する。通常の「現行版確認」「監査」は`STANDARD`、明示的な全面監査またはその理由がある場合だけ`FULL`とする。
-
-次回監査では、前回Audit SHAと現在対象との差分を優先し、FULL auditが不要な場合にRepository全体を毎回再読しない。
-
-## 13. Finding escalation
-
-監査で得たfindingはPriorityに応じて扱う。
-
-- P0 / P1: GitHub Issueを自動作成する
-- P2 / P3: 監査結果へまとめて報告する
-
-Findingには公開可否を示す機密分類を付ける。
-
-- `NORMAL`: 通常の不具合、保守課題、公開しても秘密・個人情報・悪用手順を含まないもの。
-- `SENSITIVE`: Security vulnerability、credential/secret exposure、private data/privacy、exploit details、未公開の重大脆弱性を含むもの。
-
-P0/P1であっても`SENSITIVE`なfindingは公開Issueを自動作成しない。Private tracking、GitHub Security Advisory、またはユーザーの明示確認を使用し、それらを利用できない場合は公開せず報告だけに留める。Secret本文、credential、個人情報、再現に不要なexploit detailsをIssue、PR、Project、ログへ書き込まない。
-
-`NORMAL`なP0/P1だけが原則として公開Issueの自動作成対象となる。
-
-### 13.1 Idempotent control and finding identity
-
-Repository Control itemのcanonical keyは`owner/repository`とする。同じRepository Control itemが存在する場合は更新し、存在しない場合だけ作成する。タイトル一致だけをidentityにせず、Repository fieldも一致確認する。1RepositoryにつきControl itemを2件作らない。
-
-Findingには秘密や個人情報を含まない機械キーを付ける。例:
-
-`<!-- kinotch-finding-key: owner/repository|base-version-identity|common-layer -->`
-
-作成前に同じkeyを持つopen/unresolved Issueを検索し、存在すれば追記または参照する。新規Issueを並行作成しない。Work OrderとPRは元のIssueを参照し、別の状態管理正本を作らない。
-
-P2 / P3でも、以下の場合はIssue化できる。
-
-- 依存関係の追跡が必要
-- BLOCKED理由として参照する必要がある
-- 長期追跡が必要
-- ユーザーがIssue化を要求した
-
-## 14. Work Order
-
-実装前に要求が十分に確定していない場合は、Issue内でWork Orderを形成する。
-
-Work Orderでは最低限、以下を追跡する。
-
-- Source
-- Objective
-- Scope
-- Acceptance criteria
-- Non-goals
-- Verification
-- Audit base
-- Related specs / decisions
-
-不足する要件判断がある場合、実装を推測で固定せずユーザー判断を取得する。
-
-## 15. PR policy
-
-この運用に従うRepository変更は、すべて専用branchからPull Requestを経由する。
-
-通常運用ではdefault branchへ直接変更しない。
-
-基本経路:
-
-`Issue / Work Order -> branch -> implementation -> verification -> PR -> review -> merge`
-
-## 16. Agent operation boundary
-
-要件が十分に定義済みの場合、Agentは以下をユーザー確認なしで継続してよい。
-
-- 現行版取得
-- 関連正本の参照
-- QUICK / STANDARD監査
-- finding整理
-- P0 / P1 Issue作成
-- Work Order作成
-- branch作成
-- 実装
-- 検証
-- PR作成
-- PR再監査
-
-以下は実行前にユーザー確認を必要とする。
-
-- merge
 - release
 - deploy
 - publication
-- Repository / branch / data等の破壊的削除
-- その他、外部へ確定的に反映される操作または容易に復元できない操作
+- destructive delete / history rewrite
+- security-sensitive permission / credential changes
+- その他、復元困難または外部へ確定的に反映される高Risk操作
 
-FULL auditは破壊操作ではないが、通常監査より範囲が大きいため、明示的な依頼または具体的な必要性がある場合にのみ行う。
+問題がmerge後に発覚した場合、shared `main`を書き換えずdedicated rollback branch + revert PRで戻す。
 
-## 17. GitHub Project views
+FULL auditは定期実行せず、明示依頼または具体的必要性がある場合に限る。
 
-最低限、次の2系統を分離して扱える構造とする。
+## 7. Verification handoff
 
-### Repository Overview
+通常Chat等がPrivate GitHub Projectを直接確認できない場合、devflowの以下を通常確認経路とする。
 
-全対象Repositoryを常時表示し、主に以下を見る。
+1. `[SYSTEM] GitHub Project Sync Health`
+2. 対象Repository Control Issue
+3. active Work Order / repo-local Issue / PR
+4. 必要なActions run/log
 
-- Repository State
-- Risk
-- Audit SHA
-- Next Action
+Project構造変更、APIで検証不能なUI条件、machine/UI不一致、`CODEX_REQUIRED`、明示要求がある場合のみCodex等のProject-capable agentへ直接確認をhandoffする。
 
-### Work Queue
+## 8. Phase 5との関係
 
-Issue / PR単位で現在作業を見る。
+`.kinotch/meta/07_PHASE5_OPERATIONS.md`の方針を維持する。
 
-- Status
-- Priority
-- Type
-- Repository
-- Risk
-- Next Action
+横断的な可視化・監査・Work Order運用を全Repositoryへ適用することは、全RepositoryをBase-managed構造へ変更することではない。
 
-## 18. Repository Base Phase 5との関係
-
-横断Projectへの登録とRepository Base adoptionは別概念とする。
-
-Projectへ表示されていても、以下を自動的には行わない。
-
-- Base adoption
-- Base-managed fileの一括同期
-- Default Pack導入
-- Runtime統合
-- 定期FULL audit
-
-既存のPhase 5方針どおり、共通基盤の変更・同期は具体的なProject側の必要性が発生した場合に限る。
-
-全Repositoryを可視化することは、全Repositoryを同一構造へ変更することを意味しない。
-
-## 19. 初期自動化方針
-
-初期導入では、Project構造と運用規則を先に安定させる。
-
-Auto-add、Actions、追加automationは、実運用で繰り返し発生する手作業が確認された後に追加する。
-
-将来の自動化は、本書の正本分離、PR policy、Agent operation boundaryを変更しない範囲で行う。
+Baseは共通化の必要性が具体的に成立したときだけ同期・更新する。
