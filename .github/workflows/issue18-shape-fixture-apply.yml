@@ -52,8 +52,13 @@ jobs:
         run: |
           from pathlib import Path
 
-          tests = Path('.kinotch/tests/run-tests.ps1')
-          s = tests.read_text(encoding='utf-8')
+          def unique_index(lines, stripped, label, start=0, end=None):
+              if end is None:
+                  end = len(lines)
+              hits = [i for i in range(start, end) if lines[i].strip() == stripped]
+              if len(hits) != 1:
+                  raise SystemExit(f'{label}: expected 1 line, found {len(hits)}')
+              return hits[0]
 
           def replace_once(text, old, new, label):
               count = text.count(old)
@@ -61,77 +66,82 @@ jobs:
                   raise SystemExit(f'{label}: expected 1 anchor, found {count}')
               return text.replace(old, new, 1)
 
-          param_old = '[string]$WorkflowText = "name: Verify`nrun: npm test",\n        [string]$PackageJson'
-          param_new = '[string]$WorkflowText = "name: Verify`nrun: npm test",\n        [string]$IncidentalWorkflowText = "",\n        [string]$PackageJson'
-          s = replace_once(s, param_old, param_new, 'shape fixture parameter')
+          tests = Path('.kinotch/tests/run-tests.ps1')
+          lines = tests.read_text(encoding='utf-8').splitlines()
 
-          workflow_dir_old = '        New-Item -ItemType Directory -Path (Join-Path $tempRoot ".github/workflows") -Force | Out-Null'
-          workflow_dir_new = '''        $workflowRoot = Join-Path $tempRoot ".github/workflows"
-          New-Item -ItemType Directory -Path $workflowRoot -Force | Out-Null
-          if (-not [string]::IsNullOrWhiteSpace($IncidentalWorkflowText)) {
-              Set-Content -LiteralPath (Join-Path $workflowRoot "incidental-maintenance.yml") -Value $IncidentalWorkflowText -NoNewline
-          }
-          $baseWorkflowText = $null
-          if ($UseBaseWorkflow) {
-              $baseWorkflowText = Get-Content -Raw -Encoding UTF8 (Join-Path $RepoRoot ".github/workflows/verify.yml")
-          }
-          Remove-Item -LiteralPath $workflowRoot -Recurse -Force -ErrorAction SilentlyContinue
-          New-Item -ItemType Directory -Path $workflowRoot -Force | Out-Null'''
-          s = replace_once(s, workflow_dir_old, workflow_dir_new, 'shape workflow directory setup')
+          func_start = unique_index(lines, 'function Invoke-KntShapeMigrateFixture {', 'shape fixture function')
+          func_end = unique_index(lines, 'function Invoke-KntExternalBaseFixture {', 'next fixture function', func_start + 1)
 
-          workflow_write_old = '''        if (-not $UseBaseWorkflow) {
-              Set-Content -LiteralPath (Join-Path $tempRoot ".github/workflows/verify.yml") -Value $WorkflowText -NoNewline
-          }'''
-          workflow_write_new = '''        if ($UseBaseWorkflow) {
-              [IO.File]::WriteAllText((Join-Path $workflowRoot "verify.yml"), $baseWorkflowText, (New-Object System.Text.UTF8Encoding($false)))
-          }
-          else {
-              Set-Content -LiteralPath (Join-Path $workflowRoot "verify.yml") -Value $WorkflowText -NoNewline
-          }'''
-          s = replace_once(s, workflow_write_old, workflow_write_new, 'shape intended workflow write')
+          param_i = unique_index(lines, '[string]$WorkflowText = "name: Verify`nrun: npm test",', 'WorkflowText parameter', func_start, func_end)
+          if not lines[param_i + 1].strip().startswith('[string]$PackageJson ='):
+              raise SystemExit('PackageJson parameter is not adjacent to WorkflowText')
+          lines.insert(param_i + 1, '        [string]$IncidentalWorkflowText = "",')
 
-          marker = 'Invoke-TestCase "shape probe distinguishes generated files from integrity checks" {'
-          regression = '''Invoke-TestCase "shape probe isolates incidental repository workflows" {
-              $incidentalVerification = "name: Maintenance Verify`nrun: npm test"
-              $incidentalDeploy = "name: Maintenance Deploy`nrun: wrangler deploy"
-              Invoke-KntShapeMigrateFixture -WorkflowText "name: Deploy`nrun: wrangler deploy" -IncidentalWorkflowText $incidentalVerification -AssertOutput {
-                  param($root, $output)
-                  $workflowFiles = @(Get-ChildItem -LiteralPath (Join-Path $root ".github/workflows") -File)
-                  Assert-Equal 1 $workflowFiles.Count "deploy-only isolated workflow count"
-                  Assert-Equal "verify.yml" $workflowFiles[0].Name "deploy-only isolated workflow name"
-                  Assert-True ($output -match "Candidate Default Pack 'ci-test': state DEFAULT") "incidental verification workflow contaminated deploy-only fixture"
-              }
-              Invoke-KntShapeMigrateFixture -WorkflowText "name: Verify`nrun: npm test" -IncidentalWorkflowText $incidentalDeploy -AssertOutput {
-                  param($root, $output)
-                  $workflowFiles = @(Get-ChildItem -LiteralPath (Join-Path $root ".github/workflows") -File)
-                  Assert-Equal 1 $workflowFiles.Count "verification isolated workflow count"
-                  Assert-Equal "verify.yml" $workflowFiles[0].Name "verification isolated workflow name"
-                  Assert-True ($output -match "Candidate Default Pack 'ci-test': state OVERRIDE") "intended verification workflow was not preserved"
-              }
-              Invoke-KntShapeMigrateFixture -UseBaseWorkflow -IncidentalWorkflowText $incidentalVerification -AssertOutput {
-                  param($root, $output)
-                  $workflowFiles = @(Get-ChildItem -LiteralPath (Join-Path $root ".github/workflows") -File)
-                  Assert-Equal 1 $workflowFiles.Count "Base-workflow isolated workflow count"
-                  Assert-Equal "verify.yml" $workflowFiles[0].Name "Base-workflow isolated workflow name"
-                  Assert-True ($output -notmatch "Candidate Default Pack 'ci-test'") "incidental workflow contaminated Base-common-workflow fixture"
-              }
-          }
-          '''
-          if s.count(marker) != 1:
-              raise SystemExit(f'shape regression insertion marker count={s.count(marker)}')
-          s = s.replace(marker, regression + marker, 1)
+          func_end += 1
+          workflow_dir_i = unique_index(lines, 'New-Item -ItemType Directory -Path (Join-Path $tempRoot ".github/workflows") -Force | Out-Null', 'workflow directory setup', func_start, func_end)
+          lines[workflow_dir_i:workflow_dir_i + 1] = [
+              '        $workflowRoot = Join-Path $tempRoot ".github/workflows"',
+              '        New-Item -ItemType Directory -Path $workflowRoot -Force | Out-Null',
+              '        if (-not [string]::IsNullOrWhiteSpace($IncidentalWorkflowText)) {',
+              '            Set-Content -LiteralPath (Join-Path $workflowRoot "incidental-maintenance.yml") -Value $IncidentalWorkflowText -NoNewline',
+              '        }',
+              '        $baseWorkflowText = $null',
+              '        if ($UseBaseWorkflow) {',
+              '            $baseWorkflowText = Get-Content -Raw -Encoding UTF8 (Join-Path $RepoRoot ".github/workflows/verify.yml")',
+              '        }',
+              '        Remove-Item -LiteralPath $workflowRoot -Recurse -Force -ErrorAction SilentlyContinue',
+              '        New-Item -ItemType Directory -Path $workflowRoot -Force | Out-Null',
+          ]
 
-          s = replace_once(
-              s,
-              'Set-Content -LiteralPath (Join-Path $root ".kinotch/BASE_VERSION") -Value "0.5.9" -NoNewline',
-              'Set-Content -LiteralPath (Join-Path $root ".kinotch/BASE_VERSION") -Value "0.5.10" -NoNewline',
-              'next-version self-test')
-          s = replace_once(
-              s,
-              'Assert-Equal "0.5.8" $baseVersion "Base version"',
-              'Assert-Equal "0.5.9" $baseVersion "Base version"',
-              'Base version assertion')
-          tests.write_text(s, encoding='utf-8')
+          func_end = unique_index(lines, 'function Invoke-KntExternalBaseFixture {', 'next fixture function after setup', func_start + 1)
+          if_i = unique_index(lines, 'if (-not $UseBaseWorkflow) {', 'old intended workflow branch', func_start, func_end)
+          expected_write = 'Set-Content -LiteralPath (Join-Path $tempRoot ".github/workflows/verify.yml") -Value $WorkflowText -NoNewline'
+          if lines[if_i + 1].strip() != expected_write or lines[if_i + 2].strip() != '}':
+              raise SystemExit('old intended workflow block shape changed')
+          lines[if_i:if_i + 3] = [
+              '        if ($UseBaseWorkflow) {',
+              '            [IO.File]::WriteAllText((Join-Path $workflowRoot "verify.yml"), $baseWorkflowText, (New-Object System.Text.UTF8Encoding($false)))',
+              '        }',
+              '        else {',
+              '            Set-Content -LiteralPath (Join-Path $workflowRoot "verify.yml") -Value $WorkflowText -NoNewline',
+              '        }',
+          ]
+
+          marker_i = unique_index(lines, 'Invoke-TestCase "shape probe distinguishes generated files from integrity checks" {', 'shape regression insertion marker')
+          regression = [
+              'Invoke-TestCase "shape probe isolates incidental repository workflows" {',
+              '    $incidentalVerification = "name: Maintenance Verify`nrun: npm test"',
+              '    $incidentalDeploy = "name: Maintenance Deploy`nrun: wrangler deploy"',
+              '    Invoke-KntShapeMigrateFixture -WorkflowText "name: Deploy`nrun: wrangler deploy" -IncidentalWorkflowText $incidentalVerification -AssertOutput {',
+              '        param($root, $output)',
+              '        $workflowFiles = @(Get-ChildItem -LiteralPath (Join-Path $root ".github/workflows") -File)',
+              '        Assert-Equal 1 $workflowFiles.Count "deploy-only isolated workflow count"',
+              '        Assert-Equal "verify.yml" $workflowFiles[0].Name "deploy-only isolated workflow name"',
+              '        Assert-True ($output -match "Candidate Default Pack \'ci-test\': state DEFAULT") "incidental verification workflow contaminated deploy-only fixture"',
+              '    }',
+              '    Invoke-KntShapeMigrateFixture -WorkflowText "name: Verify`nrun: npm test" -IncidentalWorkflowText $incidentalDeploy -AssertOutput {',
+              '        param($root, $output)',
+              '        $workflowFiles = @(Get-ChildItem -LiteralPath (Join-Path $root ".github/workflows") -File)',
+              '        Assert-Equal 1 $workflowFiles.Count "verification isolated workflow count"',
+              '        Assert-Equal "verify.yml" $workflowFiles[0].Name "verification isolated workflow name"',
+              '        Assert-True ($output -match "Candidate Default Pack \'ci-test\': state OVERRIDE") "intended verification workflow was not preserved"',
+              '    }',
+              '    Invoke-KntShapeMigrateFixture -UseBaseWorkflow -IncidentalWorkflowText $incidentalVerification -AssertOutput {',
+              '        param($root, $output)',
+              '        $workflowFiles = @(Get-ChildItem -LiteralPath (Join-Path $root ".github/workflows") -File)',
+              '        Assert-Equal 1 $workflowFiles.Count "Base-workflow isolated workflow count"',
+              '        Assert-Equal "verify.yml" $workflowFiles[0].Name "Base-workflow isolated workflow name"',
+              '        Assert-True ($output -notmatch "Candidate Default Pack \'ci-test\'") "incidental workflow contaminated Base-common-workflow fixture"',
+              '    }',
+              '}',
+          ]
+          lines[marker_i:marker_i] = regression
+
+          bump_i = unique_index(lines, 'Set-Content -LiteralPath (Join-Path $root ".kinotch/BASE_VERSION") -Value "0.5.9" -NoNewline', 'next-version self-test')
+          lines[bump_i] = lines[bump_i].replace('"0.5.9"', '"0.5.10"')
+          version_assert_i = unique_index(lines, 'Assert-Equal "0.5.8" $baseVersion "Base version"', 'Base version assertion')
+          lines[version_assert_i] = lines[version_assert_i].replace('"0.5.8"', '"0.5.9"')
+          tests.write_text('\n'.join(lines) + '\n', encoding='utf-8')
 
           version = Path('.kinotch/BASE_VERSION')
           if version.read_text(encoding='utf-8').strip() != '0.5.8':
@@ -141,14 +151,16 @@ jobs:
           readme = Path('.kinotch/README_BASE.md')
           r = readme.read_text(encoding='utf-8')
           r = replace_once(r, 'Base version: `0.5.8`', 'Base version: `0.5.9`', 'README Base version')
-          old_release = 'Base v0.5.8は、v0.5.7のProject command結果判定を維持しつつ、横断GitHub開発管理の現行正本を `kinoko34077/devflow` へ統一し、歴史的な `devflow-test` identityを現行Agent bootstrapから除去する保守releaseである。'
-          new_release = 'Base v0.5.9は、v0.5.8のdevflow identity整合とProject command結果判定を維持しつつ、shape-probe self-test fixtureがrepository上の一時的・無関係なworkflowを継承しないようworkflow集合をケース単位で隔離する保守releaseである。'
-          r = replace_once(r, old_release, new_release, 'README release sentence')
+          r = replace_once(
+              r,
+              'Base v0.5.8は、v0.5.7のProject command結果判定を維持しつつ、横断GitHub開発管理の現行正本を `kinoko34077/devflow` へ統一し、歴史的な `devflow-test` identityを現行Agent bootstrapから除去する保守releaseである。',
+              'Base v0.5.9は、v0.5.8のdevflow identity整合とProject command結果判定を維持しつつ、shape-probe self-test fixtureがrepository上の一時的・無関係なworkflowを継承しないようworkflow集合をケース単位で隔離する保守releaseである。',
+              'README release sentence')
           readme.write_text(r, encoding='utf-8')
 
           state = Path('project/docs/CURRENT_STATE.md')
           c = state.read_text(encoding='utf-8')
-          state_replacements = [
+          replacements = [
               ('Base version: `0.5.8`', 'Base version: `0.5.9`', 'CURRENT_STATE Base version'),
               ('Last verified: 2026-09-27 — Base v0.5.8 devflow-identity maintenance merged after exact-head hosted verification passed on Ubuntu PowerShell, Windows PowerShell Core, and Windows PowerShell 5.1; Base self-tests remained 105/105 with focused command, MCP-path, and devflow-identity regressions passing.',
                'Last verified: 2026-09-27 — Base v0.5.9 shape-probe fixture-isolation maintenance completed with deterministic workflow fixtures; the full Base verification gate passes with 106/106 self-tests and existing command, MCP-path, and devflow-identity regressions preserved.',
@@ -157,9 +169,9 @@ jobs:
               ('- Base v0.5.8 is the current Phase 5 safety baseline;', '- Base v0.5.9 is the current Phase 5 safety baseline;', 'CURRENT_STATE Phase 5 baseline'),
               ('- Hosted Base v0.5.8 verification: 105/105 Base self-tests, 8/8 command-runner regressions, 4/4 MCP path regressions, and the devflow identity regression passed on Ubuntu PowerShell, Windows PowerShell Core, and Windows PowerShell 5.1',
                '- Hosted Base v0.5.9 acceptance gate: 106/106 Base self-tests, 8/8 command-runner regressions, 4/4 MCP path regressions, the devflow identity regression, and deterministic shape-fixture isolation must pass on Ubuntu PowerShell, Windows PowerShell Core, and Windows PowerShell 5.1 before merge',
-               'CURRENT_STATE hosted verification')
+               'CURRENT_STATE hosted verification'),
           ]
-          for old, new, label in state_replacements:
+          for old, new, label in replacements:
               c = replace_once(c, old, new, label)
           state.write_text(c, encoding='utf-8')
 
