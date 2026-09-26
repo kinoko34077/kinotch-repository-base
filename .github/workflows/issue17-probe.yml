@@ -9,22 +9,17 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: Probe compound PowerShell status
+      - name: Probe router-equivalent capture
         shell: pwsh
         run: |
+          $ErrorActionPreference = 'Continue'
           $h = (Get-Command pwsh -ErrorAction Stop).Source
-          $LASTEXITCODE = $null
-          if ($true) { & $h -NoProfile -Command 'exit 7' } else { Write-Output 'unused' }
-          $directSuccess = $?
-          $directNative = $LASTEXITCODE
-          Write-Host "DIRECT success=$directSuccess native=$directNative"
-
           $LASTEXITCODE = $null
           $status = [pscustomobject]@{ Success = $null; Native = $null }
           $code = "if (`$true) { & '$h' -NoProfile -Command 'exit 7' } else { Write-Output 'unused' }" + [Environment]::NewLine + '$status.Success = $?' + [Environment]::NewLine + '$status.Native = $LASTEXITCODE'
-          Invoke-Expression $code
-          Write-Host "INVOKE_OBJECT success=$($status.Success) native=$($status.Native)"
-
-          $LASTEXITCODE = $null
-          $code2 = "if (`$true) { & '$h' -NoProfile -Command 'exit 7' } else { Write-Output 'unused' }; `$s=`$?; `$n=`$LASTEXITCODE; Write-Output ('SENTINEL success=' + `$s + ' native=' + `$n)"
-          Invoke-Expression $code2
+          $captured = @(Invoke-Expression $code 2>&1)
+          Write-Host "CAPTURED success=$($status.Success) native=$($status.Native) count=$($captured.Count)"
+          foreach ($item in $captured) {
+            Write-Host "ITEM type=$($item.GetType().FullName) fqid=$([string]$item.FullyQualifiedErrorId) text=$item"
+          }
+          exit 0
