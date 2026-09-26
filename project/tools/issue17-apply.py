@@ -2,6 +2,21 @@ from pathlib import Path
 
 path = Path('.kinotch/scripts/knt.ps1')
 text = path.read_text(encoding='utf-8')
+
+old_reset = '''            $ErrorActionPreference = "Continue"
+            $LASTEXITCODE = $null
+            if ($spec.mode -eq "structured") {
+'''
+new_reset = '''            $ErrorActionPreference = "Continue"
+            # Reset the process-wide automatic variable without creating a
+            # function-local LASTEXITCODE that would shadow native updates.
+            $global:LASTEXITCODE = $null
+            if ($spec.mode -eq "structured") {
+'''
+if old_reset not in text:
+    raise SystemExit('project command LASTEXITCODE reset block not found')
+text = text.replace(old_reset, new_reset, 1)
+
 old = '''                $errorCountBefore = $Error.Count
                 $commandOutput = @(Invoke-Expression $spec.run 2>&1)
                 $powerShellSucceeded = $?
@@ -10,7 +25,9 @@ old = '''                $errorCountBefore = $Error.Count
                 $newErrors = if ($newErrorCount -gt 0) { @($Error | Select-Object -First $newErrorCount) } else { @() }
                 $nonNativeErrors = @($newErrors | Where-Object { [string]$_.FullyQualifiedErrorId -notlike 'NativeCommandError*' })
 '''
-new = '''                $legacyStatus = [pscustomobject]@{
+new = '''                # Capture the legacy expression's terminal status inside the evaluated
+                # scope before caller-side output capture can overwrite `$?`.
+                $legacyStatus = [pscustomobject]@{
                     PowerShellSucceeded = $null
                     NativeExitCode = $null
                 }
@@ -20,24 +37,21 @@ new = '''                $legacyStatus = [pscustomobject]@{
                 $commandOutput = @(Invoke-Expression $legacyStatusScript 2>&1)
                 $powerShellSucceeded = ($legacyStatus.PowerShellSucceeded -eq $true)
                 $nativeExitCode = $legacyStatus.NativeExitCode
+
+                # `$Error` also records intentionally handled errors such as
+                # -ErrorAction SilentlyContinue. Only ErrorRecords that actually reached
+                # the merged error stream are unhandled command errors here.
                 $emittedErrors = @($commandOutput | Where-Object { $_ -is [System.Management.Automation.ErrorRecord] })
                 $nonNativeErrors = @($emittedErrors | Where-Object { [string]$_.FullyQualifiedErrorId -notlike 'NativeCommandError*' })
-                Write-Host "[issue17-debug] name=$Name ps=$powerShellSucceeded native=$nativeExitCode emitted=$($emittedErrors.Count) nonNative=$($nonNativeErrors.Count)"
 '''
 if old not in text:
     raise SystemExit('legacy result block not found')
 text = text.replace(old, new, 1)
-text = text.replace('elseif ($newErrors.Count -gt 0 -and $nonNativeErrors.Count -eq 0) {', 'elseif ($emittedErrors.Count -gt 0 -and $nonNativeErrors.Count -eq 0) {', 1)
-text = text.replace('''                else {
-                    $commandExitCode = 1
-                }
-            }
-''', '''                else {
-                    $commandExitCode = 1
-                }
-                Write-Host "[issue17-debug] name=$Name decided=$commandExitCode"
-            }
-''', 1)
+text = text.replace(
+    'elseif ($newErrors.Count -gt 0 -and $nonNativeErrors.Count -eq 0) {',
+    'elseif ($emittedErrors.Count -gt 0 -and $nonNativeErrors.Count -eq 0) {',
+    1,
+)
 path.write_text(text, encoding='utf-8', newline='\n')
 
 Path('.kinotch/BASE_VERSION').write_text('0.5.7\n', encoding='utf-8', newline='\n')
@@ -46,7 +60,7 @@ readme = Path('.kinotch/README_BASE.md')
 r = readme.read_text(encoding='utf-8')
 r = r.replace('Base version: `0.5.6`', 'Base version: `0.5.7`', 1)
 oldp = 'Base v0.5.6は、v0.5.5のProject command結果判定を維持しつつ、MCP Project path解決を共通のphysical link/reparse境界へ統一し、symlink・junction経由でProject外へ到達するpathを拒否する保守releaseである。'
-newp = 'Base v0.5.7は、v0.5.6の安全境界を維持しつつ、legacy Project commandの終端PowerShell状態とnative exit codeを実行式内で採取し、compound expression内のnative failureの保持と、処理済みPowerShell errorの分離を修正した保守releaseである。'
+newp = 'Base v0.5.7は、v0.5.6の安全境界を維持しつつ、Project commandのLASTEXITCODE resetをprocess-wide automatic variableへ統一し、legacy commandの終端PowerShell状態・native exit code・実際に出力されたErrorRecordを分離して判定する保守releaseである。'
 if oldp not in r:
     raise SystemExit('README v0.5.6 release paragraph not found')
 readme.write_text(r.replace(oldp, newp, 1), encoding='utf-8', newline='\n')
