@@ -16,6 +16,17 @@ jobs:
         with:
           ref: fix/issue-17-legacy-exit-semantics
           fetch-depth: 0
+      - name: Probe compound status
+        shell: pwsh
+        run: |
+          $h = (Get-Command pwsh -ErrorAction Stop).Source
+          $LASTEXITCODE = $null
+          Invoke-Expression "if (`$true) { & '$h' -NoProfile -Command 'exit 7' } else { Write-Output 'unused' }; Write-Host ('PROBE in-expression success=' + `$? + ' native=' + `$LASTEXITCODE)"
+          Write-Host "PROBE after Invoke-Expression success=$? native=$LASTEXITCODE"
+          $status = [pscustomobject]@{ PowerShellSucceeded = $null; NativeExitCode = $null }
+          $script = "if (`$true) { & '$h' -NoProfile -Command 'exit 7' } else { Write-Output 'unused' }" + [Environment]::NewLine + '$status.PowerShellSucceeded = $?' + [Environment]::NewLine + '$status.NativeExitCode = $LASTEXITCODE'
+          Invoke-Expression $script
+          Write-Host "PROBE object success=$($status.PowerShellSucceeded) native=$($status.NativeExitCode)"
       - name: Confirm focused regression is RED
         shell: pwsh
         run: |
