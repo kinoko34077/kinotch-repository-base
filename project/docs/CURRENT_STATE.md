@@ -1,8 +1,8 @@
 # Current State
 
-Base version: `0.5.8`
+Base version: `0.5.9`
 
-Last verified: 2026-09-27 — Base v0.5.8 devflow-identity maintenance merged after exact-head hosted verification passed on Ubuntu PowerShell, Windows PowerShell Core, and Windows PowerShell 5.1; Base self-tests remained 105/105 with focused command, MCP-path, and devflow-identity regressions passing.
+Last verified: 2026-09-27 — Base v0.5.9 shape-probe fixture-isolation maintenance completed with deterministic workflow fixtures; the full Base verification gate passes with 106/106 self-tests and existing command, MCP-path, and devflow-identity regressions preserved.
 
 ## Implemented
 
@@ -118,7 +118,7 @@ Last verified: 2026-09-27 — Base v0.5.8 devflow-identity maintenance merged af
   `2bit-cell-automaton`, and `colony-ai`; existing
   CLI/MCP/API/generated/browser/PWA/Streamlit behavior remains Project-owned
   as `OVERRIDE`.
-- Base v0.5.8 is the current Repository Base maintenance baseline. Live checks on 2026-09-27 confirm `kinotch-runtime` and the dedicated `kinotch-default-canary` each still embed Base v0.5.4 with their current main verification green; consumer repositories are synchronized only during their normal maintenance cycle.
+- Base v0.5.9 is the current Repository Base maintenance baseline. Live checks on 2026-09-27 confirm `kinotch-runtime` and the dedicated `kinotch-default-canary` each still embed Base v0.5.4 with their current main verification green; consumer repositories are synchronized only during their normal maintenance cycle.
 - Surface Default Kit expansion is complete for the v0.5.0 safe slice: CLI, Windows,
   MCP, API, Agent, Config, and Logging helpers are implemented and ready for normal
   Phase 5 maintenance.
@@ -173,7 +173,7 @@ Last verified: 2026-09-27 — Base v0.5.8 devflow-identity maintenance merged af
 - Production deploy policy remains project-specific.
 - Base-wide Meta belongs under .kinotch/meta/.
 - New repositories use .kinotch/templates/project/ as their generation source.
-- Base v0.5.8 is the current Phase 5 safety baseline; Runtime semantics remain
+- Base v0.5.9 is the current Phase 5 safety baseline; Runtime semantics remain
   unchanged and existing repositories are not bulk-migrated. Runtime and Default Canary embedded Base versions are tracked by their own repositories rather than inferred from the Base baseline.
 
 ## Next work
@@ -202,4 +202,4 @@ Last verified: 2026-09-27 — Base v0.5.8 devflow-identity maintenance merged af
 - Project gate: knt verify
 - Smoke entry: knt smoke
 - Base self-tests: .kinotch/tests/run-tests.ps1
-- Hosted Base v0.5.8 verification: 105/105 Base self-tests, 8/8 command-runner regressions, 4/4 MCP path regressions, and the devflow identity regression passed on Ubuntu PowerShell, Windows PowerShell Core, and Windows PowerShell 5.1
+- Hosted Base v0.5.9 acceptance gate: 106/106 Base self-tests, 8/8 command-runner regressions, 4/4 MCP path regressions, the devflow identity regression, and deterministic shape-fixture isolation must pass on Ubuntu PowerShell, Windows PowerShell Core, and Windows PowerShell 5.1 before merge
