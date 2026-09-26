@@ -1,6 +1,9 @@
 name: Apply Issue 17 Fix
 
-on: push
+on:
+  push:
+    branches:
+      - fix/issue-17-legacy-exit-semantics
 
 permissions:
   contents: write
