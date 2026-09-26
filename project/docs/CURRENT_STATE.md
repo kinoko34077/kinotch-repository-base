@@ -50,6 +50,7 @@ Last verified: 2026-09-27 — Base v0.5.9 shape-probe fixture-isolation maintena
   Python, workflow, and web-asset markers
 - Shape Probe filters Tool candidates through detected Surface compatibility before
   presenting a Default candidate
+- Shape-probe self-test fixtures reconstruct an explicit workflow set per case so unrelated repository workflows cannot affect CI-shape classification
 - Explicit `knt migrate --apply` materialization of missing safe Default helpers
 - `knt verify` remains an L1 Hard Base command; it is not a Tool Default and is not disabled by Default state
 - `ci-test` workflow generation with doctor → setup → verify, separate from the Base repository workflow
