@@ -1,44 +1,30 @@
 name: Probe Issue 17 Status
 
-on: push
+on:
+  push:
+    branches:
+      - fix/issue-17-legacy-exit-semantics
 
 jobs:
   probe:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: ubuntu-latest
-            shell: pwsh
-          - os: windows-latest
-            shell: pwsh
-          - os: windows-latest
-            shell: powershell
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - name: Probe
-        shell: ${{ matrix.shell }}
+      - name: Probe compound PowerShell status
+        shell: pwsh
         run: |
-          $hostExe = if ($PSVersionTable.PSEdition -eq 'Desktop') { 'powershell' } else { 'pwsh' }
-          $cases = @(
-            [pscustomobject]@{ Name='branch-native-fail'; Code="if (`$true) { & $hostExe -NoProfile -Command 'exit 7' } else { Write-Output nope }" },
-            [pscustomobject]@{ Name='native-fail-then-ps-success'; Code="& $hostExe -NoProfile -Command 'exit 7'; Write-Output success" },
-            [pscustomobject]@{ Name='native-success-stderr'; Code="& $hostExe -NoProfile -Command '[Console]::Error.WriteLine(\"diag\")'" }
-          )
-          foreach ($case in $cases) {
-            $LASTEXITCODE = $null
-            $outerOutput = @(Invoke-Expression $case.Code 2>&1)
-            $outerSuccess = $?
-            $outerNative = $LASTEXITCODE
+          $h = (Get-Command pwsh -ErrorAction Stop).Source
+          $LASTEXITCODE = $null
+          if ($true) { & $h -NoProfile -Command 'exit 7' } else { Write-Output 'unused' }
+          $directSuccess = $?
+          $directNative = $LASTEXITCODE
+          Write-Host "DIRECT success=$directSuccess native=$directNative"
 
-            $LASTEXITCODE = $null
-            $innerOutput = @(& {
-              Invoke-Expression $case.Code 2>&1
-              $innerSuccess = $?
-              $innerNative = $LASTEXITCODE
-              Write-Output "__KNT_STATUS__ success=$innerSuccess native=$innerNative"
-            })
-            Write-Host "CASE=$($case.Name) outerSuccess=$outerSuccess outerNative=$outerNative"
-            $innerOutput | ForEach-Object { Write-Host $_ }
-          }
+          $LASTEXITCODE = $null
+          $status = [pscustomobject]@{ Success = $null; Native = $null }
+          $code = "if (`$true) { & '$h' -NoProfile -Command 'exit 7' } else { Write-Output 'unused' }" + [Environment]::NewLine + '$status.Success = $?' + [Environment]::NewLine + '$status.Native = $LASTEXITCODE'
+          Invoke-Expression $code
+          Write-Host "INVOKE_OBJECT success=$($status.Success) native=$($status.Native)"
+
+          $LASTEXITCODE = $null
+          $code2 = "if (`$true) { & '$h' -NoProfile -Command 'exit 7' } else { Write-Output 'unused' }; `$s=`$?; `$n=`$LASTEXITCODE; Write-Output ('SENTINEL success=' + `$s + ' native=' + `$n)"
+          Invoke-Expression $code2
