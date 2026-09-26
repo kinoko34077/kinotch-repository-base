@@ -1,44 +1,36 @@
 name: Apply Issue 14 Fix
 
-on:
-  push:
-    branches:
-      - fix/issue-14-devflow-identity
+on: push
 
 permissions:
   contents: write
 
 jobs:
   apply:
-    if: github.event.head_commit.message == 'chore: run issue 14 implementation'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: fix/issue-14-devflow-identity
           fetch-depth: 0
-      - name: Confirm regression is RED before implementation
+      - name: Confirm regression is RED
         shell: pwsh
         run: |
           & pwsh -NoProfile -File project/tests/devflow-identity-regression.ps1
           if ($LASTEXITCODE -eq 0) { throw 'Expected stale devflow identity regression to fail before implementation' }
           exit 0
       - name: Apply canonical identity fix
-        shell: python
+        shell: bash
         run: |
+          python3 - <<'PY'
           from pathlib import Path
 
-          replacements = {
-              Path('.kinotch/meta/08_GITHUB_DEVELOPMENT_CONTROL.md'): [('kinoko34077/devflow-test', 'kinoko34077/devflow')],
-              Path('.kinotch/AGENT_RULES.md'): [('kinoko34077/devflow-test', 'kinoko34077/devflow')],
-          }
-          for path, pairs in replacements.items():
+          for path in [Path('.kinotch/meta/08_GITHUB_DEVELOPMENT_CONTROL.md'), Path('.kinotch/AGENT_RULES.md')]:
               text = path.read_text(encoding='utf-8')
-              for old, new in pairs:
-                  if old not in text:
-                      raise SystemExit(f'expected stale identity not found in {path}: {old}')
-                  text = text.replace(old, new)
-              path.write_text(text, encoding='utf-8', newline='\n')
+              old = 'kinoko34077/devflow-test'
+              if old not in text:
+                  raise SystemExit(f'expected stale identity not found in {path}')
+              path.write_text(text.replace(old, 'kinoko34077/devflow'), encoding='utf-8', newline='\n')
 
           Path('.kinotch/BASE_VERSION').write_text('0.5.7\n', encoding='utf-8', newline='\n')
 
@@ -49,24 +41,20 @@ jobs:
           new = 'Base v0.5.7は、v0.5.6の安全境界を維持しつつ、横断GitHub開発管理の現行正本を `kinoko34077/devflow` へ統一し、歴史的な `devflow-test` identityを現行Agent bootstrapから除去する保守releaseである。'
           if old not in text:
               raise SystemExit('expected README v0.5.6 release paragraph not found')
-          text = text.replace(old, new, 1)
-          readme.write_text(text, encoding='utf-8', newline='\n')
+          readme.write_text(text.replace(old, new, 1), encoding='utf-8', newline='\n')
 
           tests = Path('.kinotch/tests/run-tests.ps1')
           text = tests.read_text(encoding='utf-8')
           old_bump = 'Set-Content -LiteralPath (Join-Path $root ".kinotch/BASE_VERSION") -Value "0.5.7" -NoNewline'
-          new_bump = 'Set-Content -LiteralPath (Join-Path $root ".kinotch/BASE_VERSION") -Value "0.5.8" -NoNewline'
-          if old_bump not in text:
-              raise SystemExit('expected version-bump self-test text not found')
-          text = text.replace(old_bump, new_bump, 1)
           old_assert = 'Assert-Equal "0.5.6" $baseVersion "Base version"'
-          new_assert = 'Assert-Equal "0.5.7" $baseVersion "Base version"'
-          if old_assert not in text:
-              raise SystemExit('expected Base version assertion not found')
-          text = text.replace(old_assert, new_assert, 1)
+          if old_bump not in text or old_assert not in text:
+              raise SystemExit('expected Base version self-test markers not found')
+          text = text.replace(old_bump, 'Set-Content -LiteralPath (Join-Path $root ".kinotch/BASE_VERSION") -Value "0.5.8" -NoNewline', 1)
+          text = text.replace(old_assert, 'Assert-Equal "0.5.7" $baseVersion "Base version"', 1)
           tests.write_text(text, encoding='utf-8', newline='\n')
 
           Path('.github/workflows/issue14-apply.yml').unlink()
+          PY
       - name: Refresh Base index
         shell: pwsh
         run: ./.kinotch/scripts/knt.ps1 base-refresh
