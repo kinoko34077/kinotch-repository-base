@@ -7,32 +7,46 @@ on:
 
 jobs:
   probe:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            shell: pwsh
+          - os: windows-latest
+            shell: pwsh
+          - os: windows-latest
+            shell: powershell
+    runs-on: ${{ matrix.os }}
     steps:
-      - name: Probe function-scope capture
-        shell: pwsh
+      - name: Probe global reset in function
+        shell: ${{ matrix.shell }}
         run: |
           $ErrorActionPreference = 'Continue'
-          $h = (Get-Command pwsh -ErrorAction Stop).Source
+          $h = if ($PSVersionTable.PSEdition -eq 'Desktop') { (Get-Command powershell -ErrorAction Stop).Source } else { (Get-Command pwsh -ErrorAction Stop).Source }
 
-          function Probe-Local {
-            param([string]$Exe)
-            $LASTEXITCODE = $null
-            $status = [pscustomobject]@{ Success = $null; Native = $null; ScriptNative = $null }
-            $code = "if (`$true) { & '$Exe' -NoProfile -Command 'exit 7' } else { Write-Output 'unused' }" + [Environment]::NewLine + '$status.Success = $?' + [Environment]::NewLine + '$status.ScriptNative = $LASTEXITCODE'
+          function Probe-GlobalReset {
+            param([string]$Exe, [int]$ExitCode)
+            $global:LASTEXITCODE = 41
+            $global:LASTEXITCODE = $null
+            $status = [pscustomobject]@{ Success = $null; ScriptNative = $null; FunctionNative = $null; GlobalNative = $null }
+            $code = "if (`$true) { & '$Exe' -NoProfile -Command 'exit $ExitCode' } else { Write-Output 'unused' }" + [Environment]::NewLine + '$status.Success = $?' + [Environment]::NewLine + '$status.ScriptNative = $LASTEXITCODE'
             $captured = @(Invoke-Expression $code 2>&1)
-            $status.Native = $LASTEXITCODE
-            Write-Host "LOCAL success=$($status.Success) scriptNative=$($status.ScriptNative) functionNative=$($status.Native) captured=$($captured.Count)"
+            $status.FunctionNative = $LASTEXITCODE
+            $status.GlobalNative = $global:LASTEXITCODE
+            Write-Host "GLOBALRESET success=$($status.Success) script=$($status.ScriptNative) function=$($status.FunctionNative) global=$($status.GlobalNative) captured=$($captured.Count)"
+            if ($status.Success -ne $false -or [int]$status.ScriptNative -ne $ExitCode -or [int]$status.GlobalNative -ne $ExitCode) { throw 'global reset did not preserve native exit' }
           }
 
-          function Probe-NoReset {
-            param([string]$Exe)
-            $status = [pscustomobject]@{ Success = $null; ScriptNative = $null }
-            $code = "if (`$true) { & '$Exe' -NoProfile -Command 'exit 7' } else { Write-Output 'unused' }" + [Environment]::NewLine + '$status.Success = $?' + [Environment]::NewLine + '$status.ScriptNative = $LASTEXITCODE'
+          function Probe-GlobalResetPowerShellOnly {
+            $global:LASTEXITCODE = 41
+            $global:LASTEXITCODE = $null
+            $status = [pscustomobject]@{ Success = $null; ScriptNative = 'unset' }
+            $code = "Write-Output 'success'" + [Environment]::NewLine + '$status.Success = $?' + [Environment]::NewLine + '$status.ScriptNative = $LASTEXITCODE'
             $captured = @(Invoke-Expression $code 2>&1)
-            Write-Host "NORESET success=$($status.Success) scriptNative=$($status.ScriptNative) functionNative=$LASTEXITCODE captured=$($captured.Count)"
+            Write-Host "PSONLY success=$($status.Success) script=$($status.ScriptNative) global=$global:LASTEXITCODE captured=$($captured.Count)"
+            if ($status.Success -ne $true -or $null -ne $status.ScriptNative -or $null -ne $global:LASTEXITCODE) { throw 'global reset did not clear stale exit for PowerShell-only expression' }
           }
 
-          Probe-Local -Exe $h
-          Probe-NoReset -Exe $h
-          exit 0
+          Probe-GlobalReset -Exe $h -ExitCode 7
+          Probe-GlobalResetPowerShellOnly
