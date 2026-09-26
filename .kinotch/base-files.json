@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "base_version": "0.5.5",
+  "base_version": "0.5.6",
   "files": [
     {
       "path": ".editorconfig",
@@ -24,7 +24,7 @@
     },
     {
       "path": ".kinotch/BASE_VERSION",
-      "sha256": "ac3bf208eb88be6542e3fc750b511b112cf25bc40e46dca2a50819e43cf59096"
+      "sha256": "f669b5e9183901b78b0952eb71f8fe54bdcff9cc3d155710c61e25be7b35b058"
     },
     {
       "path": ".kinotch/DEVELOPMENT_FLOW.md",
@@ -40,7 +40,7 @@
     },
     {
       "path": ".kinotch/README_BASE.md",
-      "sha256": "839a8fc3b513886386b8ddc22d747da53acd6954b8d526608a2d7361ad36f22c"
+      "sha256": "761f45f9f616574bcd074dca2ce9b1d5e7b70f1fc9dcd16e3fae063cb5dd7903"
     },
     {
       "path": ".kinotch/REPOSITORY_STANDARD.md",
@@ -252,7 +252,7 @@
     },
     {
       "path": ".kinotch/templates/defaults/mcp/tools/mcp-default.ps1",
-      "sha256": "256f38cda0054eb5aff029b9513f7165c882cf134a6baca573426517e58072bb"
+      "sha256": "806c0ee7a67cb5d033d351c7750e28730f4ba0fb940197d0bb60d65bf235bd68"
     },
     {
       "path": ".kinotch/templates/defaults/pwa/public/manifest.webmanifest",
@@ -412,7 +412,7 @@
     },
     {
       "path": ".kinotch/tests/run-tests.ps1",
-      "sha256": "a42a971e164b9119533563638a6d81c5119ad4d228e47dc838cedb7689d60d19"
+      "sha256": "d998d64ecf53461b17d9bedd90bd91063a97ff815402d4604383a9ba421dc830"
     },
     {
       "path": "AGENTS.md",

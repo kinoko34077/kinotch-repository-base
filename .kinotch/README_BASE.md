@@ -1,6 +1,6 @@
 # KiNoTch. Repository Base — Common README
 
-Base version: `0.5.5`
+Base version: `0.5.6`
 
 この文書はKiNoTch.標準リポジトリの共通取扱説明書である。個別READMEへ同じ説明を複製しない。
 
@@ -15,7 +15,7 @@ KiNoTch.Runtime = 複数repoで再利用する共通実装。個別repoへコピ
 
 Base-wide Metaは `.kinotch/meta/` に置き、新規Repository用の生成元は `.kinotch/templates/project/` に置く。Base自身のProject情報は `project/**` に記録し、Templateと混同しない。
 
-Base v0.5.5は、v0.5.4のnative command stderr互換性を維持しつつ、Project commandのnative process exitとPowerShell ErrorRecordの判定を分離し、PowerShell errorの偽成功とstale LASTEXITCODEの誤伝播を防ぐ保守releaseである。CLI、Windows、MCP、API、AgentのSurface Default Kitと、ci-test、generated-integrity、file-io、pwa、config、loggingのTool Defaultは、Domain非依存で安全に外せる補助境界を提供する。既存FrameworkやProject実装はOVERRIDEとして維持でき、Runtime semanticsは変更しない。通常の運用方針は [Phase 5 Operations](meta/07_PHASE5_OPERATIONS.md) を参照する。
+Base v0.5.6は、v0.5.5のProject command結果判定を維持しつつ、MCP Project path解決を共通のphysical link/reparse境界へ統一し、symlink・junction経由でProject外へ到達するpathを拒否する保守releaseである。CLI、Windows、MCP、API、AgentのSurface Default Kitと、ci-test、generated-integrity、file-io、pwa、config、loggingのTool Defaultは、Domain非依存で安全に外せる補助境界を提供する。既存FrameworkやProject実装はOVERRIDEとして維持でき、Runtime semanticsは変更しない。通常の運用方針は [Phase 5 Operations](meta/07_PHASE5_OPERATIONS.md) を参照する。
 
 ## Default-first
 
