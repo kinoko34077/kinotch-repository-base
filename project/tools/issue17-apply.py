@@ -10,20 +10,25 @@ old = '''                $errorCountBefore = $Error.Count
                 $newErrors = if ($newErrorCount -gt 0) { @($Error | Select-Object -First $newErrorCount) } else { @() }
                 $nonNativeErrors = @($newErrors | Where-Object { [string]$_.FullyQualifiedErrorId -notlike 'NativeCommandError*' })
 '''
-new = '''                # Capture $? and $LASTEXITCODE inside the evaluated legacy expression,
-                # before caller-side assignment or output capture can overwrite PowerShell status.
-                $legacyPowerShellSucceeded = $null
-                $legacyNativeExitCode = $null
+new = '''                # Capture the legacy expression's terminal status inside the evaluated
+                # scope. A shared object preserves the captured values after Invoke-Expression
+                # returns, without letting the caller-side assignment overwrite `$?`.
+                $legacyStatus = [pscustomobject]@{
+                    PowerShellSucceeded = $null
+                    NativeExitCode = $null
+                }
                 $legacyStatusScript = [string]$spec.run + [Environment]::NewLine +
-                    '$legacyPowerShellSucceeded = $?' + [Environment]::NewLine +
-                    '$legacyNativeExitCode = $LASTEXITCODE'
-                $errorCountBefore = $Error.Count
+                    '$legacyStatus.PowerShellSucceeded = $?' + [Environment]::NewLine +
+                    '$legacyStatus.NativeExitCode = $LASTEXITCODE'
                 $commandOutput = @(Invoke-Expression $legacyStatusScript 2>&1)
-                $powerShellSucceeded = ($legacyPowerShellSucceeded -eq $true)
-                $nativeExitCode = $legacyNativeExitCode
-                $newErrorCount = [Math]::Max(0, $Error.Count - $errorCountBefore)
-                $newErrors = if ($newErrorCount -gt 0) { @($Error | Select-Object -First $newErrorCount) } else { @() }
-                $nonNativeErrors = @($newErrors | Where-Object { [string]$_.FullyQualifiedErrorId -notlike 'NativeCommandError*' })
+                $powerShellSucceeded = ($legacyStatus.PowerShellSucceeded -eq $true)
+                $nativeExitCode = $legacyStatus.NativeExitCode
+
+                # Only errors actually emitted to the merged error stream count as
+                # unhandled PowerShell errors. `$Error` also records intentionally handled
+                # `-ErrorAction SilentlyContinue` errors and must not be used as the result gate.
+                $emittedErrors = @($commandOutput | Where-Object { $_ -is [System.Management.Automation.ErrorRecord] })
+                $nonNativeErrors = @($emittedErrors | Where-Object { [string]$_.FullyQualifiedErrorId -notlike 'NativeCommandError*' })
 '''
 if old not in text:
     raise SystemExit('legacy result block not found')
@@ -35,7 +40,7 @@ readme = Path('.kinotch/README_BASE.md')
 r = readme.read_text(encoding='utf-8')
 r = r.replace('Base version: `0.5.6`', 'Base version: `0.5.7`', 1)
 oldp = 'Base v0.5.6は、v0.5.5のProject command結果判定を維持しつつ、MCP Project path解決を共通のphysical link/reparse境界へ統一し、symlink・junction経由でProject外へ到達するpathを拒否する保守releaseである。'
-newp = 'Base v0.5.7は、v0.5.6の安全境界を維持しつつ、legacy Project commandのPowerShell成功状態とnative exit codeを実行式の直後に採取し、compound expression内のnative failureが0へ潰れる経路を修正した保守releaseである。'
+newp = 'Base v0.5.7は、v0.5.6の安全境界を維持しつつ、legacy Project commandの終端PowerShell状態とnative exit codeを実行式内で採取し、compound expression内のnative failureの保持と、処理済みPowerShell errorの分離を修正した保守releaseである。'
 if oldp not in r:
     raise SystemExit('README v0.5.6 release paragraph not found')
 readme.write_text(r.replace(oldp, newp, 1), encoding='utf-8', newline='\n')
