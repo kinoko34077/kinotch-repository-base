@@ -106,6 +106,25 @@ Assert-Exit -Name "stale native exit does not poison later PowerShell success" -
     }
 } -AcceptExit { param($code) $code -eq 0 }
 
+Assert-Exit -Name "compound legacy branch preserves native exit 7" -Command "test" -Prepare {
+    param($manifest, $root)
+    $escapedHost = $PowerShellExecutable.Replace("'", "''")
+    $manifest.commands.test = [pscustomobject]@{
+        run = "if (`$true) { & '$escapedHost' -NoProfile -Command 'exit 7' } else { Write-Output 'unused' }"
+        cwd = "."
+    }
+} -AcceptExit { param($code) $code -eq 7 }
+
+Assert-Exit -Name "verify fallback preserves compound native exit 9" -Command "verify" -Prepare {
+    param($manifest, $root)
+    $escapedHost = $PowerShellExecutable.Replace("'", "''")
+    $manifest.commands.test = [pscustomobject]@{ run = "Write-Output 'test-ok'"; cwd = "." }
+    $manifest.commands.build = [pscustomobject]@{
+        run = "if (`$true) { & '$escapedHost' -NoProfile -Command 'exit 9' } else { Write-Output 'unused' }"
+        cwd = "."
+    }
+} -AcceptExit { param($code) $code -eq 9 }
+
 Assert-Exit -Name "verify cannot pass an unhandled PowerShell error" -Command "verify" -Prepare {
     param($manifest, $root)
     $manifest.commands.verify = [pscustomobject]@{ run = "Write-Error 'verify-failure'"; cwd = "." }
