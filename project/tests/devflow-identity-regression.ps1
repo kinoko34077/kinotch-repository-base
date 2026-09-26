@@ -1,5 +1,6 @@
 $ErrorActionPreference = "Stop"
 
+# Regression contract: Base bootstrap references must use the live devflow identity.
 $RepoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $CurrentIdentity = "kinoko34077/devflow"
 $FormerIdentity = "kinoko34077/devflow-test"
