@@ -26,8 +26,9 @@ foreach ($relative in $targets) {
 
 $control = Get-Content -LiteralPath (Join-Path $RepoRoot ".kinotch/meta/08_GITHUB_DEVELOPMENT_CONTROL.md") -Raw -Encoding UTF8
 $agentRules = Get-Content -LiteralPath (Join-Path $RepoRoot ".kinotch/AGENT_RULES.md") -Raw -Encoding UTF8
+$expectedRepositoryLine = 'Repository: `' + $CurrentIdentity + '`'
 
-if ($control -notmatch [regex]::Escape("Repository: `$CurrentIdentity`")) {
+if ($control -notmatch [regex]::Escape($expectedRepositoryLine)) {
     Write-Host "[FAIL] integration canon does not identify the current devflow repository" -ForegroundColor Red
     $failed++
 }
