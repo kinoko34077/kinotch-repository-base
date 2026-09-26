@@ -55,27 +55,18 @@ jobs:
           tests = Path('.kinotch/tests/run-tests.ps1')
           s = tests.read_text(encoding='utf-8')
 
-          old_param = '''        [string]$WorkflowText = "name: Verify`nrun: npm test",
-          [string]$PackageJson = '{"scripts":{"test":"node --test","build":"vite build"},"devDependencies":{"vite":"latest"}}','''
-          new_param = '''        [string]$WorkflowText = "name: Verify`nrun: npm test",
-          [string]$IncidentalWorkflowText = "",
-          [string]$PackageJson = '{"scripts":{"test":"node --test","build":"vite build"},"devDependencies":{"vite":"latest"}}','''
-          if s.count(old_param) != 1:
-              raise SystemExit('shape fixture parameter anchor not unique')
-          s = s.replace(old_param, new_param)
+          def replace_once(text, old, new, label):
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected 1 anchor, found {count}')
+              return text.replace(old, new, 1)
 
-          old_setup = '''        Get-ChildItem -Force $RepoRoot | Where-Object {
-              $_.Name -notin @(".git", ".superpowers", "project")
-          } | Copy-Item -Destination $tempRoot -Recurse -Force
-          New-Item -ItemType Directory -Path (Join-Path $tempRoot ".github/workflows") -Force | Out-Null
-          Set-Content -LiteralPath (Join-Path $tempRoot "package.json") -Value $PackageJson -NoNewline
-          if (-not $UseBaseWorkflow) {
-              Set-Content -LiteralPath (Join-Path $tempRoot ".github/workflows/verify.yml") -Value $WorkflowText -NoNewline
-          }'''
-          new_setup = '''        Get-ChildItem -Force $RepoRoot | Where-Object {
-              $_.Name -notin @(".git", ".superpowers", "project")
-          } | Copy-Item -Destination $tempRoot -Recurse -Force
-          $workflowRoot = Join-Path $tempRoot ".github/workflows"
+          param_old = '[string]$WorkflowText = "name: Verify`nrun: npm test",\n        [string]$PackageJson'
+          param_new = '[string]$WorkflowText = "name: Verify`nrun: npm test",\n        [string]$IncidentalWorkflowText = "",\n        [string]$PackageJson'
+          s = replace_once(s, param_old, param_new, 'shape fixture parameter')
+
+          workflow_dir_old = '        New-Item -ItemType Directory -Path (Join-Path $tempRoot ".github/workflows") -Force | Out-Null'
+          workflow_dir_new = '''        $workflowRoot = Join-Path $tempRoot ".github/workflows"
           New-Item -ItemType Directory -Path $workflowRoot -Force | Out-Null
           if (-not [string]::IsNullOrWhiteSpace($IncidentalWorkflowText)) {
               Set-Content -LiteralPath (Join-Path $workflowRoot "incidental-maintenance.yml") -Value $IncidentalWorkflowText -NoNewline
@@ -85,25 +76,21 @@ jobs:
               $baseWorkflowText = Get-Content -Raw -Encoding UTF8 (Join-Path $RepoRoot ".github/workflows/verify.yml")
           }
           Remove-Item -LiteralPath $workflowRoot -Recurse -Force -ErrorAction SilentlyContinue
-          New-Item -ItemType Directory -Path $workflowRoot -Force | Out-Null
-          if ($UseBaseWorkflow) {
+          New-Item -ItemType Directory -Path $workflowRoot -Force | Out-Null'''
+          s = replace_once(s, workflow_dir_old, workflow_dir_new, 'shape workflow directory setup')
+
+          workflow_write_old = '''        if (-not $UseBaseWorkflow) {
+              Set-Content -LiteralPath (Join-Path $tempRoot ".github/workflows/verify.yml") -Value $WorkflowText -NoNewline
+          }'''
+          workflow_write_new = '''        if ($UseBaseWorkflow) {
               [IO.File]::WriteAllText((Join-Path $workflowRoot "verify.yml"), $baseWorkflowText, (New-Object System.Text.UTF8Encoding($false)))
           }
           else {
               Set-Content -LiteralPath (Join-Path $workflowRoot "verify.yml") -Value $WorkflowText -NoNewline
-          }
-          Set-Content -LiteralPath (Join-Path $tempRoot "package.json") -Value $PackageJson -NoNewline'''
-          if s.count(old_setup) != 1:
-              raise SystemExit('shape fixture setup anchor not unique')
-          s = s.replace(old_setup, new_setup)
+          }'''
+          s = replace_once(s, workflow_write_old, workflow_write_new, 'shape intended workflow write')
 
-          anchor = '''Invoke-TestCase "shape probe ignores the Base common verification workflow" {
-              Invoke-KntShapeMigrateFixture -UseBaseWorkflow -AssertOutput {
-                  param($root, $output)
-                  Assert-True ($output -notmatch "Candidate Default Pack 'ci-test'") "Base common workflow was misclassified as an L2 ci-test Default"
-              }
-          }
-          '''
+          marker = 'Invoke-TestCase "shape probe distinguishes generated files from integrity checks" {'
           regression = '''Invoke-TestCase "shape probe isolates incidental repository workflows" {
               $incidentalVerification = "name: Maintenance Verify`nrun: npm test"
               $incidentalDeploy = "name: Maintenance Deploy`nrun: wrangler deploy"
@@ -130,17 +117,20 @@ jobs:
               }
           }
           '''
-          if s.count(anchor) != 1:
-              raise SystemExit('shape regression insertion anchor not unique')
-          s = s.replace(anchor, anchor + regression)
+          if s.count(marker) != 1:
+              raise SystemExit(f'shape regression insertion marker count={s.count(marker)}')
+          s = s.replace(marker, regression + marker, 1)
 
-          if s.count('Set-Content -LiteralPath (Join-Path $root ".kinotch/BASE_VERSION") -Value "0.5.9" -NoNewline') != 1:
-              raise SystemExit('next-version self-test anchor not unique')
-          s = s.replace('Set-Content -LiteralPath (Join-Path $root ".kinotch/BASE_VERSION") -Value "0.5.9" -NoNewline',
-                        'Set-Content -LiteralPath (Join-Path $root ".kinotch/BASE_VERSION") -Value "0.5.10" -NoNewline')
-          if s.count('Assert-Equal "0.5.8" $baseVersion "Base version"') != 1:
-              raise SystemExit('Base version assertion anchor not unique')
-          s = s.replace('Assert-Equal "0.5.8" $baseVersion "Base version"', 'Assert-Equal "0.5.9" $baseVersion "Base version"')
+          s = replace_once(
+              s,
+              'Set-Content -LiteralPath (Join-Path $root ".kinotch/BASE_VERSION") -Value "0.5.9" -NoNewline',
+              'Set-Content -LiteralPath (Join-Path $root ".kinotch/BASE_VERSION") -Value "0.5.10" -NoNewline',
+              'next-version self-test')
+          s = replace_once(
+              s,
+              'Assert-Equal "0.5.8" $baseVersion "Base version"',
+              'Assert-Equal "0.5.9" $baseVersion "Base version"',
+              'Base version assertion')
           tests.write_text(s, encoding='utf-8')
 
           version = Path('.kinotch/BASE_VERSION')
@@ -150,30 +140,27 @@ jobs:
 
           readme = Path('.kinotch/README_BASE.md')
           r = readme.read_text(encoding='utf-8')
-          r = r.replace('Base version: `0.5.8`', 'Base version: `0.5.9`', 1)
+          r = replace_once(r, 'Base version: `0.5.8`', 'Base version: `0.5.9`', 'README Base version')
           old_release = 'Base v0.5.8は、v0.5.7のProject command結果判定を維持しつつ、横断GitHub開発管理の現行正本を `kinoko34077/devflow` へ統一し、歴史的な `devflow-test` identityを現行Agent bootstrapから除去する保守releaseである。'
           new_release = 'Base v0.5.9は、v0.5.8のdevflow identity整合とProject command結果判定を維持しつつ、shape-probe self-test fixtureがrepository上の一時的・無関係なworkflowを継承しないようworkflow集合をケース単位で隔離する保守releaseである。'
-          if r.count(old_release) != 1:
-              raise SystemExit('README release anchor not unique')
-          r = r.replace(old_release, new_release)
+          r = replace_once(r, old_release, new_release, 'README release sentence')
           readme.write_text(r, encoding='utf-8')
 
           state = Path('project/docs/CURRENT_STATE.md')
           c = state.read_text(encoding='utf-8')
-          replacements = [
-              ('Base version: `0.5.8`', 'Base version: `0.5.9`'),
+          state_replacements = [
+              ('Base version: `0.5.8`', 'Base version: `0.5.9`', 'CURRENT_STATE Base version'),
               ('Last verified: 2026-09-27 — Base v0.5.8 devflow-identity maintenance merged after exact-head hosted verification passed on Ubuntu PowerShell, Windows PowerShell Core, and Windows PowerShell 5.1; Base self-tests remained 105/105 with focused command, MCP-path, and devflow-identity regressions passing.',
-               'Last verified: 2026-09-27 — Base v0.5.9 shape-probe fixture-isolation maintenance completed with deterministic workflow fixtures; the full Base verification gate passes with 106/106 self-tests and existing command, MCP-path, and devflow-identity regressions preserved.'),
-              ('- Base v0.5.8 is the current Repository Base maintenance baseline.', '- Base v0.5.9 is the current Repository Base maintenance baseline.'),
-              ('- Base v0.5.8 is the current Phase 5 safety baseline;', '- Base v0.5.9 is the current Phase 5 safety baseline;'),
+               'Last verified: 2026-09-27 — Base v0.5.9 shape-probe fixture-isolation maintenance completed with deterministic workflow fixtures; the full Base verification gate passes with 106/106 self-tests and existing command, MCP-path, and devflow-identity regressions preserved.',
+               'CURRENT_STATE last verified'),
+              ('- Base v0.5.8 is the current Repository Base maintenance baseline.', '- Base v0.5.9 is the current Repository Base maintenance baseline.', 'CURRENT_STATE maintenance baseline'),
+              ('- Base v0.5.8 is the current Phase 5 safety baseline;', '- Base v0.5.9 is the current Phase 5 safety baseline;', 'CURRENT_STATE Phase 5 baseline'),
               ('- Hosted Base v0.5.8 verification: 105/105 Base self-tests, 8/8 command-runner regressions, 4/4 MCP path regressions, and the devflow identity regression passed on Ubuntu PowerShell, Windows PowerShell Core, and Windows PowerShell 5.1',
-               '- Hosted Base v0.5.9 acceptance gate: 106/106 Base self-tests, 8/8 command-runner regressions, 4/4 MCP path regressions, the devflow identity regression, and deterministic shape-fixture isolation must pass on Ubuntu PowerShell, Windows PowerShell Core, and Windows PowerShell 5.1 before merge')
+               '- Hosted Base v0.5.9 acceptance gate: 106/106 Base self-tests, 8/8 command-runner regressions, 4/4 MCP path regressions, the devflow identity regression, and deterministic shape-fixture isolation must pass on Ubuntu PowerShell, Windows PowerShell Core, and Windows PowerShell 5.1 before merge',
+               'CURRENT_STATE hosted verification')
           ]
-          for old, new in replacements:
-              count = c.count(old)
-              if count != 1:
-                  raise SystemExit(f'CURRENT_STATE anchor count={count}: {old!r}')
-              c = c.replace(old, new)
+          for old, new, label in state_replacements:
+              c = replace_once(c, old, new, label)
           state.write_text(c, encoding='utf-8')
 
       - name: Refresh Base index
