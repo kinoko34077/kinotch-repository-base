@@ -9,17 +9,30 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: Probe router-equivalent capture
+      - name: Probe function-scope capture
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Continue'
           $h = (Get-Command pwsh -ErrorAction Stop).Source
-          $LASTEXITCODE = $null
-          $status = [pscustomobject]@{ Success = $null; Native = $null }
-          $code = "if (`$true) { & '$h' -NoProfile -Command 'exit 7' } else { Write-Output 'unused' }" + [Environment]::NewLine + '$status.Success = $?' + [Environment]::NewLine + '$status.Native = $LASTEXITCODE'
-          $captured = @(Invoke-Expression $code 2>&1)
-          Write-Host "CAPTURED success=$($status.Success) native=$($status.Native) count=$($captured.Count)"
-          foreach ($item in $captured) {
-            Write-Host "ITEM type=$($item.GetType().FullName) fqid=$([string]$item.FullyQualifiedErrorId) text=$item"
+
+          function Probe-Local {
+            param([string]$Exe)
+            $LASTEXITCODE = $null
+            $status = [pscustomobject]@{ Success = $null; Native = $null; ScriptNative = $null }
+            $code = "if (`$true) { & '$Exe' -NoProfile -Command 'exit 7' } else { Write-Output 'unused' }" + [Environment]::NewLine + '$status.Success = $?' + [Environment]::NewLine + '$status.ScriptNative = $LASTEXITCODE'
+            $captured = @(Invoke-Expression $code 2>&1)
+            $status.Native = $LASTEXITCODE
+            Write-Host "LOCAL success=$($status.Success) scriptNative=$($status.ScriptNative) functionNative=$($status.Native) captured=$($captured.Count)"
           }
+
+          function Probe-NoReset {
+            param([string]$Exe)
+            $status = [pscustomobject]@{ Success = $null; ScriptNative = $null }
+            $code = "if (`$true) { & '$Exe' -NoProfile -Command 'exit 7' } else { Write-Output 'unused' }" + [Environment]::NewLine + '$status.Success = $?' + [Environment]::NewLine + '$status.ScriptNative = $LASTEXITCODE'
+            $captured = @(Invoke-Expression $code 2>&1)
+            Write-Host "NORESET success=$($status.Success) scriptNative=$($status.ScriptNative) functionNative=$LASTEXITCODE captured=$($captured.Count)"
+          }
+
+          Probe-Local -Exe $h
+          Probe-NoReset -Exe $h
           exit 0
