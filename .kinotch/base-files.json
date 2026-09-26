@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "base_version": "0.5.6",
+  "base_version": "0.5.7",
   "files": [
     {
       "path": ".editorconfig",
@@ -24,7 +24,7 @@
     },
     {
       "path": ".kinotch/BASE_VERSION",
-      "sha256": "f669b5e9183901b78b0952eb71f8fe54bdcff9cc3d155710c61e25be7b35b058"
+      "sha256": "79d7614c17275d8e26f7c386169e65f3073bfcf583757b84bcda201134e628b4"
     },
     {
       "path": ".kinotch/DEVELOPMENT_FLOW.md",
@@ -40,7 +40,7 @@
     },
     {
       "path": ".kinotch/README_BASE.md",
-      "sha256": "761f45f9f616574bcd074dca2ce9b1d5e7b70f1fc9dcd16e3fae063cb5dd7903"
+      "sha256": "6a04b387783cd8824c3b0cf43f5a885ff0514641efcda068be8aff27eaef98a0"
     },
     {
       "path": ".kinotch/REPOSITORY_STANDARD.md",
@@ -176,7 +176,7 @@
     },
     {
       "path": ".kinotch/scripts/knt.ps1",
-      "sha256": "c71102adc259d64790434393ad15a62b12c17d08ab3acfeace6e76195e9299e1"
+      "sha256": "abdd2a22b450fe5ecb20531578a8d9a5f43af46f9e671ddf839dc9bd8331bc98"
     },
     {
       "path": ".kinotch/scripts/path-containment.ps1",
@@ -412,7 +412,7 @@
     },
     {
       "path": ".kinotch/tests/run-tests.ps1",
-      "sha256": "d998d64ecf53461b17d9bedd90bd91063a97ff815402d4604383a9ba421dc830"
+      "sha256": "c7e7c15ba4cfe1205ab8de2bef1cda174929eacb25d6d4b44f6c92b8918eb155"
     },
     {
       "path": "AGENTS.md",
