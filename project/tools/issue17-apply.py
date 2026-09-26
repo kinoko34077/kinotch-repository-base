@@ -10,10 +10,7 @@ old = '''                $errorCountBefore = $Error.Count
                 $newErrors = if ($newErrorCount -gt 0) { @($Error | Select-Object -First $newErrorCount) } else { @() }
                 $nonNativeErrors = @($newErrors | Where-Object { [string]$_.FullyQualifiedErrorId -notlike 'NativeCommandError*' })
 '''
-new = '''                # Capture the legacy expression's terminal status inside the evaluated
-                # scope. A shared object preserves the captured values after Invoke-Expression
-                # returns, without letting the caller-side assignment overwrite `$?`.
-                $legacyStatus = [pscustomobject]@{
+new = '''                $legacyStatus = [pscustomobject]@{
                     PowerShellSucceeded = $null
                     NativeExitCode = $null
                 }
@@ -23,16 +20,25 @@ new = '''                # Capture the legacy expression's terminal status insid
                 $commandOutput = @(Invoke-Expression $legacyStatusScript 2>&1)
                 $powerShellSucceeded = ($legacyStatus.PowerShellSucceeded -eq $true)
                 $nativeExitCode = $legacyStatus.NativeExitCode
-
-                # Only errors actually emitted to the merged error stream count as
-                # unhandled PowerShell errors. `$Error` also records intentionally handled
-                # `-ErrorAction SilentlyContinue` errors and must not be used as the result gate.
                 $emittedErrors = @($commandOutput | Where-Object { $_ -is [System.Management.Automation.ErrorRecord] })
                 $nonNativeErrors = @($emittedErrors | Where-Object { [string]$_.FullyQualifiedErrorId -notlike 'NativeCommandError*' })
+                Write-Host "[issue17-debug] name=$Name ps=$powerShellSucceeded native=$nativeExitCode emitted=$($emittedErrors.Count) nonNative=$($nonNativeErrors.Count)"
 '''
 if old not in text:
     raise SystemExit('legacy result block not found')
-path.write_text(text.replace(old, new, 1), encoding='utf-8', newline='\n')
+text = text.replace(old, new, 1)
+text = text.replace('elseif ($newErrors.Count -gt 0 -and $nonNativeErrors.Count -eq 0) {', 'elseif ($emittedErrors.Count -gt 0 -and $nonNativeErrors.Count -eq 0) {', 1)
+text = text.replace('''                else {
+                    $commandExitCode = 1
+                }
+            }
+''', '''                else {
+                    $commandExitCode = 1
+                }
+                Write-Host "[issue17-debug] name=$Name decided=$commandExitCode"
+            }
+''', 1)
+path.write_text(text, encoding='utf-8', newline='\n')
 
 Path('.kinotch/BASE_VERSION').write_text('0.5.7\n', encoding='utf-8', newline='\n')
 
