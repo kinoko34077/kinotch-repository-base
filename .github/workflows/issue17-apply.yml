@@ -16,46 +16,18 @@ jobs:
         with:
           ref: fix/issue-17-legacy-exit-semantics
           fetch-depth: 0
-      - name: Probe compound status
-        shell: pwsh
-        run: |
-          $h = (Get-Command pwsh -ErrorAction Stop).Source
-          $LASTEXITCODE = $null
-          Invoke-Expression "if (`$true) { & '$h' -NoProfile -Command 'exit 7' } else { Write-Output 'unused' }; Write-Host ('PROBE in-expression success=' + `$? + ' native=' + `$LASTEXITCODE)"
-          Write-Host "PROBE after Invoke-Expression success=$? native=$LASTEXITCODE"
-          $status = [pscustomobject]@{ PowerShellSucceeded = $null; NativeExitCode = $null }
-          $script = "if (`$true) { & '$h' -NoProfile -Command 'exit 7' } else { Write-Output 'unused' }" + [Environment]::NewLine + '$status.PowerShellSucceeded = $?' + [Environment]::NewLine + '$status.NativeExitCode = $LASTEXITCODE'
-          Invoke-Expression $script
-          Write-Host "PROBE object success=$($status.PowerShellSucceeded) native=$($status.NativeExitCode)"
       - name: Confirm focused regression is RED
         shell: pwsh
         run: |
           ./project/tests/command-runner-regression.ps1
           if ($LASTEXITCODE -eq 0) { throw 'Expected RED before implementation' }
           exit 0
-      - name: Apply fix
+      - name: Apply instrumented fix
         shell: bash
         run: python3 project/tools/issue17-apply.py
       - name: Refresh Base index
         shell: pwsh
         run: ./.kinotch/scripts/knt.ps1 base-refresh
-      - name: Focused regression GREEN
+      - name: Focused regression with decision trace
         shell: pwsh
         run: ./project/tests/command-runner-regression.ps1
-      - name: Direct Base self-test
-        shell: pwsh
-        run: ./.kinotch/tests/run-tests.ps1
-      - name: Base integrity
-        shell: pwsh
-        run: ./.kinotch/scripts/knt.ps1 base-check
-      - name: Full verification
-        shell: pwsh
-        run: ./.kinotch/scripts/knt.ps1 verify
-      - name: Commit implementation
-        shell: bash
-        run: |
-          git config user.name "KiNoTch. automation"
-          git config user.email "79015263+kinoko34077@users.noreply.github.com"
-          git add -A
-          git commit -m "fix: preserve compound legacy native exit semantics"
-          git push origin HEAD:fix/issue-17-legacy-exit-semantics
