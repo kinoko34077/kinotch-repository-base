@@ -183,6 +183,7 @@ function Invoke-KntShapeMigrateFixture {
     param(
         [scriptblock]$AssertOutput,
         [string]$WorkflowText = "name: Verify`nrun: npm test",
+        [string]$IncidentalWorkflowText = "",
         [string]$PackageJson = '{"scripts":{"test":"node --test","build":"vite build"},"devDependencies":{"vite":"latest"}}',
         [switch]$GeneratedFile,
         [switch]$IntegrityEvidence,
@@ -198,10 +199,23 @@ function Invoke-KntShapeMigrateFixture {
         Get-ChildItem -Force $RepoRoot | Where-Object {
             $_.Name -notin @(".git", ".superpowers", "project")
         } | Copy-Item -Destination $tempRoot -Recurse -Force
-        New-Item -ItemType Directory -Path (Join-Path $tempRoot ".github/workflows") -Force | Out-Null
+        $workflowRoot = Join-Path $tempRoot ".github/workflows"
+        New-Item -ItemType Directory -Path $workflowRoot -Force | Out-Null
+        if (-not [string]::IsNullOrWhiteSpace($IncidentalWorkflowText)) {
+            Set-Content -LiteralPath (Join-Path $workflowRoot "incidental-maintenance.yml") -Value $IncidentalWorkflowText -NoNewline
+        }
+        $baseWorkflowText = $null
+        if ($UseBaseWorkflow) {
+            $baseWorkflowText = Get-Content -Raw -Encoding UTF8 (Join-Path $RepoRoot ".github/workflows/verify.yml")
+        }
+        Remove-Item -LiteralPath $workflowRoot -Recurse -Force -ErrorAction SilentlyContinue
+        New-Item -ItemType Directory -Path $workflowRoot -Force | Out-Null
         Set-Content -LiteralPath (Join-Path $tempRoot "package.json") -Value $PackageJson -NoNewline
-        if (-not $UseBaseWorkflow) {
-            Set-Content -LiteralPath (Join-Path $tempRoot ".github/workflows/verify.yml") -Value $WorkflowText -NoNewline
+        if ($UseBaseWorkflow) {
+            [IO.File]::WriteAllText((Join-Path $workflowRoot "verify.yml"), $baseWorkflowText, (New-Object System.Text.UTF8Encoding($false)))
+        }
+        else {
+            Set-Content -LiteralPath (Join-Path $workflowRoot "verify.yml") -Value $WorkflowText -NoNewline
         }
         if (-not $NoWebAssets) {
             New-Item -ItemType Directory -Path (Join-Path $tempRoot "public") -Force | Out-Null
@@ -1214,6 +1228,31 @@ Invoke-TestCase "shape probe ignores the Base common verification workflow" {
         Assert-True ($output -notmatch "Candidate Default Pack 'ci-test'") "Base common workflow was misclassified as an L2 ci-test Default"
     }
 }
+Invoke-TestCase "shape probe isolates incidental repository workflows" {
+    $incidentalVerification = "name: Maintenance Verify`nrun: npm test"
+    $incidentalDeploy = "name: Maintenance Deploy`nrun: wrangler deploy"
+    Invoke-KntShapeMigrateFixture -WorkflowText "name: Deploy`nrun: wrangler deploy" -IncidentalWorkflowText $incidentalVerification -AssertOutput {
+        param($root, $output)
+        $workflowFiles = @(Get-ChildItem -LiteralPath (Join-Path $root ".github/workflows") -File)
+        Assert-Equal 1 $workflowFiles.Count "deploy-only isolated workflow count"
+        Assert-Equal "verify.yml" $workflowFiles[0].Name "deploy-only isolated workflow name"
+        Assert-True ($output -match "Candidate Default Pack 'ci-test': state DEFAULT") "incidental verification workflow contaminated deploy-only fixture"
+    }
+    Invoke-KntShapeMigrateFixture -WorkflowText "name: Verify`nrun: npm test" -IncidentalWorkflowText $incidentalDeploy -AssertOutput {
+        param($root, $output)
+        $workflowFiles = @(Get-ChildItem -LiteralPath (Join-Path $root ".github/workflows") -File)
+        Assert-Equal 1 $workflowFiles.Count "verification isolated workflow count"
+        Assert-Equal "verify.yml" $workflowFiles[0].Name "verification isolated workflow name"
+        Assert-True ($output -match "Candidate Default Pack 'ci-test': state OVERRIDE") "intended verification workflow was not preserved"
+    }
+    Invoke-KntShapeMigrateFixture -UseBaseWorkflow -IncidentalWorkflowText $incidentalVerification -AssertOutput {
+        param($root, $output)
+        $workflowFiles = @(Get-ChildItem -LiteralPath (Join-Path $root ".github/workflows") -File)
+        Assert-Equal 1 $workflowFiles.Count "Base-workflow isolated workflow count"
+        Assert-Equal "verify.yml" $workflowFiles[0].Name "Base-workflow isolated workflow name"
+        Assert-True ($output -notmatch "Candidate Default Pack 'ci-test'") "incidental workflow contaminated Base-common-workflow fixture"
+    }
+}
 Invoke-TestCase "shape probe distinguishes generated files from integrity checks" {
     Invoke-KntShapeMigrateFixture -GeneratedFile -AssertOutput {
         param($root, $output)
@@ -1907,7 +1946,7 @@ Invoke-TestCase "base-refresh indexes new common file after version bump" {
         Set-FixtureAsBase $root
         Set-FixtureBaseIndex $root
         Set-Content -LiteralPath (Join-Path $root ".kinotch/new-common.txt") -Value "new common file" -NoNewline
-        Set-Content -LiteralPath (Join-Path $root ".kinotch/BASE_VERSION") -Value "0.5.9" -NoNewline
+        Set-Content -LiteralPath (Join-Path $root ".kinotch/BASE_VERSION") -Value "0.5.10" -NoNewline
         $router = Join-Path $root ".kinotch/scripts/knt.ps1"
         $before = @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $router -RootOverride $root base-check 2>&1)
         if ($LASTEXITCODE -eq 0) { throw "unindexed Base file was not rejected: $($before -join ' ')" }
@@ -1937,7 +1976,7 @@ Invoke-TestCase "Base documentation and profile metadata are finalized" {
     Assert-True ($workflow -match "knt\.ps1 setup") "Base CI setup step is missing"
     Assert-True ($workflow -match "actions/checkout@[0-9a-f]{40}(?:\s+#\s+v4)?") "Base Verify checkout action is not pinned to a full commit SHA"
     Assert-Equal 0 @($surfaceRegistry.surfaces.PSObject.Properties).Count "Base Surface Registry should be empty"
-    Assert-Equal "0.5.8" $baseVersion "Base version"
+    Assert-Equal "0.5.9" $baseVersion "Base version"
     Assert-True ($baseReadme -match "Surface Default Kit") "README_BASE Surface Kit wording is missing"
     Assert-True ($baseReadme -match "OVERRIDE") "README_BASE override boundary is missing"
     Assert-True (@($catalog.defaults | Where-Object { $_.kind -eq "surface" }).Count -ge 8) "Surface Default catalog entries are incomplete"
