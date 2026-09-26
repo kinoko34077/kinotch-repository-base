@@ -1,0 +1,44 @@
+name: Probe Issue 17 Status
+
+on: push
+
+jobs:
+  probe:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            shell: pwsh
+          - os: windows-latest
+            shell: pwsh
+          - os: windows-latest
+            shell: powershell
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Probe
+        shell: ${{ matrix.shell }}
+        run: |
+          $hostExe = if ($PSVersionTable.PSEdition -eq 'Desktop') { 'powershell' } else { 'pwsh' }
+          $cases = @(
+            [pscustomobject]@{ Name='branch-native-fail'; Code="if (`$true) { & $hostExe -NoProfile -Command 'exit 7' } else { Write-Output nope }" },
+            [pscustomobject]@{ Name='native-fail-then-ps-success'; Code="& $hostExe -NoProfile -Command 'exit 7'; Write-Output success" },
+            [pscustomobject]@{ Name='native-success-stderr'; Code="& $hostExe -NoProfile -Command '[Console]::Error.WriteLine(\"diag\")'" }
+          )
+          foreach ($case in $cases) {
+            $LASTEXITCODE = $null
+            $outerOutput = @(Invoke-Expression $case.Code 2>&1)
+            $outerSuccess = $?
+            $outerNative = $LASTEXITCODE
+
+            $LASTEXITCODE = $null
+            $innerOutput = @(& {
+              Invoke-Expression $case.Code 2>&1
+              $innerSuccess = $?
+              $innerNative = $LASTEXITCODE
+              Write-Output "__KNT_STATUS__ success=$innerSuccess native=$innerNative"
+            })
+            Write-Host "CASE=$($case.Name) outerSuccess=$outerSuccess outerNative=$outerNative"
+            $innerOutput | ForEach-Object { Write-Host $_ }
+          }
