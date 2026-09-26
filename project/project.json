@@ -22,7 +22,7 @@
     "setup": "",
     "dev": "",
     "test": {
-      "run": "$ps = if (Get-Command pwsh -ErrorAction SilentlyContinue) { 'pwsh' } else { 'powershell' }; & $ps -NoProfile -ExecutionPolicy Bypass -File .kinotch/tests/run-tests.ps1; if ($LASTEXITCODE -eq 0) { & $ps -NoProfile -ExecutionPolicy Bypass -File project/tests/command-runner-regression.ps1 }; if ($LASTEXITCODE -eq 0) { & $ps -NoProfile -ExecutionPolicy Bypass -File project/tests/mcp-path-regression.ps1 }",
+      "run": "$ps = if (Get-Command pwsh -ErrorAction SilentlyContinue) { 'pwsh' } else { 'powershell' }; & $ps -NoProfile -ExecutionPolicy Bypass -File .kinotch/tests/run-tests.ps1; if ($LASTEXITCODE -eq 0) { & $ps -NoProfile -ExecutionPolicy Bypass -File project/tests/command-runner-regression.ps1 }; if ($LASTEXITCODE -eq 0) { & $ps -NoProfile -ExecutionPolicy Bypass -File project/tests/mcp-path-regression.ps1 }; if ($LASTEXITCODE -eq 0) { & $ps -NoProfile -ExecutionPolicy Bypass -File project/tests/devflow-identity-regression.ps1 }",
       "cwd": "."
     },
     "build": "",
