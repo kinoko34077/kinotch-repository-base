@@ -1907,7 +1907,7 @@ Invoke-TestCase "base-refresh indexes new common file after version bump" {
         Set-FixtureAsBase $root
         Set-FixtureBaseIndex $root
         Set-Content -LiteralPath (Join-Path $root ".kinotch/new-common.txt") -Value "new common file" -NoNewline
-        Set-Content -LiteralPath (Join-Path $root ".kinotch/BASE_VERSION") -Value "0.5.8" -NoNewline
+        Set-Content -LiteralPath (Join-Path $root ".kinotch/BASE_VERSION") -Value "0.5.9" -NoNewline
         $router = Join-Path $root ".kinotch/scripts/knt.ps1"
         $before = @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $router -RootOverride $root base-check 2>&1)
         if ($LASTEXITCODE -eq 0) { throw "unindexed Base file was not rejected: $($before -join ' ')" }
@@ -1937,7 +1937,7 @@ Invoke-TestCase "Base documentation and profile metadata are finalized" {
     Assert-True ($workflow -match "knt\.ps1 setup") "Base CI setup step is missing"
     Assert-True ($workflow -match "actions/checkout@[0-9a-f]{40}(?:\s+#\s+v4)?") "Base Verify checkout action is not pinned to a full commit SHA"
     Assert-Equal 0 @($surfaceRegistry.surfaces.PSObject.Properties).Count "Base Surface Registry should be empty"
-    Assert-Equal "0.5.7" $baseVersion "Base version"
+    Assert-Equal "0.5.8" $baseVersion "Base version"
     Assert-True ($baseReadme -match "Surface Default Kit") "README_BASE Surface Kit wording is missing"
     Assert-True ($baseReadme -match "OVERRIDE") "README_BASE override boundary is missing"
     Assert-True (@($catalog.defaults | Where-Object { $_.kind -eq "surface" }).Count -ge 8) "Surface Default catalog entries are incomplete"

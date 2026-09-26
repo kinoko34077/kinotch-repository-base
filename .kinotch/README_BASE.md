@@ -1,6 +1,6 @@
 # KiNoTch. Repository Base — Common README
 
-Base version: `0.5.7`
+Base version: `0.5.8`
 
 この文書はKiNoTch.標準リポジトリの共通取扱説明書である。個別READMEへ同じ説明を複製しない。
 
@@ -15,7 +15,7 @@ KiNoTch.Runtime = 複数repoで再利用する共通実装。個別repoへコピ
 
 Base-wide Metaは `.kinotch/meta/` に置き、新規Repository用の生成元は `.kinotch/templates/project/` に置く。Base自身のProject情報は `project/**` に記録し、Templateと混同しない。
 
-Base v0.5.7は、v0.5.6の安全境界を維持しつつ、Project commandのLASTEXITCODE resetをprocess-wide automatic variableへ統一し、legacy commandの終端PowerShell状態・native exit code・実際に出力されたErrorRecordを分離して判定する保守releaseである。CLI、Windows、MCP、API、AgentのSurface Default Kitと、ci-test、generated-integrity、file-io、pwa、config、loggingのTool Defaultは、Domain非依存で安全に外せる補助境界を提供する。既存FrameworkやProject実装はOVERRIDEとして維持でき、Runtime semanticsは変更しない。通常の運用方針は [Phase 5 Operations](meta/07_PHASE5_OPERATIONS.md) を参照する。
+Base v0.5.8は、v0.5.7のProject command結果判定を維持しつつ、横断GitHub開発管理の現行正本を `kinoko34077/devflow` へ統一し、歴史的な `devflow-test` identityを現行Agent bootstrapから除去する保守releaseである。CLI、Windows、MCP、API、AgentのSurface Default Kitと、ci-test、generated-integrity、file-io、pwa、config、loggingのTool Defaultは、Domain非依存で安全に外せる補助境界を提供する。既存FrameworkやProject実装はOVERRIDEとして維持でき、Runtime semanticsは変更しない。通常の運用方針は [Phase 5 Operations](meta/07_PHASE5_OPERATIONS.md) を参照する。
 
 ## Default-first
 
