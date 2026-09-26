@@ -1404,7 +1404,9 @@ function Invoke-ProjectCommand($Manifest, [string]$Name) {
             # ErrorRecord semantics so stderr diagnostics do not become
             # failures and PowerShell errors do not become false successes.
             $ErrorActionPreference = "Continue"
-            $LASTEXITCODE = $null
+            # Reset the process-wide automatic variable without creating a
+            # function-local LASTEXITCODE that would shadow native updates.
+            $global:LASTEXITCODE = $null
             if ($spec.mode -eq "structured") {
                 $forwardedArgs = @($RemainingArgs | Where-Object { $null -ne $_ })
                 if ($forwardedArgs.Count -gt 0 -and -not $spec.forward_args) {
@@ -1438,13 +1440,24 @@ function Invoke-ProjectCommand($Manifest, [string]$Name) {
                     throw "Legacy command '$Name' cannot safely forward arguments; use structured exec/args with forward_args=true"
                 }
                 Write-Knt "$Name -> $($spec.run)"
-                $errorCountBefore = $Error.Count
-                $commandOutput = @(Invoke-Expression $spec.run 2>&1)
-                $powerShellSucceeded = $?
-                $nativeExitCode = $LASTEXITCODE
-                $newErrorCount = [Math]::Max(0, $Error.Count - $errorCountBefore)
-                $newErrors = if ($newErrorCount -gt 0) { @($Error | Select-Object -First $newErrorCount) } else { @() }
-                $nonNativeErrors = @($newErrors | Where-Object { [string]$_.FullyQualifiedErrorId -notlike 'NativeCommandError*' })
+                # Capture the legacy expression's terminal status inside the evaluated
+                # scope before caller-side output capture can overwrite `$?`.
+                $legacyStatus = [pscustomobject]@{
+                    PowerShellSucceeded = $null
+                    NativeExitCode = $null
+                }
+                $legacyStatusScript = [string]$spec.run + [Environment]::NewLine +
+                    '$legacyStatus.PowerShellSucceeded = $?' + [Environment]::NewLine +
+                    '$legacyStatus.NativeExitCode = $LASTEXITCODE'
+                $commandOutput = @(Invoke-Expression $legacyStatusScript 2>&1)
+                $powerShellSucceeded = ($legacyStatus.PowerShellSucceeded -eq $true)
+                $nativeExitCode = $legacyStatus.NativeExitCode
+
+                # `$Error` also records intentionally handled errors such as
+                # -ErrorAction SilentlyContinue. Only ErrorRecords that actually reached
+                # the merged error stream are unhandled command errors here.
+                $emittedErrors = @($commandOutput | Where-Object { $_ -is [System.Management.Automation.ErrorRecord] })
+                $nonNativeErrors = @($emittedErrors | Where-Object { [string]$_.FullyQualifiedErrorId -notlike 'NativeCommandError*' })
 
                 if ($nonNativeErrors.Count -gt 0) {
                     $commandExitCode = 1
@@ -1457,7 +1470,7 @@ function Invoke-ProjectCommand($Manifest, [string]$Name) {
                 elseif ($null -ne $nativeExitCode -and [int]$nativeExitCode -ne 0) {
                     $commandExitCode = [int]$nativeExitCode
                 }
-                elseif ($newErrors.Count -gt 0 -and $nonNativeErrors.Count -eq 0) {
+                elseif ($emittedErrors.Count -gt 0 -and $nonNativeErrors.Count -eq 0) {
                     # Windows PowerShell 5.1 native stderr with exit 0.
                     $commandExitCode = 0
                 }
