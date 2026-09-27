@@ -1458,13 +1458,26 @@ function Invoke-ProjectCommand($Manifest, [string]$Name) {
                     throw "Legacy command '$Name' cannot safely forward arguments; use structured exec/args with forward_args=true"
                 }
                 Write-Knt "$Name -> $($spec.run)"
-                # Invoke legacy commands as a scriptblock so a terminal return
-                # exits only the legacy command scope. A terminal exit remains
-                # unsupported because it terminates the knt process.
-                $legacyScript = [scriptblock]::Create([string]$spec.run)
+                # Compose a wrapper whose finally block observes the user's
+                # terminal command status before the outer output array can
+                # overwrite it. A return exits the wrapper scope, but still
+                # runs finally; exit remains unsupported and terminates knt.
+                $legacyInvocationResult = [pscustomobject]@{
+                    PowerShellSucceeded = $null
+                    NativeExitCode = $null
+                }
+                $legacyResultVariable = "__kntLegacyResult_" + [guid]::NewGuid().ToString("N")
+                Set-Variable -Name $legacyResultVariable -Value $legacyInvocationResult -Scope Local
+                $legacyScriptText = "try {" + [Environment]::NewLine +
+                    [string]$spec.run + [Environment]::NewLine +
+                    "} finally {" + [Environment]::NewLine +
+                    ('$' + $legacyResultVariable + '.PowerShellSucceeded = $?') + [Environment]::NewLine +
+                    ('$' + $legacyResultVariable + '.NativeExitCode = $LASTEXITCODE') + [Environment]::NewLine +
+                    "}"
+                $legacyScript = [scriptblock]::Create($legacyScriptText)
                 $commandOutput = @(& $legacyScript 2>&1)
-                $powerShellSucceeded = $?
-                $nativeExitCode = $LASTEXITCODE
+                $powerShellSucceeded = ($legacyInvocationResult.PowerShellSucceeded -eq $true)
+                $nativeExitCode = $legacyInvocationResult.NativeExitCode
 
                 # Error also records intentionally handled errors such as
                 # -ErrorAction SilentlyContinue. Only ErrorRecords that actually reached
@@ -1475,14 +1488,19 @@ function Invoke-ProjectCommand($Manifest, [string]$Name) {
                 if ($nonNativeErrors.Count -gt 0) {
                     $commandExitCode = 1
                 }
-                elseif ($null -ne $nativeExitCode -and [int]$nativeExitCode -ne 0) {
-                    # Windows PowerShell 5.1 can report a successful outer
-                    # scriptblock invocation after a failing native command.
-                    # LASTEXITCODE is the reliable terminal native status here.
+                elseif ($null -ne $nativeExitCode -and [int]$nativeExitCode -ne 0 -and -not $powerShellSucceeded) {
+                    # Windows PowerShell 5.1 reports the compound native
+                    # command's terminal failure through both fields when
+                    # the status is captured inside the wrapper finally block.
                     $commandExitCode = [int]$nativeExitCode
                 }
                 elseif ($powerShellSucceeded) {
+                    # A later successful PowerShell operation must not inherit
+                    # a stale LASTEXITCODE from an earlier native process.
                     $commandExitCode = 0
+                }
+                elseif ($null -ne $nativeExitCode -and [int]$nativeExitCode -ne 0) {
+                    $commandExitCode = [int]$nativeExitCode
                 }
                 elseif ($emittedErrors.Count -gt 0 -and $nonNativeErrors.Count -eq 0) {
                     # Windows PowerShell 5.1 native stderr with exit 0.
