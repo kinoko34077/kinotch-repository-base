@@ -1478,7 +1478,7 @@ function Invoke-ProjectCommand($Manifest, [string]$Name) {
                 elseif ($null -ne $nativeExitCode -and [int]$nativeExitCode -ne 0) {
                     # Windows PowerShell 5.1 can report a successful outer
                     # scriptblock invocation after a failing native command.
-                    $LASTEXITCODE is the reliable terminal native status here.
+                    # LASTEXITCODE is the reliable terminal native status here.
                     $commandExitCode = [int]$nativeExitCode
                 }
                 elseif ($powerShellSucceeded) {
