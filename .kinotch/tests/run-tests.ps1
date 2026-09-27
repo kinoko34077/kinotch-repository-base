@@ -346,6 +346,27 @@ Invoke-TestCase "Protected paths and Base index use canonical separators" {
     Assert-Equal (Get-BaseFileHash (Join-Path $RepoRoot ".kinotch/FILE_INVENTORY.txt")) $inventoryEntry.sha256 "index inventory hash"
 }
 
+Invoke-TestCase "Base index script fails closed when path-containment helper is absent" {
+    $tempRoot = Join-Path ([IO.Path]::GetTempPath()) ("kinotch-missing-containment-" + [guid]::NewGuid().ToString("N"))
+    New-Item -ItemType Directory -Path (Join-Path $tempRoot "scripts") -Force | Out-Null
+    try {
+        $scriptPath = Join-Path $tempRoot "scripts/update-base-index.ps1"
+        Copy-Item -LiteralPath (Join-Path $RepoRoot ".kinotch/scripts/update-base-index.ps1") -Destination $scriptPath
+        $failure = $null
+        try {
+            . $scriptPath
+        }
+        catch {
+            $failure = $_.Exception.Message
+        }
+        Assert-True (-not [string]::IsNullOrWhiteSpace($failure)) "missing path-containment helper was silently accepted"
+        Assert-True ($failure -match "path-containment|Path containment") "missing helper failure was not identified"
+    }
+    finally {
+        Remove-Item -LiteralPath $tempRoot -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
 Invoke-TestCase "Project path containment is OS-aware and rejects sibling escapes" {
     $helperPath = Join-Path $RepoRoot ".kinotch/scripts/path-containment.ps1"
     Assert-True (Test-Path -LiteralPath $helperPath -PathType Leaf) "path containment helper is missing"
