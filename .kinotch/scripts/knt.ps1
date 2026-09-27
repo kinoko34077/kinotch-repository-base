@@ -1421,17 +1421,35 @@ function Invoke-ProjectCommand($Manifest, [string]$Name) {
                     $resolvedCommand = $resolvedCommand.ResolvedCommand
                 }
                 $isNativeCommand = $resolvedCommand.CommandType -eq [System.Management.Automation.CommandTypes]::Application
-                $errorCountBefore = $Error.Count
-                $commandOutput = @(& $spec.exec @invokeArgs 2>&1)
+                $structuredErrorRecords = @()
+                if ($isNativeCommand) {
+                    # Native stderr is intentionally merged into output so the
+                    # existing Windows PowerShell diagnostic behavior is preserved.
+                    # Its process exit code remains the source of truth.
+                    $commandOutput = @(& $spec.exec @invokeArgs 2>&1)
+                }
+                else {
+                    # Do not infer command errors from the process-wide Error list:
+                    # a command can clear it, and a full list can drop the oldest
+                    # record at the MaximumErrorCount. ErrorVariable captures the
+                    # ErrorRecords emitted by this invocation independently.
+                    $commandOutput = @(& $spec.exec @invokeArgs -ErrorVariable structuredErrorRecords 2>&1)
+                }
                 $powerShellSucceeded = $?
                 $nativeExitCode = $LASTEXITCODE
-                $newErrorCount = [Math]::Max(0, $Error.Count - $errorCountBefore)
+                $emittedErrors = @($commandOutput | Where-Object { $_ -is [System.Management.Automation.ErrorRecord] })
+                if ($isNativeCommand) {
+                    $structuredErrorRecords = @($emittedErrors)
+                }
+                else {
+                    $structuredErrorRecords = @($structuredErrorRecords | Where-Object { $_ -is [System.Management.Automation.ErrorRecord] })
+                }
 
                 if ($isNativeCommand) {
                     $commandExitCode = if ($null -ne $nativeExitCode) { [int]$nativeExitCode } elseif ($powerShellSucceeded) { 0 } else { 1 }
                 }
                 else {
-                    $commandExitCode = if ($powerShellSucceeded -and $newErrorCount -eq 0) { 0 } else { 1 }
+                    $commandExitCode = if ($powerShellSucceeded -and $structuredErrorRecords.Count -eq 0) { 0 } else { 1 }
                 }
             }
             else {
@@ -1440,20 +1458,15 @@ function Invoke-ProjectCommand($Manifest, [string]$Name) {
                     throw "Legacy command '$Name' cannot safely forward arguments; use structured exec/args with forward_args=true"
                 }
                 Write-Knt "$Name -> $($spec.run)"
-                # Capture the legacy expression's terminal status inside the evaluated
-                # scope before caller-side output capture can overwrite `$?`.
-                $legacyStatus = [pscustomobject]@{
-                    PowerShellSucceeded = $null
-                    NativeExitCode = $null
-                }
-                $legacyStatusScript = [string]$spec.run + [Environment]::NewLine +
-                    '$legacyStatus.PowerShellSucceeded = $?' + [Environment]::NewLine +
-                    '$legacyStatus.NativeExitCode = $LASTEXITCODE'
-                $commandOutput = @(Invoke-Expression $legacyStatusScript 2>&1)
-                $powerShellSucceeded = ($legacyStatus.PowerShellSucceeded -eq $true)
-                $nativeExitCode = $legacyStatus.NativeExitCode
+                # Invoke legacy commands as a scriptblock so a terminal return
+                # exits only the legacy command scope. A terminal exit remains
+                # unsupported because it terminates the knt process.
+                $legacyScript = [scriptblock]::Create([string]$spec.run)
+                $commandOutput = @(& $legacyScript 2>&1)
+                $powerShellSucceeded = $?
+                $nativeExitCode = $LASTEXITCODE
 
-                # `$Error` also records intentionally handled errors such as
+                # Error also records intentionally handled errors such as
                 # -ErrorAction SilentlyContinue. Only ErrorRecords that actually reached
                 # the merged error stream are unhandled command errors here.
                 $emittedErrors = @($commandOutput | Where-Object { $_ -is [System.Management.Automation.ErrorRecord] })
