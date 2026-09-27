@@ -1,8 +1,8 @@
 # Current State
 
-Base version: `0.5.11`
+Base version: `0.5.13`
 
-Last verified: 2026-09-27 — Base v0.5.11 project-template link integrity maintenance completed after the v0.5.10 fail-closed path-containment repair. Verify #226 passed on Ubuntu pwsh, Windows PowerShell 5.1, and Windows pwsh with the Base self-tests and existing command, MCP-path, and devflow-identity regressions preserved.
+Last verified: 2026-09-27 — Base v0.5.13 command-result and WinPS 5.1 reparse-point enumeration maintenance completed. Verify #292 passed on Ubuntu pwsh, Windows PowerShell 5.1, and Windows pwsh with the Base self-tests and command-runner regressions preserved.
 
 ## Implemented
 
@@ -121,7 +121,7 @@ Last verified: 2026-09-27 — Base v0.5.11 project-template link integrity maint
   `2bit-cell-automaton`, and `colony-ai`; existing
   CLI/MCP/API/generated/browser/PWA/Streamlit behavior remains Project-owned
   as `OVERRIDE`.
-- Base v0.5.11 is the current Repository Base maintenance baseline. Downstream consumer Base versions remain owner-repository state and are synchronized only when a concrete maintenance need exists; Base version changes do not authorize bulk migration.
+- Base v0.5.13 is the current Repository Base maintenance baseline.
 - Surface Default Kit expansion is complete for the v0.5.0 safe slice: CLI, Windows,
   MCP, API, Agent, Config, and Logging helpers are implemented and ready for normal
   Phase 5 maintenance.
@@ -176,7 +176,7 @@ Last verified: 2026-09-27 — Base v0.5.11 project-template link integrity maint
 - Production deploy policy remains project-specific.
 - Base-wide Meta belongs under .kinotch/meta/.
 - New repositories use .kinotch/templates/project/ as their generation source.
-- Base v0.5.11 is the current Phase 5 safety baseline; Runtime semantics remain
+- Base v0.5.13 is the current Phase 5 safety baseline; Runtime semantics remain
   unchanged and existing repositories are not bulk-migrated. Runtime and Default Canary embedded Base versions are tracked by their own repositories rather than inferred from the Base baseline.
 
 ## Next work
@@ -205,4 +205,4 @@ Last verified: 2026-09-27 — Base v0.5.11 project-template link integrity maint
 - Project gate: knt verify
 - Smoke entry: knt smoke
 - Base self-tests: .kinotch/tests/run-tests.ps1
-- Hosted Base v0.5.11 acceptance gate: Verify #226 passed on Ubuntu PowerShell Core, Windows PowerShell Core, and Windows PowerShell 5.1 with the Base self-tests, 8/8 command-runner regressions, 4/4 MCP path regressions, the devflow identity regression, and the Project-template link regression passing before merge.
+- Hosted Base v0.5.13 acceptance gate: Verify #292 (`36322175070`) passed on Ubuntu PowerShell Core, Windows PowerShell Core, and Windows PowerShell 5.1. The Base self-tests passed 111/111 and command-runner regressions passed 8/8 in all three jobs, including reparse traversal protection, stale native exit handling, and compound native exit propagation.
