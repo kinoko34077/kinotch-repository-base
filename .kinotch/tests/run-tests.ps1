@@ -1827,6 +1827,40 @@ Invoke-TestCase "project command preserves native stderr with success exit" {
         [IO.File]::WriteAllText($manifestPath, (ConvertTo-Json $manifest -Depth 20) + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
     }
 }
+Invoke-TestCase "structured command captures errors independently of the automatic error list" {
+    Invoke-KntFixture -Name "valid-minimal" -Command "test" -ExpectedExit 1 -Prepare {
+        param($root)
+        $manifestPath = Join-Path $root "project/project.json"
+        $manifest = Get-Content -Raw -Encoding UTF8 $manifestPath | ConvertFrom-Json
+        $manifest.commands.test = [pscustomobject]@{
+            exec = "Invoke-Expression"
+            args = @('$Error.Clear(); Write-Error "target"; $Error.Clear(); Write-Output "success"')
+            cwd = "."
+            forward_args = $false
+        }
+        [IO.File]::WriteAllText($manifestPath, (ConvertTo-Json $manifest -Depth 20) + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
+    } -AssertOutput {
+        param($root, $output)
+        Assert-True ($output -match "success") "structured command output was not preserved"
+    }
+}
+
+Invoke-TestCase "legacy command captures terminal status after return" {
+    Invoke-KntFixture -Name "valid-minimal" -Command "test" -ExpectedExit 0 -Prepare {
+        param($root)
+        $manifestPath = Join-Path $root "project/project.json"
+        $manifest = Get-Content -Raw -Encoding UTF8 $manifestPath | ConvertFrom-Json
+        $manifest.commands.test = [pscustomobject]@{
+            run = "Write-Output 'before'; return"
+            cwd = "."
+        }
+        [IO.File]::WriteAllText($manifestPath, (ConvertTo-Json $manifest -Depth 20) + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
+    } -AssertOutput {
+        param($root, $output)
+        Assert-True ($output -match "before") "legacy command output before return was not preserved"
+    }
+}
+
 Invoke-TestCase "structured command forwards metacharacters without injection" {
     $malicious = "; Set-Content injected.txt pwned; `$(Get-Date) | & echo escaped"
     Invoke-KntFixture -Name "valid-minimal" -Command "test" -Arguments @($malicious) -ExpectedExit 0 -Prepare {
