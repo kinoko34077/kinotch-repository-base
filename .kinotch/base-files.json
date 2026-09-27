@@ -176,7 +176,7 @@
     },
     {
       "path": ".kinotch/scripts/knt.ps1",
-      "sha256": "e5b537a8a8e2b56ab8d3656405c7362057dc155342eb4764b2fe218ffceb57cc"
+      "sha256": "27d5841991bd5468265290a35068727046c63e5bc63361e42125342ca1a45475"
     },
     {
       "path": ".kinotch/scripts/path-containment.ps1",
