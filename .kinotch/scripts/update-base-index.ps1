@@ -83,11 +83,29 @@ function Get-BaseProtectedPaths {
         "AGENTS.md",
         "knt.cmd"
     )
-    $common = @(Get-ChildItem -LiteralPath $kinotchRoot -Recurse -File -Force | ForEach-Object {
-        [void](Assert-KntSafePath -Root $Root -Candidate $_.FullName -Description "Base protected file")
-        $relative = ConvertTo-BaseRelativePath -Root $Root -AbsolutePath $_.FullName
-        if ($relative -ne ".kinotch/base-files.json") { $relative }
-    })
+    # Windows PowerShell 5.1 can recurse through junction/reparse
+    # directories with Get-ChildItem -Recurse. Walk one directory at a
+    # time so a reparse-point directory is observed and skipped before any
+    # child enumeration. Reparse-point files still pass through the safety
+    # assertion below.
+    $common = New-Object System.Collections.Generic.List[string]
+    $pendingDirectories = New-Object System.Collections.Generic.Stack[string]
+    $pendingDirectories.Push($kinotchRoot)
+    while ($pendingDirectories.Count -gt 0) {
+        $currentDirectory = $pendingDirectories.Pop()
+        foreach ($item in @(Get-ChildItem -LiteralPath $currentDirectory -Force -ErrorAction Stop)) {
+            $isReparsePoint = (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0)
+            if ($item.PSIsContainer) {
+                if ($isReparsePoint) { continue }
+                $pendingDirectories.Push($item.FullName)
+                continue
+            }
+
+            [void](Assert-KntSafePath -Root $Root -Candidate $item.FullName -Description "Base protected file")
+            $relative = ConvertTo-BaseRelativePath -Root $Root -AbsolutePath $item.FullName
+            if ($relative -ne ".kinotch/base-files.json") { [void]$common.Add($relative) }
+        }
+    }
 
     $paths = New-Object System.Collections.Generic.List[string]
     foreach ($path in @($fixed + $common)) {
