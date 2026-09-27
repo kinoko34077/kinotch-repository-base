@@ -14,6 +14,7 @@
 ## Base-wide Meta
 
 - [Base Meta](../../.kinotch/meta/README.md)
+- [Base release checklist](BASE_RELEASE_CHECKLIST.md)
 - [Base Roadmap](../../.kinotch/docs/BASE_ROADMAP.md)
 
 ## Architecture / Decisions
