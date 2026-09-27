@@ -2023,7 +2023,7 @@ Invoke-TestCase "base-refresh does not traverse reparse-point directories" {
         Set-Content -LiteralPath (Join-Path $targetRoot "escaped.txt") -Value "outside" -NoNewline
         $reparsePath = Join-Path $root ".kinotch/reparse-dir"
         $created = $false
-        foreach ($itemType in @("SymbolicLink", "Junction")) {
+        $itemTypes = if ($env:OS -eq "Windows_NT") { @("Junction") } else { @("SymbolicLink") }\n        foreach ($itemType in $itemTypes) {
             if ($created) { break }
             try {
                 New-Item -ItemType $itemType -Path $reparsePath -Target $targetRoot -ErrorAction Stop | Out-Null
