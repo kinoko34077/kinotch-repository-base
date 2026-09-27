@@ -2001,7 +2001,7 @@ Invoke-TestCase "base-refresh indexes new common file after version bump" {
         Set-FixtureAsBase $root
         Set-FixtureBaseIndex $root
         Set-Content -LiteralPath (Join-Path $root ".kinotch/new-common.txt") -Value "new common file" -NoNewline
-        Set-Content -LiteralPath (Join-Path $root ".kinotch/BASE_VERSION") -Value "0.5.13" -NoNewline
+        Set-Content -LiteralPath (Join-Path $root ".kinotch/BASE_VERSION") -Value "0.5.14" -NoNewline
         $router = Join-Path $root ".kinotch/scripts/knt.ps1"
         $before = @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $router -RootOverride $root base-check 2>&1)
         if ($LASTEXITCODE -eq 0) { throw "unindexed Base file was not rejected: $($before -join ' ')" }
@@ -2010,6 +2010,40 @@ Invoke-TestCase "base-refresh indexes new common file after version bump" {
         $router = Join-Path $root ".kinotch/scripts/knt.ps1"
         @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $router -RootOverride $root base-check 2>&1) | Out-Null
         Assert-Equal 0 $LASTEXITCODE "base-check after refresh"
+    }
+}
+
+Invoke-TestCase "base-refresh does not traverse reparse-point directories" {
+    Invoke-KntFixture -Name "valid-minimal" -Command "base-refresh" -ExpectedExit 0 -Prepare {
+        param($root)
+        Set-FixtureAsBase $root
+        Set-FixtureBaseIndex $root
+        $targetRoot = Join-Path $root "outside-reparse-target"
+        New-Item -ItemType Directory -Path $targetRoot -Force | Out-Null
+        Set-Content -LiteralPath (Join-Path $targetRoot "escaped.txt") -Value "outside" -NoNewline
+        $reparsePath = Join-Path $root ".kinotch/reparse-dir"
+        $created = $false
+        foreach ($itemType in @("SymbolicLink", "Junction")) {
+            if ($created) { break }
+            try {
+                New-Item -ItemType $itemType -Path $reparsePath -Target $targetRoot -ErrorAction Stop | Out-Null
+                $created = $true
+            }
+            catch {
+                Remove-Item -LiteralPath $reparsePath -Force -Recurse -ErrorAction SilentlyContinue
+            }
+        }
+        if (-not $created) {
+            $script:SkipCurrentTest = $true
+            Write-Host "[SKIP] reparse-point directory creation is unavailable"
+            return
+        }
+        Set-Content -LiteralPath (Join-Path $root ".kinotch/BASE_VERSION") -Value "0.5.14" -NoNewline
+    } -AssertOutput {
+        param($root, $output)
+        $index = Get-Content -Raw -Encoding UTF8 (Join-Path $root ".kinotch/base-files.json") | ConvertFrom-Json
+        $escaped = @($index.files | Where-Object { [string]$_.path -match "reparse-dir|escaped\.txt" })
+        Assert-Equal 0 $escaped.Count "reparse-point target was enumerated into the Base index"
     }
 }
 
@@ -2038,7 +2072,7 @@ Invoke-TestCase "Base documentation and profile metadata are finalized" {
     Assert-True ($workflow -match "knt\.ps1 setup") "Base CI setup step is missing"
     Assert-True ($workflow -match "actions/checkout@[0-9a-f]{40}(?:\s+#\s+v4)?") "Base Verify checkout action is not pinned to a full commit SHA"
     Assert-Equal 0 @($surfaceRegistry.surfaces.PSObject.Properties).Count "Base Surface Registry should be empty"
-    Assert-Equal "0.5.12" $baseVersion "Base version"
+    Assert-Equal "0.5.13" $baseVersion "Base version"
     Assert-True ($baseReadme -match "Surface Default Kit") "README_BASE Surface Kit wording is missing"
     Assert-True ($baseReadme -match "OVERRIDE") "README_BASE override boundary is missing"
     Assert-True (@($catalog.defaults | Where-Object { $_.kind -eq "surface" }).Count -ge 8) "Surface Default catalog entries are incomplete"
