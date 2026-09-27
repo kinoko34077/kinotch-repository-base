@@ -1967,7 +1967,7 @@ Invoke-TestCase "base-refresh indexes new common file after version bump" {
         Set-FixtureAsBase $root
         Set-FixtureBaseIndex $root
         Set-Content -LiteralPath (Join-Path $root ".kinotch/new-common.txt") -Value "new common file" -NoNewline
-        Set-Content -LiteralPath (Join-Path $root ".kinotch/BASE_VERSION") -Value "0.5.11" -NoNewline
+        Set-Content -LiteralPath (Join-Path $root ".kinotch/BASE_VERSION") -Value "0.5.12" -NoNewline
         $router = Join-Path $root ".kinotch/scripts/knt.ps1"
         $before = @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $router -RootOverride $root base-check 2>&1)
         if ($LASTEXITCODE -eq 0) { throw "unindexed Base file was not rejected: $($before -join ' ')" }
@@ -1977,6 +1977,13 @@ Invoke-TestCase "base-refresh indexes new common file after version bump" {
         @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $router -RootOverride $root base-check 2>&1) | Out-Null
         Assert-Equal 0 $LASTEXITCODE "base-check after refresh"
     }
+}
+
+Invoke-TestCase "Project docs template does not link to unmaterialized README files" {
+    $templatePath = Join-Path $RepoRoot ".kinotch/templates/project/docs/INDEX.md"
+    $template = Get-Content -Raw -Encoding UTF8 $templatePath
+    Assert-True ($template -notmatch "\(adr/README\.md\)") "template links to an ADR README that adoption does not materialize"
+    Assert-True ($template -notmatch "\(runbooks/README\.md\)") "template links to a runbooks README that adoption does not materialize"
 }
 
 Invoke-TestCase "Base documentation and profile metadata are finalized" {
@@ -1997,7 +2004,7 @@ Invoke-TestCase "Base documentation and profile metadata are finalized" {
     Assert-True ($workflow -match "knt\.ps1 setup") "Base CI setup step is missing"
     Assert-True ($workflow -match "actions/checkout@[0-9a-f]{40}(?:\s+#\s+v4)?") "Base Verify checkout action is not pinned to a full commit SHA"
     Assert-Equal 0 @($surfaceRegistry.surfaces.PSObject.Properties).Count "Base Surface Registry should be empty"
-    Assert-Equal "0.5.10" $baseVersion "Base version"
+    Assert-Equal "0.5.11" $baseVersion "Base version"
     Assert-True ($baseReadme -match "Surface Default Kit") "README_BASE Surface Kit wording is missing"
     Assert-True ($baseReadme -match "OVERRIDE") "README_BASE override boundary is missing"
     Assert-True (@($catalog.defaults | Where-Object { $_.kind -eq "surface" }).Count -ge 8) "Surface Default catalog entries are incomplete"
