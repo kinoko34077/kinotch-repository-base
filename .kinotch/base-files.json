@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "base_version": "0.5.9",
+  "base_version": "0.5.10",
   "files": [
     {
       "path": ".editorconfig",
@@ -24,7 +24,7 @@
     },
     {
       "path": ".kinotch/BASE_VERSION",
-      "sha256": "dcdecbc7866cc9413935ee7a76b92beba1e4494f63aa0df5d8b5afe979d16260"
+      "sha256": "e892e5a6bf8447fc190e9de0f3d137179a620124f84e057cc0ca5ae95cb724a6"
     },
     {
       "path": ".kinotch/DEVELOPMENT_FLOW.md",
@@ -184,7 +184,7 @@
     },
     {
       "path": ".kinotch/scripts/update-base-index.ps1",
-      "sha256": "889aa286b6ed4757f9cfc5d0d657b194d32b06a87e772d3c404cf5ea7f702bb0"
+      "sha256": "4c617590da8c8de7ee5844cfb3d003b721322bdbbaa1dde3339b00c2d1306a85"
     },
     {
       "path": ".kinotch/templates/ADR.md",
@@ -412,7 +412,7 @@
     },
     {
       "path": ".kinotch/tests/run-tests.ps1",
-      "sha256": "cb26efe016115117debbe627b5a558a3153c57ce8cee8f2c97948424d15cde31"
+      "sha256": "be86fcde0fb98d972f9298abf03a598edc83107b333057e7f886530e078af4d2"
     },
     {
       "path": "AGENTS.md",
