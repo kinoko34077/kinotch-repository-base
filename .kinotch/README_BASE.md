@@ -48,6 +48,8 @@ PowerShell:
 
 各コマンドの実体は `project/project.json` の `commands` に定義する。Base側の入口は変更しない。
 
+Legacy `commands.*.run` values are evaluated as a scriptblock so a terminal `return` can be observed safely. `exit` is unsupported for legacy commands because it terminates the knt process; use a structured `exec` command that returns an exit code instead.
+
 ## doctor
 
 `doctor` は以下を確認する。
