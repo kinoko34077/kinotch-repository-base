@@ -184,7 +184,7 @@
     },
     {
       "path": ".kinotch/scripts/update-base-index.ps1",
-      "sha256": "4c617590da8c8de7ee5844cfb3d003b721322bdbbaa1dde3339b00c2d1306a85"
+      "sha256": "d5189b784971b4527095aa6637151fe5b486b6605ff22b389dce50803acad16e"
     },
     {
       "path": ".kinotch/templates/ADR.md",
