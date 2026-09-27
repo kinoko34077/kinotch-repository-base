@@ -24,7 +24,7 @@
     },
     {
       "path": ".kinotch/BASE_VERSION",
-      "sha256": "6c3f255cfd7ae7231ef439f3f04ad71225f6eb3025d1bc299bd2fed0be91392f"
+      "sha256": "c1c410b7d685a169c2916eaaa73554b9ea055d8de191eebc728640a47e7bf35b"
     },
     {
       "path": ".kinotch/DEVELOPMENT_FLOW.md",
@@ -412,7 +412,7 @@
     },
     {
       "path": ".kinotch/tests/run-tests.ps1",
-      "sha256": "3c8f6187e1fa17d3c00270b3431d3fa284498b8bc762cba3f67c0b8c87af8363"
+      "sha256": "451b731858725f7df945cb71949d08f35ce519a629855c7233356cea7ee0aee5"
     },
     {
       "path": "AGENTS.md",
