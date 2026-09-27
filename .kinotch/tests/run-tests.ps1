@@ -1827,6 +1827,40 @@ Invoke-TestCase "project command preserves native stderr with success exit" {
         [IO.File]::WriteAllText($manifestPath, (ConvertTo-Json $manifest -Depth 20) + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
     }
 }
+Invoke-TestCase "structured command captures errors independently of the automatic error list" {
+    Invoke-KntFixture -Name "valid-minimal" -Command "test" -ExpectedExit 1 -Prepare {
+        param($root)
+        $manifestPath = Join-Path $root "project/project.json"
+        $manifest = Get-Content -Raw -Encoding UTF8 $manifestPath | ConvertFrom-Json
+        $manifest.commands.test = [pscustomobject]@{
+            exec = "Invoke-Expression"
+            args = @('$Error.Clear(); Write-Error "target"; $Error.Clear(); Write-Output "success"')
+            cwd = "."
+            forward_args = $false
+        }
+        [IO.File]::WriteAllText($manifestPath, (ConvertTo-Json $manifest -Depth 20) + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
+    } -AssertOutput {
+        param($root, $output)
+        Assert-True ($output -match "success") "structured command output was not preserved"
+    }
+}
+
+Invoke-TestCase "legacy command captures terminal status after return" {
+    Invoke-KntFixture -Name "valid-minimal" -Command "test" -ExpectedExit 0 -Prepare {
+        param($root)
+        $manifestPath = Join-Path $root "project/project.json"
+        $manifest = Get-Content -Raw -Encoding UTF8 $manifestPath | ConvertFrom-Json
+        $manifest.commands.test = [pscustomobject]@{
+            run = "Write-Output 'before'; return"
+            cwd = "."
+        }
+        [IO.File]::WriteAllText($manifestPath, (ConvertTo-Json $manifest -Depth 20) + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
+    } -AssertOutput {
+        param($root, $output)
+        Assert-True ($output -match "before") "legacy command output before return was not preserved"
+    }
+}
+
 Invoke-TestCase "structured command forwards metacharacters without injection" {
     $malicious = "; Set-Content injected.txt pwned; `$(Get-Date) | & echo escaped"
     Invoke-KntFixture -Name "valid-minimal" -Command "test" -Arguments @($malicious) -ExpectedExit 0 -Prepare {
@@ -1967,7 +2001,7 @@ Invoke-TestCase "base-refresh indexes new common file after version bump" {
         Set-FixtureAsBase $root
         Set-FixtureBaseIndex $root
         Set-Content -LiteralPath (Join-Path $root ".kinotch/new-common.txt") -Value "new common file" -NoNewline
-        Set-Content -LiteralPath (Join-Path $root ".kinotch/BASE_VERSION") -Value "0.5.12" -NoNewline
+        Set-Content -LiteralPath (Join-Path $root ".kinotch/BASE_VERSION") -Value "0.5.13" -NoNewline
         $router = Join-Path $root ".kinotch/scripts/knt.ps1"
         $before = @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $router -RootOverride $root base-check 2>&1)
         if ($LASTEXITCODE -eq 0) { throw "unindexed Base file was not rejected: $($before -join ' ')" }
@@ -2004,7 +2038,7 @@ Invoke-TestCase "Base documentation and profile metadata are finalized" {
     Assert-True ($workflow -match "knt\.ps1 setup") "Base CI setup step is missing"
     Assert-True ($workflow -match "actions/checkout@[0-9a-f]{40}(?:\s+#\s+v4)?") "Base Verify checkout action is not pinned to a full commit SHA"
     Assert-Equal 0 @($surfaceRegistry.surfaces.PSObject.Properties).Count "Base Surface Registry should be empty"
-    Assert-Equal "0.5.11" $baseVersion "Base version"
+    Assert-Equal "0.5.12" $baseVersion "Base version"
     Assert-True ($baseReadme -match "Surface Default Kit") "README_BASE Surface Kit wording is missing"
     Assert-True ($baseReadme -match "OVERRIDE") "README_BASE override boundary is missing"
     Assert-True (@($catalog.defaults | Where-Object { $_.kind -eq "surface" }).Count -ge 8) "Surface Default catalog entries are incomplete"
