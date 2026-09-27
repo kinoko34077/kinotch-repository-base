@@ -346,6 +346,27 @@ Invoke-TestCase "Protected paths and Base index use canonical separators" {
     Assert-Equal (Get-BaseFileHash (Join-Path $RepoRoot ".kinotch/FILE_INVENTORY.txt")) $inventoryEntry.sha256 "index inventory hash"
 }
 
+Invoke-TestCase "Base index script fails closed when path-containment helper is absent" {
+    $tempRoot = Join-Path ([IO.Path]::GetTempPath()) ("kinotch-missing-containment-" + [guid]::NewGuid().ToString("N"))
+    New-Item -ItemType Directory -Path (Join-Path $tempRoot "scripts") -Force | Out-Null
+    try {
+        $scriptPath = Join-Path $tempRoot "scripts/update-base-index.ps1"
+        Copy-Item -LiteralPath (Join-Path $RepoRoot ".kinotch/scripts/update-base-index.ps1") -Destination $scriptPath
+        $failure = $null
+        try {
+            . $scriptPath
+        }
+        catch {
+            $failure = $_.Exception.Message
+        }
+        Assert-True (-not [string]::IsNullOrWhiteSpace($failure)) "missing path-containment helper was silently accepted"
+        Assert-True ($failure -match "path-containment|Path containment") "missing helper failure was not identified"
+    }
+    finally {
+        Remove-Item -LiteralPath $tempRoot -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
 Invoke-TestCase "Project path containment is OS-aware and rejects sibling escapes" {
     $helperPath = Join-Path $RepoRoot ".kinotch/scripts/path-containment.ps1"
     Assert-True (Test-Path -LiteralPath $helperPath -PathType Leaf) "path containment helper is missing"
@@ -1946,7 +1967,7 @@ Invoke-TestCase "base-refresh indexes new common file after version bump" {
         Set-FixtureAsBase $root
         Set-FixtureBaseIndex $root
         Set-Content -LiteralPath (Join-Path $root ".kinotch/new-common.txt") -Value "new common file" -NoNewline
-        Set-Content -LiteralPath (Join-Path $root ".kinotch/BASE_VERSION") -Value "0.5.10" -NoNewline
+        Set-Content -LiteralPath (Join-Path $root ".kinotch/BASE_VERSION") -Value "0.5.11" -NoNewline
         $router = Join-Path $root ".kinotch/scripts/knt.ps1"
         $before = @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $router -RootOverride $root base-check 2>&1)
         if ($LASTEXITCODE -eq 0) { throw "unindexed Base file was not rejected: $($before -join ' ')" }
@@ -1976,7 +1997,7 @@ Invoke-TestCase "Base documentation and profile metadata are finalized" {
     Assert-True ($workflow -match "knt\.ps1 setup") "Base CI setup step is missing"
     Assert-True ($workflow -match "actions/checkout@[0-9a-f]{40}(?:\s+#\s+v4)?") "Base Verify checkout action is not pinned to a full commit SHA"
     Assert-Equal 0 @($surfaceRegistry.surfaces.PSObject.Properties).Count "Base Surface Registry should be empty"
-    Assert-Equal "0.5.9" $baseVersion "Base version"
+    Assert-Equal "0.5.10" $baseVersion "Base version"
     Assert-True ($baseReadme -match "Surface Default Kit") "README_BASE Surface Kit wording is missing"
     Assert-True ($baseReadme -match "OVERRIDE") "README_BASE override boundary is missing"
     Assert-True (@($catalog.defaults | Where-Object { $_.kind -eq "surface" }).Count -ge 8) "Surface Default catalog entries are incomplete"

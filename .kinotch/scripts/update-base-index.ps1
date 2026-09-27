@@ -3,8 +3,12 @@ param(
 )
 
 $PathContainmentPath = Join-Path $PSScriptRoot "path-containment.ps1"
-if (Test-Path -LiteralPath $PathContainmentPath -PathType Leaf) {
-    . $PathContainmentPath
+if (-not (Test-Path -LiteralPath $PathContainmentPath -PathType Leaf)) {
+    throw "Path containment helper not found: $PathContainmentPath"
+}
+. $PathContainmentPath
+if (-not (Get-Command Assert-KntSafePath -ErrorAction SilentlyContinue)) {
+    throw "Path containment helper does not define Assert-KntSafePath: $PathContainmentPath"
 }
 
 function ConvertTo-BaseRelativePath {
@@ -69,9 +73,7 @@ function Get-BaseProtectedPaths {
     if (($kinotchItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
         throw "Base directory crosses a symlink, junction, or reparse-point boundary: $kinotchRoot"
     }
-    if (Get-Command Assert-KntSafePath -ErrorAction SilentlyContinue) {
-        [void](Assert-KntSafePath -Root $Root -Candidate $kinotchRoot -Description "Base directory" -AllowRoot)
-    }
+    [void](Assert-KntSafePath -Root $Root -Candidate $kinotchRoot -Description "Base directory" -AllowRoot)
 
     $fixed = @(
         ".editorconfig",
@@ -82,9 +84,7 @@ function Get-BaseProtectedPaths {
         "knt.cmd"
     )
     $common = @(Get-ChildItem -LiteralPath $kinotchRoot -Recurse -File -Force | ForEach-Object {
-        if (Get-Command Assert-KntSafePath -ErrorAction SilentlyContinue) {
-            [void](Assert-KntSafePath -Root $Root -Candidate $_.FullName -Description "Base protected file")
-        }
+        [void](Assert-KntSafePath -Root $Root -Candidate $_.FullName -Description "Base protected file")
         $relative = ConvertTo-BaseRelativePath -Root $Root -AbsolutePath $_.FullName
         if ($relative -ne ".kinotch/base-files.json") { $relative }
     })
@@ -153,9 +153,7 @@ function Update-BaseIndex {
         if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
             throw "Base protected file not found: $relative"
         }
-        if (Get-Command Assert-KntSafePath -ErrorAction SilentlyContinue) {
-            [void](Assert-KntSafePath -Root $resolvedRoot -Candidate $path -Description "Base protected file")
-        }
+        [void](Assert-KntSafePath -Root $resolvedRoot -Candidate $path -Description "Base protected file")
         $hash = if ($relative -eq ".kinotch/FILE_INVENTORY.txt") {
             Get-BaseTextHash -Text $inventoryContent
         }
