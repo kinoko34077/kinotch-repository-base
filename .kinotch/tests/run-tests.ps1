@@ -1979,6 +1979,13 @@ Invoke-TestCase "base-refresh indexes new common file after version bump" {
     }
 }
 
+Invoke-TestCase "Project docs template does not link to unmaterialized README files" {
+    $templatePath = Join-Path $RepoRoot ".kinotch/templates/project/docs/INDEX.md"
+    $template = Get-Content -Raw -Encoding UTF8 $templatePath
+    Assert-True ($template -notmatch "\(adr/README\.md\)") "template links to an ADR README that adoption does not materialize"
+    Assert-True ($template -notmatch "\(runbooks/README\.md\)") "template links to a runbooks README that adoption does not materialize"
+}
+
 Invoke-TestCase "Base documentation and profile metadata are finalized" {
     $spec = Get-Content -Raw (Join-Path $RepoRoot "project/docs/SPEC.md")
     $state = Get-Content -Raw (Join-Path $RepoRoot "project/docs/CURRENT_STATE.md")
