@@ -2,7 +2,7 @@
 
 Base version: `0.5.13`
 
-Last verified: 2026-09-27 — Base v0.5.13 command-result and WinPS 5.1 reparse-point enumeration maintenance completed. Verify #292 passed on Ubuntu pwsh, Windows PowerShell 5.1, and Windows pwsh with the Base self-tests and command-runner regressions preserved.
+Last verified: 2026-09-27 — accepted main `93b109bf1b42dfc17b9f297cb0cb27af49c4526b` includes the Base v0.5.13 command-result / WinPS 5.1 reparse-point maintenance plus the accepted release/canary checklist from PR #35. Hosted Verify `36349297603` passed on the current main after that documentation-only merge; the earlier v0.5.13 acceptance gate `36322175070` remains the behavioral self-test/command-runner evidence.
 
 ## Implemented
 
@@ -122,6 +122,7 @@ Last verified: 2026-09-27 — Base v0.5.13 command-result and WinPS 5.1 reparse-
   CLI/MCP/API/generated/browser/PWA/Streamlit behavior remains Project-owned
   as `OVERRIDE`.
 - Base v0.5.13 is the current Repository Base maintenance baseline.
+- `project/docs/BASE_RELEASE_CHECKLIST.md` is the accepted Base release evidence checklist added by PR #35; it requires Base doctor/base-check/verify/self-tests plus same-version validation in `kinotch-default-canary` and explicitly does not authorize consumer adoption or bulk synchronization.
 - Surface Default Kit expansion is complete for the v0.5.0 safe slice: CLI, Windows,
   MCP, API, Agent, Config, and Logging helpers are implemented and ready for normal
   Phase 5 maintenance.
