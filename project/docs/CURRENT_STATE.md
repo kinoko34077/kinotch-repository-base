@@ -2,7 +2,7 @@
 
 Base version: `0.5.13`
 
-Last verified: 2026-09-27 — accepted main `93b109bf1b42dfc17b9f297cb0cb27af49c4526b` includes the Base v0.5.13 command-result / WinPS 5.1 reparse-point maintenance plus the accepted release/canary checklist from PR #35. Hosted Verify `36349297603` passed on the current main after that documentation-only merge; the earlier v0.5.13 acceptance gate `36322175070` remains the behavioral self-test/command-runner evidence.
+Behavioral baseline: Base v0.5.13 runtime/default behavior remains anchored to accepted main `93b109bf1b42dfc17b9f297cb0cb27af49c4526b`; hosted Verify `36349297603` and behavioral acceptance gate `36322175070` remain valid evidence. Later PR #37 was documentation-only and merged as `c8902e25f53b36c2db5dfcd56b58af634b9ed7f3`; post-main Verify `37103309211` passed. Current adoption-record reconciliation remains docs-only and does not change Base runtime/default behavior.
 
 ## Implemented
 
@@ -31,13 +31,14 @@ Last verified: 2026-09-27 — accepted main `93b109bf1b42dfc17b9f297cb0cb27af49c
 - Surface Profile selection no longer injects Runtime modules; new templates start with an empty module list
 - `knt migrate` catalog-driven dry-run / explicit apply with `OVERRIDE` and `DISABLED` preservation
 - Phase 4 Canary shape validation with existing-equivalent `OVERRIDE` detection
-- Phase 4A read-only verification completed; Phase 4B adoption has now been
-  completed for eight clean Canaries: `jev-audit`, `kinotch-api`,
+- Phase 4A read-only verification completed; Phase 4B/4C adoption record now
+  contains nine clean Base v0.3.8 adopters: `jev-audit`, `kinotch-api`,
   `lyric_reader_page`, `weather-widget`, `memory-game`,
-  `Structured-Cell-Automaton`, `2bit-cell-automaton`, and `colony-ai`
-- `refil-viewer` has a repository-local Base v0.3.8 preparation commit, but its
-  existing Vite build currently fails on a duplicate `pageIndex` declaration;
-  it is not counted as a clean Canary adoption
+  `Structured-Cell-Automaton`, `2bit-cell-automaton`, `colony-ai`, and
+  `refil-viewer`
+- `refil-viewer` retains its Project-owned Vue/Vite viewer as `web-app=OVERRIDE`;
+  the former duplicate-`pageIndex` build blocker is repaired and current
+  repository verification is GREEN
 - Default implementation templates for `ci-test`, `pwa`, `generated-integrity`, and `file-io`
 - Surface Default helpers for `cli`, `windows`, `mcp`, and `api`
 - CLI Surface Kit common option parsing, stdout/stderr helpers, generic result rendering, and exit handling; Project-specific arguments remain untouched
@@ -115,21 +116,22 @@ Last verified: 2026-09-27 — accepted main `93b109bf1b42dfc17b9f297cb0cb27af49c
   integration was added.
 - Default-first standardization completed the safe Phase 3B implementation
   slice, Phase 4A read-only validation, Phase 4B adoption-safety hardening,
-  and the Phase 4C adoption review. Eight repositories remain recorded as
+  and the Phase 4C adoption review. Nine repositories are now recorded as
   cleanly adopted at Base v0.3.8: `jev-audit`, `kinotch-api`, `lyric_reader_page`,
   `weather-widget`, `memory-game`, `Structured-Cell-Automaton`,
-  `2bit-cell-automaton`, and `colony-ai`; existing
-  CLI/MCP/API/generated/browser/PWA/Streamlit behavior remains Project-owned
-  as `OVERRIDE`.
+  `2bit-cell-automaton`, `colony-ai`, and `refil-viewer`; existing
+  CLI/MCP/API/generated/browser/PWA/Streamlit/viewer behavior remains
+  Project-owned as `OVERRIDE`.
 - Base v0.5.13 is the current Repository Base maintenance baseline.
 - `project/docs/BASE_RELEASE_CHECKLIST.md` is the accepted Base release evidence checklist added by PR #35; it requires Base doctor/base-check/verify/self-tests plus same-version validation in `kinotch-default-canary` and explicitly does not authorize consumer adoption or bulk synchronization.
 - Surface Default Kit expansion is complete for the v0.5.0 safe slice: CLI, Windows,
   MCP, API, Agent, Config, and Logging helpers are implemented and ready for normal
   Phase 5 maintenance.
-- `refil-viewer` remains `STAGED`: its Base v0.3.8 files pass doctor and
-  base-check, while its existing Vite source still fails on a duplicate
-  `pageIndex` declaration. This is a Project bug and is not hidden or fixed by
-  Base adoption.
+- `refil-viewer` is `ADOPTED` at Base v0.3.8. Its repository-local Base
+  state remains intact, its Project-owned Vue/Vite viewer remains `OVERRIDE`,
+  the former duplicate-`pageIndex` defect is repaired, and current hosted
+  Verify `36867212304` succeeds through Base/project diagnostics and Project
+  verification. No newer Base sync is implied.
 - `standby-display` remains `STAGED`: its PWA and generated-asset boundaries
   are existing `OVERRIDE` implementations, but its root hygiene files differ
   from Base and require an explicit merge decision before adoption.
@@ -195,8 +197,9 @@ Last verified: 2026-09-27 — accepted main `93b109bf1b42dfc17b9f297cb0cb27af49c
    validate the same Portable meanings.
 6. Do not add Runtime modules or Domain adapters to Base merely because a
    Surface Kit helper exists.
-7. Treat `refil-viewer`, `standby-display`, and `SynTrail-LM` as STAGED, and
-   keep `dev_agent` / `IDS-Composit` as NOT_ADOPTED until active work creates a
+7. Treat `standby-display` and `SynTrail-LM` as STAGED, keep
+   `refil-viewer` ADOPTED at its existing Base v0.3.8 boundary, and keep
+   `dev_agent` / `IDS-Composit` as NOT_ADOPTED until active work creates a
    concrete adoption reason.
 
 ## Verification
