@@ -1,6 +1,6 @@
 # Default Pack rollout dry-run
 
-Last inspected: 2026-09-24
+Last inspected: 2026-10-03
 
 This is the Phase 4A read-only classification of the locally available Git
 repositories. At the time of this report no repository outside
@@ -36,7 +36,7 @@ safe or locally available adoption target at this time.
 | `Structured-Cell-Automaton` | `0.3.8` | `web-app` | none | `ADOPTED` | doctor/base-check/verify | Phase 5 maintenance |
 | `2bit-cell-automaton` | `0.3.8` | `web-app` | none | `ADOPTED` | doctor/base-check/verify | Phase 5 maintenance |
 | `colony-ai` | `0.3.8` | `cli` | none | `ADOPTED` | doctor/base-check/setup/verify; 20 unittest tests | Phase 5 maintenance |
-| `refil-viewer` | `0.3.8` | `web-app` | none | `STAGED` | doctor/base-check pass; verify blocked by existing duplicate `pageIndex` in `src/App.vue` | Project bugfix, then test/build/verify |
+| `refil-viewer` | `0.3.8` | `web-app` | none | `ADOPTED` | doctor/base-check previously pass; current hosted Verify `36867212304` passes Base/project diagnostics + Project verification after duplicate-`pageIndex` repair | Phase 5 maintenance; preserve viewer/PDF behavior as Project-owned `OVERRIDE` |
 | `standby-display` | — | `web-app` | `pwa=OVERRIDE`, `generated-integrity=OVERRIDE`; `ci-test` not inferred | `STAGED` | read-only shape probe; npm test 13 passed; existing PWA/build boundaries present | Decide root hygiene merge; then local Base adoption and full verification |
 | `SynTrail-LM` | — | `windows`, `cli` | `file-io=OVERRIDE` | `STAGED` | read-only review; existing Cargo tests recorded as passing, but worktree is user-owned dirty | Clean owner boundary, then explicit adoption review |
 | `dev_agent` | — | `agent`, `cli` | `ci-test=OVERRIDE` | `NOT_ADOPTED` | read-only shape probe; no repository-local `.kinotch/`, root hygiene conflict | Explicit Base adoption decision; preserve AgentBackend and gate policy |
@@ -144,8 +144,11 @@ the operation-state table above; no bulk migration follows from that review.
 
 The first eight clean Canary adoptions were completed after the v0.3.7 safety
 hardening. Their common layer was subsequently synchronized to Base v0.3.8.
+`refil-viewer`, prepared separately at the same Base v0.3.8 boundary, later
+graduated from STAGED to ADOPTED after its Project-owned Vite defect was fixed
+and current verification became GREEN. Current clean adoption count is nine.
 Existing Domain files were not moved, and all detected equivalent Surface /
-Tool implementations were recorded as `OVERRIDE`.
+Tool implementations remain `OVERRIDE`.
 
 | Repository | Latest Base sync commit | Local verification | Result |
 | --- | --- | --- | --- |
@@ -157,18 +160,21 @@ Tool implementations were recorded as `OVERRIDE`.
 | `Structured-Cell-Automaton` | `7a0d313` | `doctor`, `base-check`, `verify` | Base v0.3.8 synchronization; existing Streamlit GUI and Domain boundary preserved |
 | `2bit-cell-automaton` | `5c2c688` | `doctor`, `base-check`, `verify` | Base v0.3.8 synchronization; existing static Web experiment boundary preserved |
 | `colony-ai` | `7a2e5a6` | `doctor`, `base-check`, `setup`, `verify`, 20 unittest tests | Base v0.3.8 synchronization; existing Python CLI/Tkinter and Ollama boundaries preserved |
+| `refil-viewer` | `d4b0c02` | repository-local Base v0.3.8; hosted Verify `36867212304` GREEN after Project repair | Base v0.3.8 adoption accepted; Vue/Vite viewer and PDF behavior remain Project-owned |
 
-`refil-viewer` was prepared separately and most recently synchronized in
-commit `d4b0c02`. Its repository-local Base and `web-app=OVERRIDE` state pass
-`doctor` and `base-check`, but
-`knt verify` correctly returns exit code 1 because the existing Vite source has
-duplicate `pageIndex` declarations in `src/App.vue`. It remains staged rather
-than a clean Canary adoption.
+`refil-viewer` was prepared separately and most recently synchronized to
+Base v0.3.8 in commit `d4b0c02`. Its repository-local Base and
+`web-app=OVERRIDE` state were already doctor/base-check clean. The former
+duplicate-`pageIndex` Project defect has since been repaired; accepted
+refil-viewer main `482251e4cbc14c2de51d4262c3931293bdd7703d` has hosted Verify
+`36867212304` GREEN through Base/project diagnostics and Project verification.
+It is therefore now recorded as a clean `ADOPTED` repository without any
+consumer synchronization or newer Base-version claim.
 
 The Base v0.3.8 root hygiene, Shape Probe compatibility filter, and Project
-command exit-code propagation fix were synchronized into the adopters after
-their first local verification. The remaining Canaries (`standby-display` and
-`SynTrail-LM`) remain staged for separate repository-local decisions;
+command exit-code propagation fix were synchronized into the original adopters
+after their first local verification. The remaining staged Canaries
+(`standby-display` and `SynTrail-LM`) require separate repository-local decisions;
 `SynTrail-LM` currently has user-owned dirty files and is not eligible for
 automatic adoption. `standby-display` is clean, but its existing
 `.editorconfig`, `.gitattributes`, and `.gitignore` require an explicit merge
@@ -179,10 +185,11 @@ work decision exists.
 
 ## Phase 4C closeout
 
-Phase 4C is complete as an adoption decision phase. Eight clean repositories
-are adopted at Base v0.3.8. `refil-viewer` remains staged for its existing
-Project-owned Vite error; `standby-display` remains staged for root hygiene
-merge review; `SynTrail-LM` remains staged without touching its dirty worktree;
+Phase 4C remains complete as an adoption decision phase. Nine clean repositories
+are now recorded as adopted at Base v0.3.8, including `refil-viewer` after
+fresh evidence removed its former Project-owned Vite blocker.
+`standby-display` remains staged for root hygiene merge review; `SynTrail-LM`
+remains staged without touching its dirty worktree;
 and `dev_agent`, `IDS-Composit`, and unavailable GitHub-only repositories are
 not automatically migrated. Phase 5 now governs future adoption as part of
 normal repository maintenance.
