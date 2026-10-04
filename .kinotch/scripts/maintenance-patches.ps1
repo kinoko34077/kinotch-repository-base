@@ -8,6 +8,8 @@ function Get-KntBaseSnapshotHash {
 }
 
 function Get-KntMaintenancePatchCatalog {
+    param([switch]$RequirePayload)
+
     $catalogPath = Join-Path $BaseDir "maintenance-patches.json"
     if (-not (Test-Path -LiteralPath $catalogPath -PathType Leaf)) {
         throw "Base maintenance patch catalog not found: $catalogPath"
@@ -51,13 +53,17 @@ function Get-KntMaintenancePatchCatalog {
             if ([string]::IsNullOrWhiteSpace($contentPath) -or $contentPath -match "(^|/)\.\.(/|$)") {
                 throw "Base maintenance patch '$id' has invalid content_path for '$path'"
             }
-            $payload = Join-Path $BaseDir $contentPath
-            [void](Assert-KntSafePath -Root $BaseDir -Candidate $payload -Description "maintenance patch payload")
-            if (-not (Test-Path -LiteralPath $payload -PathType Leaf)) {
-                throw "Base maintenance patch '$id' payload is missing for '$path'"
-            }
-            if ((Get-BaseFileHash -Path $payload) -ne [string]$file.target_sha256) {
-                throw "Base maintenance patch '$id' payload hash does not match target_sha256 for '$path'"
+            if ($RequirePayload) {
+                $payload = Join-Path $BaseDir $contentPath
+                if (Get-Command Assert-KntSafePath -ErrorAction SilentlyContinue) {
+                    [void](Assert-KntSafePath -Root $BaseDir -Candidate $payload -Description "maintenance patch payload")
+                }
+                if (-not (Test-Path -LiteralPath $payload -PathType Leaf)) {
+                    throw "Base maintenance patch '$id' payload is missing for '$path'"
+                }
+                if ((Get-BaseFileHash -Path $payload) -ne [string]$file.target_sha256) {
+                    throw "Base maintenance patch '$id' payload hash does not match target_sha256 for '$path'"
+                }
             }
         }
     }
@@ -258,7 +264,7 @@ function Invoke-KntBasePatch {
         throw "base-patch authority must be project.type repository-base"
     }
 
-    $catalog = Get-KntMaintenancePatchCatalog
+    $catalog = Get-KntMaintenancePatchCatalog -RequirePayload
     $authorityVersion = (Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $BaseDir "BASE_VERSION")).Trim()
     if ([string]$catalog.authority_base_version -ne $authorityVersion) {
         throw "maintenance patch catalog authority_base_version does not match active Base"
@@ -338,24 +344,55 @@ function Invoke-KntBasePatch {
     $catalogPath = Join-Path $BaseDir "maintenance-patches.json"
     $catalogHash = Get-BaseFileHash -Path $catalogPath
     $targetCatalogPath = Join-Path $targetBaseDir "maintenance-patches.json"
+    $catalogWasIndexed = $entryMap.ContainsKey(".kinotch/maintenance-patches.json")
+    $sourceCatalogHash = if ($catalogWasIndexed) { [string]$entryMap[".kinotch/maintenance-patches.json"].sha256 } else { $null }
+    if ($catalogWasIndexed) {
+        if (-not (Test-Path -LiteralPath $targetCatalogPath -PathType Leaf) -or
+            (Get-BaseFileHash -Path $targetCatalogPath) -ne $sourceCatalogHash) {
+            throw "Base maintenance patch support catalog drifted before apply"
+        }
+    }
+
+    $helperPath = Join-Path $BaseDir "scripts/maintenance-patches.ps1"
+    $helperHash = Get-BaseFileHash -Path $helperPath
+    $targetHelperPath = Join-Path $targetBaseDir "scripts/maintenance-patches.ps1"
+    $helperWasIndexed = $entryMap.ContainsKey(".kinotch/scripts/maintenance-patches.ps1")
+    $sourceHelperHash = if ($helperWasIndexed) { [string]$entryMap[".kinotch/scripts/maintenance-patches.ps1"].sha256 } else { $null }
+    if ($helperWasIndexed) {
+        if (-not (Test-Path -LiteralPath $targetHelperPath -PathType Leaf) -or
+            (Get-BaseFileHash -Path $targetHelperPath) -ne $sourceHelperHash) {
+            throw "Base maintenance patch support validator drifted before apply"
+        }
+    }
+
     [void](Assert-KntSafeWritePath -Root $Root -Candidate $targetCatalogPath -Description "base-patch catalog write")
     [IO.File]::WriteAllText(
         $targetCatalogPath,
         (Get-Content -Raw -Encoding UTF8 -LiteralPath $catalogPath),
         (New-Object System.Text.UTF8Encoding($false))
     )
+    [void](Assert-KntSafeWritePath -Root $Root -Candidate $targetHelperPath -Description "base-patch validator write")
+    [IO.File]::WriteAllText(
+        $targetHelperPath,
+        (Get-Content -Raw -Encoding UTF8 -LiteralPath $helperPath),
+        (New-Object System.Text.UTF8Encoding($false))
+    )
 
-    $catalogWasIndexed = $entryMap.ContainsKey(".kinotch/maintenance-patches.json")
-    if ($catalogWasIndexed) {
-        $entryMap[".kinotch/maintenance-patches.json"].sha256 = $catalogHash
-    }
-    else {
-        $newEntry = [pscustomobject]@{
-            path = ".kinotch/maintenance-patches.json"
-            sha256 = $catalogHash
+    foreach ($supportSpec in @(
+        [pscustomobject]@{ path = ".kinotch/maintenance-patches.json"; hash = $catalogHash },
+        [pscustomobject]@{ path = ".kinotch/scripts/maintenance-patches.ps1"; hash = $helperHash }
+    )) {
+        if ($entryMap.ContainsKey([string]$supportSpec.path)) {
+            $entryMap[[string]$supportSpec.path].sha256 = [string]$supportSpec.hash
         }
-        $index.files = @($index.files) + @($newEntry)
-        $entryMap[".kinotch/maintenance-patches.json"] = $newEntry
+        else {
+            $newEntry = [pscustomobject]@{
+                path = [string]$supportSpec.path
+                sha256 = [string]$supportSpec.hash
+            }
+            $index.files = @($index.files) + @($newEntry)
+            $entryMap[[string]$supportSpec.path] = $newEntry
+        }
     }
 
     foreach ($file in @($definition.files)) {
@@ -408,7 +445,13 @@ function Invoke-KntBasePatch {
                 path = ".kinotch/maintenance-patches.json"
                 sha256 = $catalogHash
                 added = (-not $catalogWasIndexed)
-                source_sha256 = if ($catalogWasIndexed) { [string]$entryMap[".kinotch/maintenance-patches.json"].sha256 } else { $null }
+                source_sha256 = $sourceCatalogHash
+            },
+            [pscustomobject]@{
+                path = ".kinotch/scripts/maintenance-patches.ps1"
+                sha256 = $helperHash
+                added = (-not $helperWasIndexed)
+                source_sha256 = $sourceHelperHash
             },
             [pscustomobject]@{
                 path = ".kinotch/FILE_INVENTORY.txt"
