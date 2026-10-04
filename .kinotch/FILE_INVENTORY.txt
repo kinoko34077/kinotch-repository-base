@@ -9,6 +9,7 @@
 .kinotch/docs/BASE_ROADMAP.md
 .kinotch/FILE_INVENTORY.txt
 .kinotch/maintenance-patches.json
+.kinotch/maintenance-patches/verify-checkout-v4-immutable-from-0.3.8/knt.ps1
 .kinotch/maintenance-patches/verify-checkout-v4-immutable-from-0.3.8/verify.yml
 .kinotch/meta/00_CONTEXT.md
 .kinotch/meta/01_TARGET_STATE.md
