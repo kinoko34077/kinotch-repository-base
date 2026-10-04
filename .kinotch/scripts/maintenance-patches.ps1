@@ -299,8 +299,15 @@ function Invoke-KntBasePatch {
     }
 
     $existingPatches = @()
+    $existingSupportOrigins = @{}
     if ($index.PSObject.Properties["maintenance_patches"]) {
         $existingPatches = @($index.maintenance_patches.patches)
+        foreach ($support in @($index.maintenance_patches.support_files)) {
+            $existingSupportOrigins[[string]$support.path] = [pscustomobject]@{
+                added = [bool]$support.added
+                source_sha256 = $support.source_sha256
+            }
+        }
         if (@($existingPatches | Where-Object { [string]$_.id -eq [string]$definition.id }).Count -gt 0) {
             Write-Knt "Base maintenance patch '$($definition.id)' is already recorded"
             return 0
@@ -372,6 +379,25 @@ function Invoke-KntBasePatch {
             (Get-BaseFileHash -Path $targetHelperPath) -ne $sourceHelperHash) {
             throw "Base maintenance patch support validator drifted before apply"
         }
+    }
+
+    $catalogOrigin = if ($existingSupportOrigins.ContainsKey(".kinotch/maintenance-patches.json")) {
+        $existingSupportOrigins[".kinotch/maintenance-patches.json"]
+    }
+    else {
+        [pscustomobject]@{ added = (-not $catalogWasIndexed); source_sha256 = $sourceCatalogHash }
+    }
+    $helperOrigin = if ($existingSupportOrigins.ContainsKey(".kinotch/scripts/maintenance-patches.ps1")) {
+        $existingSupportOrigins[".kinotch/scripts/maintenance-patches.ps1"]
+    }
+    else {
+        [pscustomobject]@{ added = (-not $helperWasIndexed); source_sha256 = $sourceHelperHash }
+    }
+    $inventoryOrigin = if ($existingSupportOrigins.ContainsKey(".kinotch/FILE_INVENTORY.txt")) {
+        $existingSupportOrigins[".kinotch/FILE_INVENTORY.txt"]
+    }
+    else {
+        [pscustomobject]@{ added = $false; source_sha256 = $sourceInventoryHash }
     }
 
     [void](Assert-KntSafeWritePath -Root $Root -Candidate $targetCatalogPath -Description "base-patch catalog write")
@@ -453,20 +479,20 @@ function Invoke-KntBasePatch {
             [pscustomobject]@{
                 path = ".kinotch/maintenance-patches.json"
                 sha256 = $catalogHash
-                added = (-not $catalogWasIndexed)
-                source_sha256 = $sourceCatalogHash
+                added = [bool]$catalogOrigin.added
+                source_sha256 = $catalogOrigin.source_sha256
             },
             [pscustomobject]@{
                 path = ".kinotch/scripts/maintenance-patches.ps1"
                 sha256 = $helperHash
-                added = (-not $helperWasIndexed)
-                source_sha256 = $sourceHelperHash
+                added = [bool]$helperOrigin.added
+                source_sha256 = $helperOrigin.source_sha256
             },
             [pscustomobject]@{
                 path = ".kinotch/FILE_INVENTORY.txt"
                 sha256 = $targetInventoryHash
-                added = $false
-                source_sha256 = $sourceInventoryHash
+                added = [bool]$inventoryOrigin.added
+                source_sha256 = $inventoryOrigin.source_sha256
             }
         )
         patches = @($existingPatches) + @($record)
