@@ -36,7 +36,7 @@ release、deploy、publication、破壊的削除、history rewrite、security-se
 
 Security、privacy、secret、credential、exploitに関するfindingは、公開前に機密分類とtracking境界を確認する。`SENSITIVE`なfindingは公開Issueへ自動投稿しない。
 
-監査の既定レベルは`STANDARD`とし、Audit SHAには対象Repositoryの完全なcommit SHAを使う。dirty worktreeの観察はSHAと分けて記録する。
+監査深度と既定選択はdevflowのcanonical specification / `.devflow/WORKFLOW.yaml`に従い、Audit SHAには対象Repositoryの完全なcommit SHAを使う。dirty worktreeの観察はSHAと分けて記録する。
 
 Repository Control itemとfinding Issueはcanonical keyで既存項目を再利用し、同じ状態を持つIssue/PRを並行作成しない。
 
