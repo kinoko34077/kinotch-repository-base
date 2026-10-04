@@ -1,8 +1,8 @@
 # Current State
 
-Base version: `0.5.15`
+Base version: `0.5.16`
 
-Behavioral baseline: Base v0.5.15 adds provenance-safe bounded maintenance-patch adoption for legacy consumers while preserving the accepted runtime/default behavior baseline. Base v0.5.14 was a docs/Base-contract reconciliation release; runtime/default behavior remains anchored to accepted main `93b109bf1b42dfc17b9f297cb0cb27af49c4526b`, and hosted Verify `36349297603` / behavioral acceptance gate `36322175070` remain valid behavior evidence. The v0.5.14 change removes duplicated devflow audit-depth vocabulary from Base guidance and delegates exact cross-repository workflow values to the devflow canonical specification / `.devflow/WORKFLOW.yaml`; it does not change Runtime, Default, Surface, template, or consumer-adoption behavior.
+Behavioral baseline: Base v0.5.16 adds provenance-safe bounded maintenance-patch adoption for legacy consumers while preserving the accepted runtime/default behavior baseline. Base v0.5.14 was a docs/Base-contract reconciliation release; runtime/default behavior remains anchored to accepted main `93b109bf1b42dfc17b9f297cb0cb27af49c4526b`, and hosted Verify `36349297603` / behavioral acceptance gate `36322175070` remain valid behavior evidence. The v0.5.14 change removes duplicated devflow audit-depth vocabulary from Base guidance and delegates exact cross-repository workflow values to the devflow canonical specification / `.devflow/WORKFLOW.yaml`; it does not change Runtime, Default, Surface, template, or consumer-adoption behavior.
 
 ## Implemented
 
