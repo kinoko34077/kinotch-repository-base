@@ -2009,7 +2009,7 @@ Invoke-TestCase "bounded Base patch applies exact registered maintenance delta w
         Assert-Equal "0cc7e22aa1001d4dd7555275908c0b085373241388b07501ee1ccf28b66766b9" ([string]$routerEntry.sha256) "patched legacy router hash"
         Assert-True (Test-Path -LiteralPath (Join-Path $root ".kinotch/scripts/maintenance-patches.ps1") -PathType Leaf) "legacy validator support file missing"
         $inventoryText = Get-Content -Raw -Encoding UTF8 (Join-Path $root ".kinotch/FILE_INVENTORY.txt")
-        Assert-True ($inventoryText -match "(?m)^\.kinotch/maintenance-patches\.json$") "maintenance patch catalog was not added to FILE_INVENTORY"
+        Assert-True ($inventoryText -match "(?m)^\.kinotch/maintenance-patches\.json\r?$") "maintenance patch catalog was not added to FILE_INVENTORY"
         $inventoryEntry = $index.files | Where-Object path -eq ".kinotch/FILE_INVENTORY.txt"
         Assert-Equal (Get-BaseFileHash (Join-Path $root ".kinotch/FILE_INVENTORY.txt")) ([string]$inventoryEntry.sha256) "patched FILE_INVENTORY hash"
     } -AssertOutput {
@@ -2035,6 +2035,7 @@ Invoke-TestCase "bounded Base patch rejects source drift before mutation" {
         param($root)
         Set-FixtureAsLegacyBase038Consumer $root
         $verifyPath = Join-Path $root ".github/workflows/verify.yml"
+        $originalVerify = Get-Content -Raw -Encoding UTF8 $verifyPath
         Add-Content -LiteralPath $verifyPath -Value "# consumer drift"
 
         $authorityRouter = Join-Path $RepoRoot ".kinotch/scripts/knt.ps1"
@@ -2043,7 +2044,7 @@ Invoke-TestCase "bounded Base patch rejects source drift before mutation" {
         Assert-Equal 2 $LASTEXITCODE "source-drifted maintenance patch was accepted"
         Assert-True (($patchOutput -join " ") -match "source content drifted") "source drift rejection was not explicit"
 
-        [IO.File]::WriteAllText($verifyPath, $legacyVerify + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
+        [IO.File]::WriteAllText($verifyPath, $originalVerify, (New-Object System.Text.UTF8Encoding($false)))
     }
 }
 
