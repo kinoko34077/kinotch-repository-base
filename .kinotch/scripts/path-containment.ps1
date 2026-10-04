@@ -1,3 +1,7 @@
+function Test-KntWindowsPlatform {
+    return (($env:OS -eq "Windows_NT") -or
+        ([System.Environment]::OSVersion.Platform -eq [System.PlatformID]::Win32NT))
+}
 function ConvertTo-KntCanonicalPath {
     param(
         [Parameter(Mandatory=$true)][string]$Path,
@@ -49,7 +53,7 @@ function Test-KntProjectPathContained {
     param(
         [Parameter(Mandatory=$true)][string]$Root,
         [Parameter(Mandatory=$true)][string]$Candidate,
-        [bool]$Windows = ($env:OS -eq "Windows_NT"),
+        [bool]$Windows = (Test-KntWindowsPlatform),
         [switch]$AllowRoot
     )
 
@@ -70,7 +74,7 @@ function Test-KntPathHasReparseBoundary {
     param(
         [Parameter(Mandatory=$true)][string]$Root,
         [Parameter(Mandatory=$true)][string]$Candidate,
-        [bool]$Windows = ($env:OS -eq "Windows_NT")
+        [bool]$Windows = (Test-KntWindowsPlatform)
     )
 
     $rootPath = ConvertTo-KntCanonicalPath -Path $Root -Windows $Windows
@@ -100,7 +104,7 @@ function Assert-KntSafePath {
         [Parameter(Mandatory=$true)][string]$Root,
         [Parameter(Mandatory=$true)][string]$Candidate,
         [Parameter(Mandatory=$true)][string]$Description,
-        [bool]$Windows = ($env:OS -eq "Windows_NT"),
+        [bool]$Windows = (Test-KntWindowsPlatform),
         [switch]$AllowRoot
     )
 
@@ -120,7 +124,7 @@ function Assert-KntSafeWritePath {
         [Parameter(Mandatory=$true)][string]$Root,
         [Parameter(Mandatory=$true)][string]$Candidate,
         [Parameter(Mandatory=$true)][string]$Description,
-        [bool]$Windows = ($env:OS -eq "Windows_NT"),
+        [bool]$Windows = (Test-KntWindowsPlatform),
         [switch]$AllowRoot
     )
 
