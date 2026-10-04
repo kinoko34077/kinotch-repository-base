@@ -1,6 +1,6 @@
 {
     "schema_version":  1,
-    "base_version":  "0.5.15",
+    "base_version":  "0.5.16",
     "files":  [
                   {
                       "path":  ".editorconfig",
@@ -24,7 +24,7 @@
                   },
                   {
                       "path":  ".kinotch/BASE_VERSION",
-                      "sha256":  "af81c23fb81225f05f01087f1a1d2a3ecc642e0b2b1a5827d542938131d7595c"
+                      "sha256":  "7124473c5135451c219b3f0ee36b37d5dd62944888b53c9177ae0bc47b96e5a6"
                   },
                   {
                       "path":  ".kinotch/DEVELOPMENT_FLOW.md",
@@ -60,7 +60,7 @@
                   },
                   {
                       "path":  ".kinotch/maintenance-patches.json",
-                      "sha256":  "000afc9eee6decbdefee6d08c29b427f968525023dac61b9f03d40fcc46588df"
+                      "sha256":  "b5999d3ac33c3e604b05b05997497db4cebd385a2e846a290800e491e73f0cbb"
                   },
                   {
                       "path":  ".kinotch/maintenance-patches/verify-checkout-v4-immutable-from-0.3.8/verify.yml",
@@ -188,7 +188,7 @@
                   },
                   {
                       "path":  ".kinotch/scripts/maintenance-patches.ps1",
-                      "sha256":  "9d530e1241d7d1485cae3e59bdb5f75b707d3879946a5b85d00c537c38857abf"
+                      "sha256":  "3e7dccc4631ccbd59b309df73ce427f90566228d02ed6ff475e174544bc564c8"
                   },
                   {
                       "path":  ".kinotch/scripts/path-containment.ps1",
@@ -424,7 +424,7 @@
                   },
                   {
                       "path":  ".kinotch/tests/run-tests.ps1",
-                      "sha256":  "b641c760bd2d298069061984b55bda94683af01a476a7c7a68d347fefacb7255"
+                      "sha256":  "05e17b5a041338a9e5a98bc67331410e4feab879b5f21c93f279ae263f3def45"
                   },
                   {
                       "path":  "AGENTS.md",
