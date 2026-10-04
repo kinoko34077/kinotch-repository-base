@@ -43,6 +43,11 @@ if (-not (Test-Path -LiteralPath $PathContainmentPath -PathType Leaf)) {
     throw "Path containment helper not found: $PathContainmentPath"
 }
 . $PathContainmentPath
+$MaintenancePatchPath = Join-Path $BaseDir "scripts/maintenance-patches.ps1"
+if (-not (Test-Path -LiteralPath $MaintenancePatchPath -PathType Leaf)) {
+    throw "Maintenance patch helper not found: $MaintenancePatchPath"
+}
+. $MaintenancePatchPath
 
 function Write-Knt([string]$Message) {
     Write-Host "[knt] $Message"
@@ -1297,6 +1302,7 @@ function Test-BaseFiles {
         Write-Host "[base-check] VERSION  index=$($index.base_version) current=$currentVersion" -ForegroundColor Yellow
         $ok = $false
     }
+    if (-not (Test-KntMaintenancePatchProvenance -Index $index)) { $ok = $false }
     $protectedPaths = @(Get-BaseProtectedPaths -Root $Root)
     $indexedPaths = @($index.files | ForEach-Object { [string]$_.path })
     foreach ($expectedPath in $protectedPaths) {
@@ -1848,6 +1854,7 @@ Common commands:
               --default ci-test|generated-integrity|file-io|pwa|config|logging
   migrate     Show or explicitly record catalog Default candidates
   base-check  Detect modifications in common Base files
+  base-patch  Apply one Base-issued bounded maintenance patch to an older consumer
   base-refresh Regenerate Base file hashes (repository-base only)
   setup       Project setup command
   dev         Project development command
@@ -1868,6 +1875,9 @@ try {
     }
     if ($Command -eq "base-check") {
         if (Test-BaseFiles) { exit 0 } else { exit 1 }
+    }
+    if ($Command -eq "base-patch") {
+        exit (Invoke-KntBasePatch)
     }
     if ($Command -eq "base-refresh") {
         Assert-RepositoryWriteAllowed "base-refresh"
