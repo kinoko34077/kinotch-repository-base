@@ -1,8 +1,8 @@
 # Current State
 
-Base version: `0.5.14`
+Base version: `0.5.15`
 
-Behavioral baseline: Base v0.5.14 is a docs/Base-contract reconciliation release; runtime/default behavior remains anchored to accepted main `93b109bf1b42dfc17b9f297cb0cb27af49c4526b`, and hosted Verify `36349297603` / behavioral acceptance gate `36322175070` remain valid behavior evidence. The v0.5.14 change removes duplicated devflow audit-depth vocabulary from Base guidance and delegates exact cross-repository workflow values to the devflow canonical specification / `.devflow/WORKFLOW.yaml`; it does not change Runtime, Default, Surface, template, or consumer-adoption behavior.
+Behavioral baseline: Base v0.5.15 adds provenance-safe bounded maintenance-patch adoption for legacy consumers while preserving the accepted runtime/default behavior baseline. Base v0.5.14 was a docs/Base-contract reconciliation release; runtime/default behavior remains anchored to accepted main `93b109bf1b42dfc17b9f297cb0cb27af49c4526b`, and hosted Verify `36349297603` / behavioral acceptance gate `36322175070` remain valid behavior evidence. The v0.5.14 change removes duplicated devflow audit-depth vocabulary from Base guidance and delegates exact cross-repository workflow values to the devflow canonical specification / `.devflow/WORKFLOW.yaml`; it does not change Runtime, Default, Surface, template, or consumer-adoption behavior.
 
 ## Implemented
 
@@ -15,6 +15,7 @@ Behavioral baseline: Base v0.5.14 is a docs/Base-contract reconciliation release
 - Profile existence and Profile / Surface contradiction diagnostics
 - Manifest path and command cwd diagnostics
 - Strict Base hash index and deterministic refresh
+- Base-issued bounded maintenance patch adoption preserves a legacy consumer's source `BASE_VERSION`, binds exact source snapshot + ordered patch provenance + source/target hashes, rejects arbitrary/unregistered patch IDs and drift, and leaves full-snapshot adoption semantics unchanged
 - Base self-test runner with filesystem-boundary and Default-lifecycle regression coverage
 - Base index refresh fails closed when the required path-containment helper is absent
 - Base-owned Project docs templates are regression-checked against links to unmaterialized README targets
