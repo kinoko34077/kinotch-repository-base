@@ -185,7 +185,9 @@ function Test-KntMaintenancePatchProvenance {
         }
     }
     foreach ($support in @($state.support_files)) {
-        [void]$sourceHashes.Remove([string]$support.path)
+        if ([bool]$support.added) {
+            [void]$sourceHashes.Remove([string]$support.path)
+        }
     }
 
     $sourceEntries = @($sourceHashes.GetEnumerator() | ForEach-Object {
@@ -329,7 +331,8 @@ function Invoke-KntBasePatch {
         (New-Object System.Text.UTF8Encoding($false))
     )
 
-    if ($entryMap.ContainsKey(".kinotch/maintenance-patches.json")) {
+    $catalogWasIndexed = $entryMap.ContainsKey(".kinotch/maintenance-patches.json")
+    if ($catalogWasIndexed) {
         $entryMap[".kinotch/maintenance-patches.json"].sha256 = $catalogHash
     }
     else {
@@ -377,6 +380,7 @@ function Invoke-KntBasePatch {
         support_files = @([pscustomobject]@{
             path = ".kinotch/maintenance-patches.json"
             sha256 = $catalogHash
+            added = (-not $catalogWasIndexed)
         })
         patches = @($existingPatches) + @($record)
     }
