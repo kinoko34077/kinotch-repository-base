@@ -1981,6 +1981,10 @@ jobs:
         Assert-Equal "verify-checkout-v4-immutable-from-0.3.8" ([string]$index.maintenance_patches.patches[0].id) "maintenance patch id"
         $verifyEntry = $index.files | Where-Object path -eq ".github/workflows/verify.yml"
         Assert-Equal "bf1e83775391751036f77ef90eb1a5de4272a10e402403057a4dd9b6e39c2059" ([string]$verifyEntry.sha256) "patched Verify hash"
+        $inventoryText = Get-Content -Raw -Encoding UTF8 (Join-Path $root ".kinotch/FILE_INVENTORY.txt")
+        Assert-True ($inventoryText -match "(?m)^\.kinotch/maintenance-patches\.json$") "maintenance patch catalog was not added to FILE_INVENTORY"
+        $inventoryEntry = $index.files | Where-Object path -eq ".kinotch/FILE_INVENTORY.txt"
+        Assert-Equal (Get-BaseFileHash (Join-Path $root ".kinotch/FILE_INVENTORY.txt")) ([string]$inventoryEntry.sha256) "patched FILE_INVENTORY hash"
     } -AssertOutput {
         param($root, $output)
         Assert-True ($output -match "Base maintenance patches") "base-check did not report bounded patch provenance"
