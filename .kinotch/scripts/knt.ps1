@@ -75,7 +75,7 @@ function Assert-RepositoryWriteAllowed([string]$Operation) {
 
     $localResolved = (Resolve-Path -LiteralPath $localBaseDir).Path
     $activeResolved = (Resolve-Path -LiteralPath $BaseDir).Path
-    $pathComparison = Get-KntPathComparison -Windows ($env:OS -eq "Windows_NT")
+    $pathComparison = Get-KntPathComparison -Windows (Test-KntWindowsPlatform)
     if (-not [string]::Equals($localResolved, $activeResolved, $pathComparison)) {
         throw "$Operation requires the repository-local .kinotch/ Base"
     }
@@ -340,7 +340,7 @@ function ConvertTo-KntRepositoryRelativePath([string]$Path) {
 
 function Get-KntRepositoryPathKey([string]$Path) {
     $canonical = ConvertTo-KntRepositoryRelativePath $Path
-    if ($env:OS -eq "Windows_NT") { return $canonical.ToLowerInvariant() }
+    if (Test-KntWindowsPlatform) { return $canonical.ToLowerInvariant() }
     return $canonical
 }
 

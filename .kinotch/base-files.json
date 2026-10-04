@@ -1,6 +1,6 @@
 {
     "schema_version":  1,
-    "base_version":  "0.5.21",
+    "base_version":  "0.5.22",
     "files":  [
                   {
                       "path":  ".editorconfig",
@@ -24,7 +24,7 @@
                   },
                   {
                       "path":  ".kinotch/BASE_VERSION",
-                      "sha256":  "d860bb610bd47fb2d7cbd4beec37e31dcc0c9d726a6f407b9a79fe5ccdad3a10"
+                      "sha256":  "b1af51adf2d8090accaacf5345dd5630c698e2179d8341b804138f548550bc82"
                   },
                   {
                       "path":  ".kinotch/DEVELOPMENT_FLOW.md",
@@ -60,7 +60,7 @@
                   },
                   {
                       "path":  ".kinotch/maintenance-patches.json",
-                      "sha256":  "8f50fce544d9bcc2744e4cf98d24a02c604bdaa71009549c6cbcdcc3b5c2ebf9"
+                      "sha256":  "eeae7f609a57913544765687d94f453866908ccfd505c8e190d6fe937b705bef"
                   },
                   {
                       "path":  ".kinotch/maintenance-patches/verify-checkout-v4-immutable-from-0.3.8/knt.ps1",
@@ -188,7 +188,7 @@
                   },
                   {
                       "path":  ".kinotch/scripts/knt.ps1",
-                      "sha256":  "7cf2f70350724920afcb080ba876cc12e21d25e4660437e6e4bbb99bc068fec8"
+                      "sha256":  "f7c16131520659a141565e5cf913b6bbe3db8e2f60d4cb0049747fcdaca52da2"
                   },
                   {
                       "path":  ".kinotch/scripts/maintenance-patches.ps1",
@@ -196,7 +196,7 @@
                   },
                   {
                       "path":  ".kinotch/scripts/path-containment.ps1",
-                      "sha256":  "49723deef4802bfea3699c303ab8bc0636d82dd4af429ad2b9e6aba3d2190929"
+                      "sha256":  "9543f0c6f090d4a7677d41a932f843fd44302a25108f62fd2b9af23b4dbaa754"
                   },
                   {
                       "path":  ".kinotch/scripts/update-base-index.ps1",
@@ -428,7 +428,7 @@
                   },
                   {
                       "path":  ".kinotch/tests/run-tests.ps1",
-                      "sha256":  "84552292abadbadc1bd01c940427a81930e30924a36dff605e07a5668fd2547b"
+                      "sha256":  "0be6ef64b1e14ddab7c91bb79f41666bac3a82cd312160f88c97a3c6ce019dfb"
                   },
                   {
                       "path":  "AGENTS.md",

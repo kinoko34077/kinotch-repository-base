@@ -424,6 +424,19 @@ Invoke-TestCase "Project path containment is OS-aware and rejects sibling escape
     $helperPath = Join-Path $RepoRoot ".kinotch/scripts/path-containment.ps1"
     Assert-True (Test-Path -LiteralPath $helperPath -PathType Leaf) "path containment helper is missing"
     . $helperPath
+    $originalOS = $env:OS
+    try {
+        Remove-Item Env:OS -ErrorAction SilentlyContinue
+        $actualWindows = ([System.Environment]::OSVersion.Platform -eq [System.PlatformID]::Win32NT)
+        Assert-Equal $actualWindows (Test-KntWindowsPlatform) "platform detection depended on OS environment variable"
+        if ($actualWindows) {
+            Assert-True (Test-KntProjectPathContained -Root "C:\repo" -Candidate "C:\repo\file.txt") "default Windows containment rejected child path when OS environment variable was absent"
+        }
+    }
+    finally {
+        if ($null -eq $originalOS) { Remove-Item Env:OS -ErrorAction SilentlyContinue }
+        else { $env:OS = $originalOS }
+    }
     Assert-True (Test-KntProjectPathContained -Root "C:\repo" -Candidate "C:\repo\file.txt" -Windows $true) "Windows child path was rejected"
     Assert-True (-not (Test-KntProjectPathContained -Root "C:\repo" -Candidate "C:\repo-other\file.txt" -Windows $true)) "Windows sibling prefix was accepted"
     Assert-True (-not (Test-KntProjectPathContained -Root "C:\repo" -Candidate "C:\repo\..\outside.txt" -Windows $true)) "Windows parent escape was accepted"
@@ -1994,8 +2007,17 @@ Invoke-TestCase "bounded Base patch applies exact registered maintenance delta w
         $manifestBefore = Get-Content -Raw -Encoding UTF8 $manifestPath
         $authorityRouter = Join-Path $RepoRoot ".kinotch/scripts/knt.ps1"
         $authorityBase = Join-Path $RepoRoot ".kinotch"
-        $patchOutput = @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $authorityRouter -RootOverride $root -BaseOverride $authorityBase base-patch --id verify-checkout-v4-immutable-from-0.3.8 --apply 2>&1)
-        Assert-Equal 0 $LASTEXITCODE ("base-patch apply failed: " + ($patchOutput -join " "))
+        $originalOSForPatch = $env:OS
+        try {
+            Remove-Item Env:OS -ErrorAction SilentlyContinue
+            $patchOutput = @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $authorityRouter -RootOverride $root -BaseOverride $authorityBase base-patch --id verify-checkout-v4-immutable-from-0.3.8 --apply 2>&1)
+            $patchExit = $LASTEXITCODE
+        }
+        finally {
+            if ($null -eq $originalOSForPatch) { Remove-Item Env:OS -ErrorAction SilentlyContinue }
+            else { $env:OS = $originalOSForPatch }
+        }
+        Assert-Equal 0 $patchExit ("base-patch apply failed: " + ($patchOutput -join " "))
         Assert-Equal "0.3.8" ((Get-Content -Raw -Encoding UTF8 (Join-Path $root ".kinotch/BASE_VERSION")).Trim()) "source Base version changed"
         Assert-Equal $manifestBefore (Get-Content -Raw -Encoding UTF8 $manifestPath) "Project manifest changed during bounded Base patch"
 
@@ -2305,7 +2327,7 @@ Invoke-TestCase "Base documentation and profile metadata are finalized" {
     Assert-True ($workflow -match "knt\.ps1 setup") "Base CI setup step is missing"
     Assert-True ($workflow -match "actions/checkout@[0-9a-f]{40}(?:\s+#\s+v4)?") "Base Verify checkout action is not pinned to a full commit SHA"
     Assert-Equal 0 @($surfaceRegistry.surfaces.PSObject.Properties).Count "Base Surface Registry should be empty"
-    Assert-Equal "0.5.21" $baseVersion "Base version"
+    Assert-Equal "0.5.22" $baseVersion "Base version"
     Assert-True ($baseReadme -match "Surface Default Kit") "README_BASE Surface Kit wording is missing"
     Assert-True ($baseReadme -match "OVERRIDE") "README_BASE override boundary is missing"
     Assert-True (@($catalog.defaults | Where-Object { $_.kind -eq "surface" }).Count -ge 8) "Surface Default catalog entries are incomplete"
