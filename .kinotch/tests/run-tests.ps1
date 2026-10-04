@@ -97,15 +97,10 @@ function Set-FixtureBaseIndex([string]$Root) {
 function Set-FixtureAsLegacyBase038Consumer([string]$Root) {
     $targetRouterPayload = Join-Path $RepoRoot ".kinotch/maintenance-patches/verify-checkout-v4-immutable-from-0.3.8/knt.ps1"
     $routerText = Get-Content -Raw -Encoding UTF8 $targetRouterPayload
-    $maintenanceHook = @'
-$MaintenancePatchPath = Join-Path $BaseDir "scripts/maintenance-patches.ps1"
-if (-not (Test-Path -LiteralPath $MaintenancePatchPath -PathType Leaf)) {
-    throw "Maintenance patch helper not found: $MaintenancePatchPath"
-}
-. $MaintenancePatchPath
-'@
-    $maintenanceCheck = '    if (-not (Test-KntMaintenancePatchProvenance -Index $index)) { $ok = $false }' + [Environment]::NewLine
-    $sourceRouter = $routerText.Replace($maintenanceHook, "").Replace($maintenanceCheck, "")
+    $maintenanceHookPattern = '(?ms)^\$MaintenancePatchPath = Join-Path \$BaseDir "scripts/maintenance-patches\.ps1"\r?\nif \(-not \(Test-Path -LiteralPath \$MaintenancePatchPath -PathType Leaf\)\) \{\r?\n    throw "Maintenance patch helper not found: \$MaintenancePatchPath"\r?\n\}\r?\n\. \$MaintenancePatchPath\r?\n'
+    $maintenanceCheckPattern = '(?m)^    if \(-not \(Test-KntMaintenancePatchProvenance -Index \$index\)\) \{ \$ok = \$false \}\r?\n'
+    $sourceRouter = [regex]::Replace($routerText, $maintenanceHookPattern, "")
+    $sourceRouter = [regex]::Replace($sourceRouter, $maintenanceCheckPattern, "")
     $routerPath = Join-Path $Root ".kinotch/scripts/knt.ps1"
     [IO.File]::WriteAllText($routerPath, $sourceRouter, (New-Object System.Text.UTF8Encoding($false)))
     Assert-Equal "84bea22c610fb7d48d9291945c96fe191e1fed73d9b3c389025f0b4ea59d9b8b" (Get-BaseFileHash $routerPath) "legacy v0.3.8 router source hash"
