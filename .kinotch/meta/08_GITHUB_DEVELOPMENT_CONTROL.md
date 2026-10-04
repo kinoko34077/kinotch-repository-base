@@ -44,7 +44,7 @@ Repository Control IssueやGitHub Project Itemが存在しても、以下を自�
 - Default Pack導入
 - Runtime統合
 - Repository構造の統一
-- 定期FULL audit
+- devflow正本が明示的に要求しない定期的な広範audit
 
 Base adoption stateは既存Phase 5規則どおり、必要な場合のみ以下で扱う。
 
@@ -64,7 +64,7 @@ ADOPTED / STAGED / NOT_ADOPTED / N/A
 4. PR-only運用が技術的または運用規則として成立しているか
 5. Base adoptionが既に存在するか、または具体的に必要か
 
-`.kinotch/`がないRepositoryは、それだけを未完了扱いしない。まずread-only shape probe / STANDARD auditで既存構造を確認し、既存正本を尊重する。
+`.kinotch/`がないRepositoryは、それだけを未完了扱いしない。まずread-only shape probeとdevflow正本が定める適切な監査深度で既存構造を確認し、既存正本を尊重する。
 
 ## 4. Project field compatibility
 
@@ -80,7 +80,7 @@ Base文書内でProject fieldへ言及する必要がある場合、現行devflo
 
 ## 5. Audit / Work Order
 
-QUICK / STANDARD / FULL、Finding escalation、Work Order必須項目、Audit SHA等の横断運用定義はdevflow正本に従う。
+Audit depth、Finding escalation、Work Order必須項目、Audit SHA等の横断運用定義はdevflow正本に従う。正確なAudit depth値はdevflowのcanonical specificationと`.devflow/WORKFLOW.yaml`から取得し、本書では再定義しない。
 
 Repository Base固有の追加条件は次のみである。
 
@@ -93,7 +93,7 @@ Repository Base固有の追加条件は次のみである。
 
 通常のRepository変更はdefault branchへ直接書かず、専用branchとPull Requestを経由する。
 
-要件が十分に定義されている場合、Agentは現行取得、関連正本確認、QUICK/STANDARD監査、finding整理、Work Order、branch、実装、検証、PR、再監査まで継続してよい。
+要件が十分に定義されている場合、Agentは現行取得、関連正本確認、devflow正本が定める適切な監査深度での監査、finding整理、Work Order、branch、実装、検証、PR、再監査まで継続してよい。
 
 **既にユーザーから包括的に許可され、Riskが低く、致命的問題の可能性が低く、revert PRで安全に戻せるmergeは追加確認なしで進めてよい。**
 
@@ -108,7 +108,7 @@ Repository Base固有の追加条件は次のみである。
 
 問題がmerge後に発覚した場合、shared `main`を書き換えずdedicated rollback branch + revert PRで戻す。
 
-FULL auditは定期実行せず、明示依頼または具体的必要性がある場合に限る。
+通常範囲を超える広範auditは定期実行せず、明示依頼または具体的必要性がある場合に限る。
 
 ## 7. Verification handoff
 
