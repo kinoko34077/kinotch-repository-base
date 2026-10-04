@@ -83,3 +83,34 @@ languages, Surfaces, and Projects.
 Phase 5 has no requirement to make every repository adopted and no automatic
 Phase 6 start condition. The Base succeeds when Projects can remain independent,
 existing overrides are respected, and shared maintenance stays small.
+
+
+## Bounded maintenance patch adoption
+
+A legacy consumer may adopt a Base-owned maintenance/security correction without
+claiming a newer full Base snapshot only through the Base-issued
+`base-patch` path.
+
+The identity is:
+
+```text
+source full-snapshot BASE_VERSION
++ exact source snapshot hash
++ ordered Base-issued maintenance patch IDs
++ exact source -> target hashes
+```
+
+Rules:
+
+- the consumer keeps its source `BASE_VERSION`; a bounded patch is not a full Base upgrade;
+- patch IDs and payloads come only from the active Repository Base catalog;
+- every patched file must already be protected by the source Base snapshot;
+- source index hash and live source content must match before mutation;
+- the patch records exact source/target hashes and a reconstructable source-snapshot hash;
+- `base-check` rejects unregistered provenance, broken patch chains, catalog drift, and target-content drift;
+- the Base-owned patch command has dry-run by default and accepts no arbitrary path/hash override;
+- unrelated Project-owned files, layout, Runtime behavior, deployment policy, and credentials are outside a bounded patch.
+
+Use full Base synchronization when the required change adds broader Base structure,
+changes Project contracts/layout, or cannot be represented as an exact registered
+protected-file transition.
