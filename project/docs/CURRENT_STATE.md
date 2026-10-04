@@ -1,8 +1,8 @@
 # Current State
 
-Base version: `0.5.19`
+Base version: `0.5.20`
 
-Behavioral baseline: Base v0.5.19 retains the v0.5.18 provenance-safe bounded maintenance-patch adoption and corrects its cross-platform self-test fixtures without changing the accepted bounded-adoption contract. Base v0.5.14 was a docs/Base-contract reconciliation release; runtime/default behavior remains anchored to accepted main `93b109bf1b42dfc17b9f297cb0cb27af49c4526b`, and hosted Verify `36349297603` / behavioral acceptance gate `36322175070` remain valid behavior evidence. The v0.5.14 change removes duplicated devflow audit-depth vocabulary from Base guidance and delegates exact cross-repository workflow values to the devflow canonical specification / `.devflow/WORKFLOW.yaml`; it does not change Runtime, Default, Surface, template, or consumer-adoption behavior.
+Behavioral baseline: Base v0.5.20 adds a two-patch provenance-chain regression for bounded maintenance-patch adoption; the production carry-forward repair is intentionally not yet present at this RED checkpoint. Base v0.5.14 was a docs/Base-contract reconciliation release; runtime/default behavior remains anchored to accepted main `93b109bf1b42dfc17b9f297cb0cb27af49c4526b`, and hosted Verify `36349297603` / behavioral acceptance gate `36322175070` remain valid behavior evidence. The v0.5.14 change removes duplicated devflow audit-depth vocabulary from Base guidance and delegates exact cross-repository workflow values to the devflow canonical specification / `.devflow/WORKFLOW.yaml`; it does not change Runtime, Default, Surface, template, or consumer-adoption behavior.
 
 ## Implemented
 

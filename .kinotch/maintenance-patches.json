@@ -1,6 +1,6 @@
 {
     "schema_version":  1,
-    "authority_base_version":  "0.5.19",
+    "authority_base_version":  "0.5.20",
     "patches":  [
                     {
                         "id":  "verify-checkout-v4-immutable-from-0.3.8",

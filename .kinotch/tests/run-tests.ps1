@@ -2018,6 +2018,104 @@ Invoke-TestCase "bounded Base patch applies exact registered maintenance delta w
     }
 }
 
+Invoke-TestCase "bounded Base patch chain preserves original support-file provenance" {
+    Invoke-KntFixture -Name "valid-minimal" -Command "base-check" -ExpectedExit 0 -Prepare {
+        param($root)
+        Set-FixtureAsLegacyBase038Consumer $root
+
+        $authorityRoot = Join-Path ([IO.Path]::GetTempPath()) ("kinotch-patch-authority-" + [guid]::NewGuid().ToString("N"))
+        New-Item -ItemType Directory -Path $authorityRoot -Force | Out-Null
+        try {
+            Copy-Item -LiteralPath (Join-Path $RepoRoot ".kinotch") -Destination (Join-Path $authorityRoot ".kinotch") -Recurse -Force
+            New-Item -ItemType Directory -Path (Join-Path $authorityRoot "project") -Force | Out-Null
+            Copy-Item -LiteralPath (Join-Path $RepoRoot "project/project.json") -Destination (Join-Path $authorityRoot "project/project.json") -Force
+
+            $authorityBase = Join-Path $authorityRoot ".kinotch"
+            $firstPayload = Join-Path $authorityBase "maintenance-patches/verify-checkout-v4-immutable-from-0.3.8/verify.yml"
+            $secondPayloadDir = Join-Path $authorityBase "maintenance-patches/test-second-verify-patch"
+            New-Item -ItemType Directory -Path $secondPayloadDir -Force | Out-Null
+            $secondPayload = Join-Path $secondPayloadDir "verify.yml"
+            $secondContent = (Get-Content -Raw -Encoding UTF8 $firstPayload).TrimEnd([char]13, [char]10) + [Environment]::NewLine + "# second registered maintenance patch" + [Environment]::NewLine
+            [IO.File]::WriteAllText($secondPayload, $secondContent, (New-Object System.Text.UTF8Encoding($false)))
+            $secondHash = Get-BaseFileHash $secondPayload
+
+            $catalogPath = Join-Path $authorityBase "maintenance-patches.json"
+            $catalog = Get-Content -Raw -Encoding UTF8 $catalogPath | ConvertFrom-Json
+            $catalog.patches = @($catalog.patches) + @([pscustomobject]@{
+                id = "test-second-verify-patch"
+                description = "Test-only second registered patch for ordered provenance regression."
+                source_base_version = "0.3.8"
+                files = @([pscustomobject]@{
+                    path = ".github/workflows/verify.yml"
+                    source_sha256 = "bf1e83775391751036f77ef90eb1a5de4272a10e402403057a4dd9b6e39c2059"
+                    target_sha256 = $secondHash
+                    content_path = "maintenance-patches/test-second-verify-patch/verify.yml"
+                })
+            })
+            [IO.File]::WriteAllText($catalogPath, (ConvertTo-Json $catalog -Depth 20) + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
+
+            $authorityRouter = Join-Path $authorityBase "scripts/knt.ps1"
+            $consumerRouter = Join-Path $root ".kinotch/scripts/knt.ps1"
+            $indexPath = Join-Path $root ".kinotch/base-files.json"
+
+            $firstOutput = @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $authorityRouter -RootOverride $root -BaseOverride $authorityBase base-patch --id verify-checkout-v4-immutable-from-0.3.8 --apply 2>&1)
+            Assert-Equal 0 $LASTEXITCODE ("first bounded patch failed: " + ($firstOutput -join " "))
+            $firstIndex = Get-Content -Raw -Encoding UTF8 $indexPath | ConvertFrom-Json
+            $sourceSnapshot = [string]$firstIndex.maintenance_patches.source_snapshot_sha256
+            $firstSupport = @{}
+            foreach ($support in @($firstIndex.maintenance_patches.support_files)) {
+                $firstSupport[[string]$support.path] = [pscustomobject]@{
+                    added = [bool]$support.added
+                    source_sha256 = [string]$support.source_sha256
+                }
+            }
+
+            $firstCheck = @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $consumerRouter -RootOverride $root base-check 2>&1)
+            Assert-Equal 0 $LASTEXITCODE ("first patch provenance failed: " + ($firstCheck -join " "))
+
+            $secondOutput = @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $authorityRouter -RootOverride $root -BaseOverride $authorityBase base-patch --id test-second-verify-patch --apply 2>&1)
+            Assert-Equal 0 $LASTEXITCODE ("second bounded patch failed: " + ($secondOutput -join " "))
+            $secondIndex = Get-Content -Raw -Encoding UTF8 $indexPath | ConvertFrom-Json
+            Assert-Equal "0.3.8" ([string]$secondIndex.base_version) "second patch changed source Base version"
+            Assert-Equal $sourceSnapshot ([string]$secondIndex.maintenance_patches.source_snapshot_sha256) "second patch changed original source snapshot"
+            Assert-Equal 2 @($secondIndex.maintenance_patches.patches).Count "ordered patch chain count"
+            foreach ($support in @($secondIndex.maintenance_patches.support_files)) {
+                $origin = $firstSupport[[string]$support.path]
+                Assert-True ($null -ne $origin) ("second patch introduced unexpected support origin: " + [string]$support.path)
+                Assert-Equal $origin.added ([bool]$support.added) ("support added provenance changed: " + [string]$support.path)
+                Assert-Equal $origin.source_sha256 ([string]$support.source_sha256) ("support source provenance changed: " + [string]$support.path)
+            }
+
+            $secondCheck = @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $consumerRouter -RootOverride $root base-check 2>&1)
+            Assert-Equal 0 $LASTEXITCODE ("second patch provenance failed: " + ($secondCheck -join " "))
+
+            $indexBytes = [IO.File]::ReadAllBytes($indexPath)
+            $tamperedIndex = Get-Content -Raw -Encoding UTF8 $indexPath | ConvertFrom-Json
+            $tamperedIndex.maintenance_patches.patches[1].files[0].target_sha256 = (("0" * 64) -join "")
+            [IO.File]::WriteAllText($indexPath, (ConvertTo-Json $tamperedIndex -Depth 20) + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
+            @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $consumerRouter -RootOverride $root base-check 2>&1) | Out-Null
+            Assert-True ($LASTEXITCODE -ne 0) "tampered patch provenance was accepted"
+            [IO.File]::WriteAllBytes($indexPath, $indexBytes)
+
+            $supportPath = Join-Path $root ".kinotch/scripts/maintenance-patches.ps1"
+            $supportBytes = [IO.File]::ReadAllBytes($supportPath)
+            Add-Content -LiteralPath $supportPath -Value "# support drift"
+            @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $consumerRouter -RootOverride $root base-check 2>&1) | Out-Null
+            Assert-True ($LASTEXITCODE -ne 0) "tampered support file was accepted"
+            [IO.File]::WriteAllBytes($supportPath, $supportBytes)
+
+            $finalCheck = @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $consumerRouter -RootOverride $root base-check 2>&1)
+            Assert-Equal 0 $LASTEXITCODE ("restored two-patch provenance did not validate: " + ($finalCheck -join " "))
+        }
+        finally {
+            Remove-Item -LiteralPath $authorityRoot -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    } -AssertOutput {
+        param($root, $output)
+        Assert-True ($output -match "Base maintenance patches") "two-patch base-check did not report bounded patch provenance"
+    }
+}
+
 Invoke-TestCase "bounded Base patch rejects an unregistered patch id" {
     Invoke-KntFixture -Name "valid-minimal" -Command "base-check" -ExpectedExit 0 -Prepare {
         param($root)
@@ -2207,7 +2305,7 @@ Invoke-TestCase "Base documentation and profile metadata are finalized" {
     Assert-True ($workflow -match "knt\.ps1 setup") "Base CI setup step is missing"
     Assert-True ($workflow -match "actions/checkout@[0-9a-f]{40}(?:\s+#\s+v4)?") "Base Verify checkout action is not pinned to a full commit SHA"
     Assert-Equal 0 @($surfaceRegistry.surfaces.PSObject.Properties).Count "Base Surface Registry should be empty"
-    Assert-Equal "0.5.19" $baseVersion "Base version"
+    Assert-Equal "0.5.20" $baseVersion "Base version"
     Assert-True ($baseReadme -match "Surface Default Kit") "README_BASE Surface Kit wording is missing"
     Assert-True ($baseReadme -match "OVERRIDE") "README_BASE override boundary is missing"
     Assert-True (@($catalog.defaults | Where-Object { $_.kind -eq "surface" }).Count -ge 8) "Surface Default catalog entries are incomplete"
