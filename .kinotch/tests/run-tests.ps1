@@ -1932,6 +1932,166 @@ Invoke-TestCase "changed Base file fails base-check" {
     }
 }
 
+Invoke-TestCase "bounded Base patch applies exact registered maintenance delta without changing source Base version" {
+    Invoke-KntFixture -Name "valid-minimal" -Command "base-check" -ExpectedExit 0 -Prepare {
+        param($root)
+
+        $legacyVerify = @'
+name: Verify
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Base / project diagnostics
+        shell: pwsh
+        run: ./.kinotch/scripts/knt.ps1 doctor
+      - name: Project setup
+        shell: pwsh
+        run: ./.kinotch/scripts/knt.ps1 setup
+      - name: Project verification
+        shell: pwsh
+        run: ./.kinotch/scripts/knt.ps1 verify
+'@
+        [IO.File]::WriteAllText((Join-Path $root ".github/workflows/verify.yml"), $legacyVerify + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
+        [IO.File]::WriteAllText((Join-Path $root ".kinotch/BASE_VERSION"), "0.3.8" + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
+        Set-FixtureBaseIndex $root
+
+        $manifestPath = Join-Path $root "project/project.json"
+        $manifestBefore = Get-Content -Raw -Encoding UTF8 $manifestPath
+        $authorityRouter = Join-Path $RepoRoot ".kinotch/scripts/knt.ps1"
+        $authorityBase = Join-Path $RepoRoot ".kinotch"
+        $patchOutput = @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $authorityRouter -RootOverride $root -BaseOverride $authorityBase base-patch --id verify-checkout-v4-immutable-from-0.3.8 --apply 2>&1)
+        Assert-Equal 0 $LASTEXITCODE ("base-patch apply failed: " + ($patchOutput -join " "))
+        Assert-Equal "0.3.8" ((Get-Content -Raw -Encoding UTF8 (Join-Path $root ".kinotch/BASE_VERSION")).Trim()) "source Base version changed"
+        Assert-Equal $manifestBefore (Get-Content -Raw -Encoding UTF8 $manifestPath) "Project manifest changed during bounded Base patch"
+
+        $index = Get-Content -Raw -Encoding UTF8 (Join-Path $root ".kinotch/base-files.json") | ConvertFrom-Json
+        Assert-Equal "0.3.8" ([string]$index.base_version) "patched index source Base version"
+        Assert-Equal 1 @($index.maintenance_patches.patches).Count "maintenance patch provenance count"
+        Assert-Equal "verify-checkout-v4-immutable-from-0.3.8" ([string]$index.maintenance_patches.patches[0].id) "maintenance patch id"
+        $verifyEntry = $index.files | Where-Object path -eq ".github/workflows/verify.yml"
+        Assert-Equal "bf1e83775391751036f77ef90eb1a5de4272a10e402403057a4dd9b6e39c2059" ([string]$verifyEntry.sha256) "patched Verify hash"
+    } -AssertOutput {
+        param($root, $output)
+        Assert-True ($output -match "Base maintenance patches") "base-check did not report bounded patch provenance"
+    }
+}
+
+Invoke-TestCase "bounded Base patch rejects an unregistered patch id" {
+    Invoke-KntFixture -Name "valid-minimal" -Command "base-check" -ExpectedExit 0 -Prepare {
+        param($root)
+        Set-FixtureBaseIndex $root
+        $authorityRouter = Join-Path $RepoRoot ".kinotch/scripts/knt.ps1"
+        $authorityBase = Join-Path $RepoRoot ".kinotch"
+        $patchOutput = @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $authorityRouter -RootOverride $root -BaseOverride $authorityBase base-patch --id consumer-authored-exception --apply 2>&1)
+        Assert-Equal 2 $LASTEXITCODE "unregistered maintenance patch was accepted"
+        Assert-True (($patchOutput -join " ") -match "Unknown Base maintenance patch") "unknown-patch rejection was not explicit"
+    }
+}
+
+Invoke-TestCase "bounded Base patch rejects source drift before mutation" {
+    Invoke-KntFixture -Name "valid-minimal" -Command "base-check" -ExpectedExit 0 -Prepare {
+        param($root)
+
+        $legacyVerify = @'
+name: Verify
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Base / project diagnostics
+        shell: pwsh
+        run: ./.kinotch/scripts/knt.ps1 doctor
+      - name: Project setup
+        shell: pwsh
+        run: ./.kinotch/scripts/knt.ps1 setup
+      - name: Project verification
+        shell: pwsh
+        run: ./.kinotch/scripts/knt.ps1 verify
+'@
+        $verifyPath = Join-Path $root ".github/workflows/verify.yml"
+        [IO.File]::WriteAllText($verifyPath, $legacyVerify + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
+        [IO.File]::WriteAllText((Join-Path $root ".kinotch/BASE_VERSION"), "0.3.8" + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
+        Set-FixtureBaseIndex $root
+        Add-Content -LiteralPath $verifyPath -Value "# consumer drift"
+
+        $authorityRouter = Join-Path $RepoRoot ".kinotch/scripts/knt.ps1"
+        $authorityBase = Join-Path $RepoRoot ".kinotch"
+        $patchOutput = @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $authorityRouter -RootOverride $root -BaseOverride $authorityBase base-patch --id verify-checkout-v4-immutable-from-0.3.8 --apply 2>&1)
+        Assert-Equal 2 $LASTEXITCODE "source-drifted maintenance patch was accepted"
+        Assert-True (($patchOutput -join " ") -match "source content drifted") "source drift rejection was not explicit"
+
+        [IO.File]::WriteAllText($verifyPath, $legacyVerify + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
+    }
+}
+
+Invoke-TestCase "base-check rejects target drift after bounded Base patch" {
+    Invoke-KntFixture -Name "valid-minimal" -Command "base-check" -ExpectedExit 1 -Prepare {
+        param($root)
+
+        $legacyVerify = @'
+name: Verify
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Base / project diagnostics
+        shell: pwsh
+        run: ./.kinotch/scripts/knt.ps1 doctor
+      - name: Project setup
+        shell: pwsh
+        run: ./.kinotch/scripts/knt.ps1 setup
+      - name: Project verification
+        shell: pwsh
+        run: ./.kinotch/scripts/knt.ps1 verify
+'@
+        $verifyPath = Join-Path $root ".github/workflows/verify.yml"
+        [IO.File]::WriteAllText($verifyPath, $legacyVerify + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
+        [IO.File]::WriteAllText((Join-Path $root ".kinotch/BASE_VERSION"), "0.3.8" + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
+        Set-FixtureBaseIndex $root
+
+        $authorityRouter = Join-Path $RepoRoot ".kinotch/scripts/knt.ps1"
+        $authorityBase = Join-Path $RepoRoot ".kinotch"
+        @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $authorityRouter -RootOverride $root -BaseOverride $authorityBase base-patch --id verify-checkout-v4-immutable-from-0.3.8 --apply 2>&1) | Out-Null
+        Assert-Equal 0 $LASTEXITCODE "bounded patch setup"
+
+        Add-Content -LiteralPath $verifyPath -Value "# target drift"
+    } -AssertOutput {
+        param($root, $output)
+        Assert-True ($output -match "CHANGED.*verify.yml|verify.yml.*CHANGED") "patched target drift was not rejected"
+    }
+}
+
 Invoke-TestCase "base-refresh rejects protected changes without a version bump" {
     Invoke-KntFixture -Name "valid-minimal" -Command "base-refresh" -ExpectedExit 2 -Prepare {
         param($root)
@@ -2073,7 +2233,7 @@ Invoke-TestCase "Base documentation and profile metadata are finalized" {
     Assert-True ($workflow -match "knt\.ps1 setup") "Base CI setup step is missing"
     Assert-True ($workflow -match "actions/checkout@[0-9a-f]{40}(?:\s+#\s+v4)?") "Base Verify checkout action is not pinned to a full commit SHA"
     Assert-Equal 0 @($surfaceRegistry.surfaces.PSObject.Properties).Count "Base Surface Registry should be empty"
-    Assert-Equal "0.5.14" $baseVersion "Base version"
+    Assert-Equal "0.5.15" $baseVersion "Base version"
     Assert-True ($baseReadme -match "Surface Default Kit") "README_BASE Surface Kit wording is missing"
     Assert-True ($baseReadme -match "OVERRIDE") "README_BASE override boundary is missing"
     Assert-True (@($catalog.defaults | Where-Object { $_.kind -eq "surface" }).Count -ge 8) "Surface Default catalog entries are incomplete"
