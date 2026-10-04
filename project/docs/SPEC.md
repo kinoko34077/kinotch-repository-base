@@ -34,6 +34,7 @@ The Base reduces the effort to create, read, repair, and verify a repository wit
 22. CLI, Windows, MCP, API, Agent, Config, and Logging helpers remain removable Surface/Tool conveniences and do not change Runtime semantics or Project-owned policy.
 23. Manifest paths, command working directories, Default materialization targets, and generated helper paths remain inside their trusted roots and reject link/reparse-point traversal.
 24. Default upgrade planning compares the current template tree with recorded provenance, removes only unchanged stale files, preserves modified stale files, and reconciles `DISABLED` cleanup only after explicit `--apply`.
+25. A legacy consumer can adopt an explicitly Base-issued bounded maintenance/security patch while retaining its source full-snapshot `BASE_VERSION`; exact source-snapshot, patch-id and source/target hashes are recorded, arbitrary protected-file exceptions remain unsupported, and full Base adoption remains the path for broader structural migration.
 
 ## Fixed read order
 
@@ -51,7 +52,7 @@ The Runtime owns execution implementations and the cross-repository Execution Co
 
 ## Inputs and outputs
 
-Inputs are the repository files, project/project.json, contract registries, Base schemas, profile declarations, Default state, and command arguments. doctor emits diagnostics and an exit code, including Catalog semantics and DEFAULT Tool/Surface compatibility. verify delegates to the configured project verification command or test then build fallback. base-check reports common-file drift. init generates only a missing Project Overlay. migrate reports candidates and writes only after explicit `--apply` with a repository-local Base, preserving existing Default states. Base self-tests report individual behavior failures and an aggregate exit code.
+Inputs are the repository files, project/project.json, contract registries, Base schemas, profile declarations, Default state, and command arguments. doctor emits diagnostics and an exit code, including Catalog semantics and DEFAULT Tool/Surface compatibility. verify delegates to the configured project verification command or test then build fallback. base-check reports common-file drift and validates bounded maintenance-patch provenance when present. init generates only a missing Project Overlay. migrate reports candidates and writes only after explicit `--apply` with a repository-local Base, preserving existing Default states. Base self-tests report individual behavior failures and an aggregate exit code. `base-patch` is dry-run by default and, only with an explicit current Repository Base authority plus `--apply`, applies a catalog-registered exact protected-file transition to an older consumer without rewriting the consumer's source full-snapshot identity.
 
 ## Constraints
 

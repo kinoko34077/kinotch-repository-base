@@ -94,6 +94,59 @@ function Set-FixtureBaseIndex([string]$Root) {
     [IO.File]::WriteAllText((Join-Path $Root ".kinotch/base-files.json"), $json + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
 }
 
+function Set-FixtureAsLegacyBase038Consumer([string]$Root) {
+    $targetRouterPayload = Join-Path $RepoRoot ".kinotch/maintenance-patches/verify-checkout-v4-immutable-from-0.3.8/knt.ps1"
+    $routerText = Get-Content -Raw -Encoding UTF8 $targetRouterPayload
+    $maintenanceHookPattern = '(?ms)^\$MaintenancePatchPath = Join-Path \$BaseDir "scripts/maintenance-patches\.ps1"\r?\nif \(-not \(Test-Path -LiteralPath \$MaintenancePatchPath -PathType Leaf\)\) \{\r?\n    throw "Maintenance patch helper not found: \$MaintenancePatchPath"\r?\n\}\r?\n\. \$MaintenancePatchPath\r?\n'
+    $maintenanceCheckPattern = '(?m)^    if \(-not \(Test-KntMaintenancePatchProvenance -Index \$index\)\) \{ \$ok = \$false \}\r?\n'
+    $sourceRouter = [regex]::Replace($routerText, $maintenanceHookPattern, "")
+    $sourceRouter = [regex]::Replace($sourceRouter, $maintenanceCheckPattern, "")
+    $routerPath = Join-Path $Root ".kinotch/scripts/knt.ps1"
+    [IO.File]::WriteAllText($routerPath, $sourceRouter, (New-Object System.Text.UTF8Encoding($false)))
+    Assert-Equal "84bea22c610fb7d48d9291945c96fe191e1fed73d9b3c389025f0b4ea59d9b8b" (Get-BaseFileHash $routerPath) "legacy v0.3.8 router source hash"
+
+    Remove-Item -LiteralPath (Join-Path $Root ".kinotch/maintenance-patches.json") -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath (Join-Path $Root ".kinotch/scripts/maintenance-patches.ps1") -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath (Join-Path $Root ".kinotch/maintenance-patches") -Recurse -Force -ErrorAction SilentlyContinue
+
+    $legacyVerify = @'
+name: Verify
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Base / project diagnostics
+        shell: pwsh
+        run: ./.kinotch/scripts/knt.ps1 doctor
+      - name: Project setup
+        shell: pwsh
+        run: ./.kinotch/scripts/knt.ps1 setup
+      - name: Project verification
+        shell: pwsh
+        run: ./.kinotch/scripts/knt.ps1 verify
+'@
+    $verifyPath = Join-Path $Root ".github/workflows/verify.yml"
+    [IO.File]::WriteAllText($verifyPath, $legacyVerify + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
+    Assert-Equal "ae4ac2882296e238f141db1d46247dd77027411d7ac954622e96ddf85de27f3a" (Get-BaseFileHash $verifyPath) "legacy v0.3.8 Verify source hash"
+
+    [IO.File]::WriteAllText((Join-Path $Root ".kinotch/BASE_VERSION"), "0.3.8" + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
+
+    $inventoryPaths = @(Get-FixtureProtectedPaths $Root | Sort-Object -Unique)
+    $inventoryContent = ($inventoryPaths -join [Environment]::NewLine) + [Environment]::NewLine
+    [IO.File]::WriteAllText((Join-Path $Root ".kinotch/FILE_INVENTORY.txt"), $inventoryContent, (New-Object System.Text.UTF8Encoding($false)))
+    Set-FixtureBaseIndex $Root
+}
+
 function Set-FixtureAsBase([string]$Root) {
     $manifestPath = Join-Path $Root "project/project.json"
     $manifest = Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json
@@ -1932,6 +1985,185 @@ Invoke-TestCase "changed Base file fails base-check" {
     }
 }
 
+Invoke-TestCase "bounded Base patch applies exact registered maintenance delta without changing source Base version" {
+    Invoke-KntFixture -Name "valid-minimal" -Command "base-check" -ExpectedExit 0 -Prepare {
+        param($root)
+        Set-FixtureAsLegacyBase038Consumer $root
+
+        $manifestPath = Join-Path $root "project/project.json"
+        $manifestBefore = Get-Content -Raw -Encoding UTF8 $manifestPath
+        $authorityRouter = Join-Path $RepoRoot ".kinotch/scripts/knt.ps1"
+        $authorityBase = Join-Path $RepoRoot ".kinotch"
+        $patchOutput = @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $authorityRouter -RootOverride $root -BaseOverride $authorityBase base-patch --id verify-checkout-v4-immutable-from-0.3.8 --apply 2>&1)
+        Assert-Equal 0 $LASTEXITCODE ("base-patch apply failed: " + ($patchOutput -join " "))
+        Assert-Equal "0.3.8" ((Get-Content -Raw -Encoding UTF8 (Join-Path $root ".kinotch/BASE_VERSION")).Trim()) "source Base version changed"
+        Assert-Equal $manifestBefore (Get-Content -Raw -Encoding UTF8 $manifestPath) "Project manifest changed during bounded Base patch"
+
+        $index = Get-Content -Raw -Encoding UTF8 (Join-Path $root ".kinotch/base-files.json") | ConvertFrom-Json
+        Assert-Equal "0.3.8" ([string]$index.base_version) "patched index source Base version"
+        Assert-Equal 1 @($index.maintenance_patches.patches).Count "maintenance patch provenance count"
+        Assert-Equal "verify-checkout-v4-immutable-from-0.3.8" ([string]$index.maintenance_patches.patches[0].id) "maintenance patch id"
+        $verifyEntry = $index.files | Where-Object path -eq ".github/workflows/verify.yml"
+        Assert-Equal "bf1e83775391751036f77ef90eb1a5de4272a10e402403057a4dd9b6e39c2059" ([string]$verifyEntry.sha256) "patched Verify hash"
+        $routerEntry = $index.files | Where-Object path -eq ".kinotch/scripts/knt.ps1"
+        Assert-Equal "0cc7e22aa1001d4dd7555275908c0b085373241388b07501ee1ccf28b66766b9" ([string]$routerEntry.sha256) "patched legacy router hash"
+        Assert-True (Test-Path -LiteralPath (Join-Path $root ".kinotch/scripts/maintenance-patches.ps1") -PathType Leaf) "legacy validator support file missing"
+        $inventoryText = Get-Content -Raw -Encoding UTF8 (Join-Path $root ".kinotch/FILE_INVENTORY.txt")
+        Assert-True ($inventoryText -match "(?m)^\.kinotch/maintenance-patches\.json\r?$") "maintenance patch catalog was not added to FILE_INVENTORY"
+        $inventoryEntry = $index.files | Where-Object path -eq ".kinotch/FILE_INVENTORY.txt"
+        Assert-Equal (Get-BaseFileHash (Join-Path $root ".kinotch/FILE_INVENTORY.txt")) ([string]$inventoryEntry.sha256) "patched FILE_INVENTORY hash"
+    } -AssertOutput {
+        param($root, $output)
+        Assert-True ($output -match "Base maintenance patches") "base-check did not report bounded patch provenance"
+    }
+}
+
+Invoke-TestCase "bounded Base patch chain preserves original support-file provenance" {
+    Invoke-KntFixture -Name "valid-minimal" -Command "base-check" -ExpectedExit 0 -Prepare {
+        param($root)
+        Set-FixtureAsLegacyBase038Consumer $root
+
+        $authorityRoot = Join-Path ([IO.Path]::GetTempPath()) ("kinotch-patch-authority-" + [guid]::NewGuid().ToString("N"))
+        New-Item -ItemType Directory -Path $authorityRoot -Force | Out-Null
+        try {
+            Copy-Item -LiteralPath (Join-Path $RepoRoot ".kinotch") -Destination (Join-Path $authorityRoot ".kinotch") -Recurse -Force
+            New-Item -ItemType Directory -Path (Join-Path $authorityRoot "project") -Force | Out-Null
+            Copy-Item -LiteralPath (Join-Path $RepoRoot "project/project.json") -Destination (Join-Path $authorityRoot "project/project.json") -Force
+
+            $authorityBase = Join-Path $authorityRoot ".kinotch"
+            $firstPayload = Join-Path $authorityBase "maintenance-patches/verify-checkout-v4-immutable-from-0.3.8/verify.yml"
+            $secondPayloadDir = Join-Path $authorityBase "maintenance-patches/test-second-verify-patch"
+            New-Item -ItemType Directory -Path $secondPayloadDir -Force | Out-Null
+            $secondPayload = Join-Path $secondPayloadDir "verify.yml"
+            $secondContent = (Get-Content -Raw -Encoding UTF8 $firstPayload).TrimEnd([char]13, [char]10) + [Environment]::NewLine + "# second registered maintenance patch" + [Environment]::NewLine
+            [IO.File]::WriteAllText($secondPayload, $secondContent, (New-Object System.Text.UTF8Encoding($false)))
+            $secondHash = Get-BaseFileHash $secondPayload
+
+            $catalogPath = Join-Path $authorityBase "maintenance-patches.json"
+            $catalog = Get-Content -Raw -Encoding UTF8 $catalogPath | ConvertFrom-Json
+            $catalog.patches = @($catalog.patches) + @([pscustomobject]@{
+                id = "test-second-verify-patch"
+                description = "Test-only second registered patch for ordered provenance regression."
+                source_base_version = "0.3.8"
+                files = @([pscustomobject]@{
+                    path = ".github/workflows/verify.yml"
+                    source_sha256 = "bf1e83775391751036f77ef90eb1a5de4272a10e402403057a4dd9b6e39c2059"
+                    target_sha256 = $secondHash
+                    content_path = "maintenance-patches/test-second-verify-patch/verify.yml"
+                })
+            })
+            [IO.File]::WriteAllText($catalogPath, (ConvertTo-Json $catalog -Depth 20) + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
+
+            $authorityRouter = Join-Path $authorityBase "scripts/knt.ps1"
+            $consumerRouter = Join-Path $root ".kinotch/scripts/knt.ps1"
+            $indexPath = Join-Path $root ".kinotch/base-files.json"
+
+            $firstOutput = @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $authorityRouter -RootOverride $root -BaseOverride $authorityBase base-patch --id verify-checkout-v4-immutable-from-0.3.8 --apply 2>&1)
+            Assert-Equal 0 $LASTEXITCODE ("first bounded patch failed: " + ($firstOutput -join " "))
+            $firstIndex = Get-Content -Raw -Encoding UTF8 $indexPath | ConvertFrom-Json
+            $sourceSnapshot = [string]$firstIndex.maintenance_patches.source_snapshot_sha256
+            $firstSupport = @{}
+            foreach ($support in @($firstIndex.maintenance_patches.support_files)) {
+                $firstSupport[[string]$support.path] = [pscustomobject]@{
+                    added = [bool]$support.added
+                    source_sha256 = [string]$support.source_sha256
+                }
+            }
+
+            $firstCheck = @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $consumerRouter -RootOverride $root base-check 2>&1)
+            Assert-Equal 0 $LASTEXITCODE ("first patch provenance failed: " + ($firstCheck -join " "))
+
+            $secondOutput = @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $authorityRouter -RootOverride $root -BaseOverride $authorityBase base-patch --id test-second-verify-patch --apply 2>&1)
+            Assert-Equal 0 $LASTEXITCODE ("second bounded patch failed: " + ($secondOutput -join " "))
+            $secondIndex = Get-Content -Raw -Encoding UTF8 $indexPath | ConvertFrom-Json
+            Assert-Equal "0.3.8" ([string]$secondIndex.base_version) "second patch changed source Base version"
+            Assert-Equal $sourceSnapshot ([string]$secondIndex.maintenance_patches.source_snapshot_sha256) "second patch changed original source snapshot"
+            Assert-Equal 2 @($secondIndex.maintenance_patches.patches).Count "ordered patch chain count"
+            foreach ($support in @($secondIndex.maintenance_patches.support_files)) {
+                $origin = $firstSupport[[string]$support.path]
+                Assert-True ($null -ne $origin) ("second patch introduced unexpected support origin: " + [string]$support.path)
+                Assert-Equal $origin.added ([bool]$support.added) ("support added provenance changed: " + [string]$support.path)
+                Assert-Equal $origin.source_sha256 ([string]$support.source_sha256) ("support source provenance changed: " + [string]$support.path)
+            }
+
+            $secondCheck = @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $consumerRouter -RootOverride $root base-check 2>&1)
+            Assert-Equal 0 $LASTEXITCODE ("second patch provenance failed: " + ($secondCheck -join " "))
+
+            $indexBytes = [IO.File]::ReadAllBytes($indexPath)
+            $tamperedIndex = Get-Content -Raw -Encoding UTF8 $indexPath | ConvertFrom-Json
+            $tamperedIndex.maintenance_patches.patches[1].files[0].target_sha256 = (("0" * 64) -join "")
+            [IO.File]::WriteAllText($indexPath, (ConvertTo-Json $tamperedIndex -Depth 20) + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
+            @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $consumerRouter -RootOverride $root base-check 2>&1) | Out-Null
+            Assert-True ($LASTEXITCODE -ne 0) "tampered patch provenance was accepted"
+            [IO.File]::WriteAllBytes($indexPath, $indexBytes)
+
+            $supportPath = Join-Path $root ".kinotch/scripts/maintenance-patches.ps1"
+            $supportBytes = [IO.File]::ReadAllBytes($supportPath)
+            Add-Content -LiteralPath $supportPath -Value "# support drift"
+            @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $consumerRouter -RootOverride $root base-check 2>&1) | Out-Null
+            Assert-True ($LASTEXITCODE -ne 0) "tampered support file was accepted"
+            [IO.File]::WriteAllBytes($supportPath, $supportBytes)
+
+            $finalCheck = @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $consumerRouter -RootOverride $root base-check 2>&1)
+            Assert-Equal 0 $LASTEXITCODE ("restored two-patch provenance did not validate: " + ($finalCheck -join " "))
+        }
+        finally {
+            Remove-Item -LiteralPath $authorityRoot -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    } -AssertOutput {
+        param($root, $output)
+        Assert-True ($output -match "Base maintenance patches") "two-patch base-check did not report bounded patch provenance"
+    }
+}
+
+Invoke-TestCase "bounded Base patch rejects an unregistered patch id" {
+    Invoke-KntFixture -Name "valid-minimal" -Command "base-check" -ExpectedExit 0 -Prepare {
+        param($root)
+        Set-FixtureBaseIndex $root
+        $authorityRouter = Join-Path $RepoRoot ".kinotch/scripts/knt.ps1"
+        $authorityBase = Join-Path $RepoRoot ".kinotch"
+        $patchOutput = @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $authorityRouter -RootOverride $root -BaseOverride $authorityBase base-patch --id consumer-authored-exception --apply 2>&1)
+        Assert-Equal 2 $LASTEXITCODE "unregistered maintenance patch was accepted"
+        Assert-True (($patchOutput -join " ") -match "Unknown Base maintenance patch") "unknown-patch rejection was not explicit"
+    }
+}
+
+Invoke-TestCase "bounded Base patch rejects source drift before mutation" {
+    Invoke-KntFixture -Name "valid-minimal" -Command "base-check" -ExpectedExit 0 -Prepare {
+        param($root)
+        Set-FixtureAsLegacyBase038Consumer $root
+        $verifyPath = Join-Path $root ".github/workflows/verify.yml"
+        $originalVerify = Get-Content -Raw -Encoding UTF8 $verifyPath
+        Add-Content -LiteralPath $verifyPath -Value "# consumer drift"
+
+        $authorityRouter = Join-Path $RepoRoot ".kinotch/scripts/knt.ps1"
+        $authorityBase = Join-Path $RepoRoot ".kinotch"
+        $patchOutput = @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $authorityRouter -RootOverride $root -BaseOverride $authorityBase base-patch --id verify-checkout-v4-immutable-from-0.3.8 --apply 2>&1)
+        Assert-Equal 2 $LASTEXITCODE "source-drifted maintenance patch was accepted"
+        Assert-True (($patchOutput -join " ") -match "source content drifted") "source drift rejection was not explicit"
+
+        [IO.File]::WriteAllText($verifyPath, $originalVerify, (New-Object System.Text.UTF8Encoding($false)))
+    }
+}
+
+Invoke-TestCase "base-check rejects target drift after bounded Base patch" {
+    Invoke-KntFixture -Name "valid-minimal" -Command "base-check" -ExpectedExit 1 -Prepare {
+        param($root)
+        Set-FixtureAsLegacyBase038Consumer $root
+        $verifyPath = Join-Path $root ".github/workflows/verify.yml"
+
+        $authorityRouter = Join-Path $RepoRoot ".kinotch/scripts/knt.ps1"
+        $authorityBase = Join-Path $RepoRoot ".kinotch"
+        @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $authorityRouter -RootOverride $root -BaseOverride $authorityBase base-patch --id verify-checkout-v4-immutable-from-0.3.8 --apply 2>&1) | Out-Null
+        Assert-Equal 0 $LASTEXITCODE "bounded patch setup"
+
+        Add-Content -LiteralPath $verifyPath -Value "# target drift"
+    } -AssertOutput {
+        param($root, $output)
+        Assert-True ($output -match "CHANGED.*verify.yml|verify.yml.*CHANGED") "patched target drift was not rejected"
+    }
+}
+
 Invoke-TestCase "base-refresh rejects protected changes without a version bump" {
     Invoke-KntFixture -Name "valid-minimal" -Command "base-refresh" -ExpectedExit 2 -Prepare {
         param($root)
@@ -2073,7 +2305,7 @@ Invoke-TestCase "Base documentation and profile metadata are finalized" {
     Assert-True ($workflow -match "knt\.ps1 setup") "Base CI setup step is missing"
     Assert-True ($workflow -match "actions/checkout@[0-9a-f]{40}(?:\s+#\s+v4)?") "Base Verify checkout action is not pinned to a full commit SHA"
     Assert-Equal 0 @($surfaceRegistry.surfaces.PSObject.Properties).Count "Base Surface Registry should be empty"
-    Assert-Equal "0.5.14" $baseVersion "Base version"
+    Assert-Equal "0.5.21" $baseVersion "Base version"
     Assert-True ($baseReadme -match "Surface Default Kit") "README_BASE Surface Kit wording is missing"
     Assert-True ($baseReadme -match "OVERRIDE") "README_BASE override boundary is missing"
     Assert-True (@($catalog.defaults | Where-Object { $_.kind -eq "surface" }).Count -ge 8) "Surface Default catalog entries are incomplete"
