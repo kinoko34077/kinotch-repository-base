@@ -185,8 +185,16 @@ function Test-KntMaintenancePatchProvenance {
         }
     }
     foreach ($support in @($state.support_files)) {
+        $supportPath = [string]$support.path
         if ([bool]$support.added) {
-            [void]$sourceHashes.Remove([string]$support.path)
+            [void]$sourceHashes.Remove($supportPath)
+        }
+        elseif ([string]$support.source_sha256 -match "^[0-9a-f]{64}$") {
+            $sourceHashes[$supportPath] = [string]$support.source_sha256
+        }
+        else {
+            Write-Host "[base-check] PATCH_SUPPORT missing source hash for existing support file $supportPath" -ForegroundColor Yellow
+            $ok = $false
         }
     }
 
@@ -320,6 +328,12 @@ function Invoke-KntBasePatch {
     else {
         Get-KntBaseSnapshotHash -Entries @($index.files)
     }
+    $sourceInventoryHash = if ($entryMap.ContainsKey(".kinotch/FILE_INVENTORY.txt")) {
+        [string]$entryMap[".kinotch/FILE_INVENTORY.txt"].sha256
+    }
+    else {
+        throw "Base maintenance patch target index is missing .kinotch/FILE_INVENTORY.txt"
+    }
 
     $catalogPath = Join-Path $BaseDir "maintenance-patches.json"
     $catalogHash = Get-BaseFileHash -Path $catalogPath
@@ -360,6 +374,18 @@ function Invoke-KntBasePatch {
         $entryMap[[string]$file.path].sha256 = [string]$file.target_sha256
     }
 
+    $inventoryPath = Join-Path $targetBaseDir "FILE_INVENTORY.txt"
+    $inventoryEntries = @($index.files | ForEach-Object { [string]$_.path } | Sort-Object -Unique)
+    $inventoryContent = ($inventoryEntries -join [Environment]::NewLine) + [Environment]::NewLine
+    [void](Assert-KntSafeWritePath -Root $Root -Candidate $inventoryPath -Description "base-patch inventory write")
+    [IO.File]::WriteAllText(
+        $inventoryPath,
+        $inventoryContent,
+        (New-Object System.Text.UTF8Encoding($false))
+    )
+    $targetInventoryHash = Get-BaseFileHash -Path $inventoryPath
+    $entryMap[".kinotch/FILE_INVENTORY.txt"].sha256 = $targetInventoryHash
+
     $record = [pscustomobject]@{
         id = [string]$definition.id
         authority_base_version = $authorityVersion
@@ -377,11 +403,20 @@ function Invoke-KntBasePatch {
         source_base_version = $targetVersion
         source_snapshot_sha256 = $sourceSnapshotHash
         catalog_sha256 = $catalogHash
-        support_files = @([pscustomobject]@{
-            path = ".kinotch/maintenance-patches.json"
-            sha256 = $catalogHash
-            added = (-not $catalogWasIndexed)
-        })
+        support_files = @(
+            [pscustomobject]@{
+                path = ".kinotch/maintenance-patches.json"
+                sha256 = $catalogHash
+                added = (-not $catalogWasIndexed)
+                source_sha256 = if ($catalogWasIndexed) { [string]$entryMap[".kinotch/maintenance-patches.json"].sha256 } else { $null }
+            },
+            [pscustomobject]@{
+                path = ".kinotch/FILE_INVENTORY.txt"
+                sha256 = $targetInventoryHash
+                added = $false
+                source_sha256 = $sourceInventoryHash
+            }
+        )
         patches = @($existingPatches) + @($record)
     }
 
