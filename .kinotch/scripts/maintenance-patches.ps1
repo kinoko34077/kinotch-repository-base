@@ -4,7 +4,16 @@ function Get-KntBaseSnapshotHash {
     $lines = @($Entries | Sort-Object { [string]$_.path } | ForEach-Object {
         ([string]$_.path) + "=" + ([string]$_.sha256)
     })
-    return Get-BaseTextHash -Text (($lines -join [Environment]::NewLine) + [Environment]::NewLine)
+    $canonical = (($lines -join [Environment]::NewLine) + [Environment]::NewLine).Replace("`r`n", "`n").Replace("`r", "`n")
+    $encoding = New-Object System.Text.UTF8Encoding($false)
+    $bytes = $encoding.GetBytes($canonical)
+    $sha256 = [Security.Cryptography.SHA256]::Create()
+    try {
+        return (($sha256.ComputeHash($bytes) | ForEach-Object { $_.ToString("x2") }) -join "")
+    }
+    finally {
+        $sha256.Dispose()
+    }
 }
 
 function Get-KntMaintenancePatchCatalog {
@@ -36,7 +45,7 @@ function Get-KntMaintenancePatchCatalog {
 
         $paths = @{}
         foreach ($file in @($patch.files)) {
-            $path = ([string]$file.path).Replace("\\", "/").TrimStart("/")
+            $path = ([string]$file.path).Replace('\', '/').TrimStart("/")
             if ([string]::IsNullOrWhiteSpace($path) -or $path -match "(^|/)\.\.(/|$)" -or $paths.ContainsKey($path)) {
                 throw "Base maintenance patch '$id' has an invalid or duplicate file path"
             }
@@ -49,7 +58,7 @@ function Get-KntMaintenancePatchCatalog {
                 }
             }
 
-            $contentPath = ([string]$file.content_path).Replace("\\", "/").TrimStart("/")
+            $contentPath = ([string]$file.content_path).Replace('\', '/').TrimStart("/")
             if ([string]::IsNullOrWhiteSpace($contentPath) -or $contentPath -match "(^|/)\.\.(/|$)") {
                 throw "Base maintenance patch '$id' has invalid content_path for '$path'"
             }
