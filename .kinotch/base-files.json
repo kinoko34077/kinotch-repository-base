@@ -412,7 +412,7 @@
     },
     {
       "path": ".kinotch/tests/run-tests.ps1",
-      "sha256": "598c65c28d23bc16743131b8ee9c8e8c25947862e27c59c724d138374f3e9490"
+      "sha256": "e0d2922b24d1c8393994ec4a20f87876949714d07e591743c63290d7de8e80d9"
     },
     {
       "path": "AGENTS.md",
