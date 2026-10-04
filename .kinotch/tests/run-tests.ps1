@@ -94,6 +94,64 @@ function Set-FixtureBaseIndex([string]$Root) {
     [IO.File]::WriteAllText((Join-Path $Root ".kinotch/base-files.json"), $json + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
 }
 
+function Set-FixtureAsLegacyBase038Consumer([string]$Root) {
+    $targetRouterPayload = Join-Path $RepoRoot ".kinotch/maintenance-patches/verify-checkout-v4-immutable-from-0.3.8/knt.ps1"
+    $routerText = Get-Content -Raw -Encoding UTF8 $targetRouterPayload
+    $maintenanceHook = @'
+$MaintenancePatchPath = Join-Path $BaseDir "scripts/maintenance-patches.ps1"
+if (-not (Test-Path -LiteralPath $MaintenancePatchPath -PathType Leaf)) {
+    throw "Maintenance patch helper not found: $MaintenancePatchPath"
+}
+. $MaintenancePatchPath
+'@
+    $maintenanceCheck = '    if (-not (Test-KntMaintenancePatchProvenance -Index $index)) { $ok = $false }' + [Environment]::NewLine
+    $sourceRouter = $routerText.Replace($maintenanceHook, "").Replace($maintenanceCheck, "")
+    $routerPath = Join-Path $Root ".kinotch/scripts/knt.ps1"
+    [IO.File]::WriteAllText($routerPath, $sourceRouter, (New-Object System.Text.UTF8Encoding($false)))
+    Assert-Equal "84bea22c610fb7d48d9291945c96fe191e1fed73d9b3c389025f0b4ea59d9b8b" (Get-BaseFileHash $routerPath) "legacy v0.3.8 router source hash"
+
+    Remove-Item -LiteralPath (Join-Path $Root ".kinotch/maintenance-patches.json") -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath (Join-Path $Root ".kinotch/scripts/maintenance-patches.ps1") -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath (Join-Path $Root ".kinotch/maintenance-patches") -Recurse -Force -ErrorAction SilentlyContinue
+
+    $legacyVerify = @'
+name: Verify
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Base / project diagnostics
+        shell: pwsh
+        run: ./.kinotch/scripts/knt.ps1 doctor
+      - name: Project setup
+        shell: pwsh
+        run: ./.kinotch/scripts/knt.ps1 setup
+      - name: Project verification
+        shell: pwsh
+        run: ./.kinotch/scripts/knt.ps1 verify
+'@
+    $verifyPath = Join-Path $Root ".github/workflows/verify.yml"
+    [IO.File]::WriteAllText($verifyPath, $legacyVerify + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
+    Assert-Equal "ae4ac2882296e238f141db1d46247dd77027411d7ac954622e96ddf85de27f3a" (Get-BaseFileHash $verifyPath) "legacy v0.3.8 Verify source hash"
+
+    [IO.File]::WriteAllText((Join-Path $Root ".kinotch/BASE_VERSION"), "0.3.8" + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
+
+    $inventoryPaths = @(Get-FixtureProtectedPaths $Root | Sort-Object -Unique)
+    $inventoryContent = ($inventoryPaths -join [Environment]::NewLine) + [Environment]::NewLine
+    [IO.File]::WriteAllText((Join-Path $Root ".kinotch/FILE_INVENTORY.txt"), $inventoryContent, (New-Object System.Text.UTF8Encoding($false)))
+    Set-FixtureBaseIndex $Root
+}
+
 function Set-FixtureAsBase([string]$Root) {
     $manifestPath = Join-Path $Root "project/project.json"
     $manifest = Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json
@@ -1935,36 +1993,7 @@ Invoke-TestCase "changed Base file fails base-check" {
 Invoke-TestCase "bounded Base patch applies exact registered maintenance delta without changing source Base version" {
     Invoke-KntFixture -Name "valid-minimal" -Command "base-check" -ExpectedExit 0 -Prepare {
         param($root)
-
-        $legacyVerify = @'
-name: Verify
-
-on:
-  push:
-  pull_request:
-  workflow_dispatch:
-
-permissions:
-  contents: read
-
-jobs:
-  verify:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Base / project diagnostics
-        shell: pwsh
-        run: ./.kinotch/scripts/knt.ps1 doctor
-      - name: Project setup
-        shell: pwsh
-        run: ./.kinotch/scripts/knt.ps1 setup
-      - name: Project verification
-        shell: pwsh
-        run: ./.kinotch/scripts/knt.ps1 verify
-'@
-        [IO.File]::WriteAllText((Join-Path $root ".github/workflows/verify.yml"), $legacyVerify + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
-        [IO.File]::WriteAllText((Join-Path $root ".kinotch/BASE_VERSION"), "0.3.8" + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
-        Set-FixtureBaseIndex $root
+        Set-FixtureAsLegacyBase038Consumer $root
 
         $manifestPath = Join-Path $root "project/project.json"
         $manifestBefore = Get-Content -Raw -Encoding UTF8 $manifestPath
@@ -1981,6 +2010,9 @@ jobs:
         Assert-Equal "verify-checkout-v4-immutable-from-0.3.8" ([string]$index.maintenance_patches.patches[0].id) "maintenance patch id"
         $verifyEntry = $index.files | Where-Object path -eq ".github/workflows/verify.yml"
         Assert-Equal "bf1e83775391751036f77ef90eb1a5de4272a10e402403057a4dd9b6e39c2059" ([string]$verifyEntry.sha256) "patched Verify hash"
+        $routerEntry = $index.files | Where-Object path -eq ".kinotch/scripts/knt.ps1"
+        Assert-Equal "0cc7e22aa1001d4dd7555275908c0b085373241388b07501ee1ccf28b66766b9" ([string]$routerEntry.sha256) "patched legacy router hash"
+        Assert-True (Test-Path -LiteralPath (Join-Path $root ".kinotch/scripts/maintenance-patches.ps1") -PathType Leaf) "legacy validator support file missing"
         $inventoryText = Get-Content -Raw -Encoding UTF8 (Join-Path $root ".kinotch/FILE_INVENTORY.txt")
         Assert-True ($inventoryText -match "(?m)^\.kinotch/maintenance-patches\.json$") "maintenance patch catalog was not added to FILE_INVENTORY"
         $inventoryEntry = $index.files | Where-Object path -eq ".kinotch/FILE_INVENTORY.txt"
@@ -2006,37 +2038,8 @@ Invoke-TestCase "bounded Base patch rejects an unregistered patch id" {
 Invoke-TestCase "bounded Base patch rejects source drift before mutation" {
     Invoke-KntFixture -Name "valid-minimal" -Command "base-check" -ExpectedExit 0 -Prepare {
         param($root)
-
-        $legacyVerify = @'
-name: Verify
-
-on:
-  push:
-  pull_request:
-  workflow_dispatch:
-
-permissions:
-  contents: read
-
-jobs:
-  verify:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Base / project diagnostics
-        shell: pwsh
-        run: ./.kinotch/scripts/knt.ps1 doctor
-      - name: Project setup
-        shell: pwsh
-        run: ./.kinotch/scripts/knt.ps1 setup
-      - name: Project verification
-        shell: pwsh
-        run: ./.kinotch/scripts/knt.ps1 verify
-'@
+        Set-FixtureAsLegacyBase038Consumer $root
         $verifyPath = Join-Path $root ".github/workflows/verify.yml"
-        [IO.File]::WriteAllText($verifyPath, $legacyVerify + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
-        [IO.File]::WriteAllText((Join-Path $root ".kinotch/BASE_VERSION"), "0.3.8" + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
-        Set-FixtureBaseIndex $root
         Add-Content -LiteralPath $verifyPath -Value "# consumer drift"
 
         $authorityRouter = Join-Path $RepoRoot ".kinotch/scripts/knt.ps1"
@@ -2052,37 +2055,8 @@ jobs:
 Invoke-TestCase "base-check rejects target drift after bounded Base patch" {
     Invoke-KntFixture -Name "valid-minimal" -Command "base-check" -ExpectedExit 1 -Prepare {
         param($root)
-
-        $legacyVerify = @'
-name: Verify
-
-on:
-  push:
-  pull_request:
-  workflow_dispatch:
-
-permissions:
-  contents: read
-
-jobs:
-  verify:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Base / project diagnostics
-        shell: pwsh
-        run: ./.kinotch/scripts/knt.ps1 doctor
-      - name: Project setup
-        shell: pwsh
-        run: ./.kinotch/scripts/knt.ps1 setup
-      - name: Project verification
-        shell: pwsh
-        run: ./.kinotch/scripts/knt.ps1 verify
-'@
+        Set-FixtureAsLegacyBase038Consumer $root
         $verifyPath = Join-Path $root ".github/workflows/verify.yml"
-        [IO.File]::WriteAllText($verifyPath, $legacyVerify + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
-        [IO.File]::WriteAllText((Join-Path $root ".kinotch/BASE_VERSION"), "0.3.8" + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
-        Set-FixtureBaseIndex $root
 
         $authorityRouter = Join-Path $RepoRoot ".kinotch/scripts/knt.ps1"
         $authorityBase = Join-Path $RepoRoot ".kinotch"
