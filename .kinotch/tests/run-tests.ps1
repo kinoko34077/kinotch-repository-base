@@ -1998,6 +1998,42 @@ Invoke-TestCase "changed Base file fails base-check" {
     }
 }
 
+Invoke-TestCase "bounded Base snapshot hash is culture-independent and ordinal" {
+    $helperPath = Join-Path $RepoRoot ".kinotch/scripts/maintenance-patches.ps1"
+    . $helperPath
+
+    $entries = @(
+        [pscustomobject]@{ path = ".kinotch/defaults/catalog.json"; sha256 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+        [pscustomobject]@{ path = ".kinotch/DEVELOPMENT_FLOW.md"; sha256 = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" },
+        [pscustomobject]@{ path = ".kinotch/README_BASE.md"; sha256 = "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" }
+    )
+    $expectedCanonical = (
+        ".kinotch/DEVELOPMENT_FLOW.md=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb`n" +
+        ".kinotch/README_BASE.md=cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc`n" +
+        ".kinotch/defaults/catalog.json=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa`n"
+    )
+    $expectedHash = Get-BaseTextHash -Text $expectedCanonical
+
+    [string[]]$ordinalPaths = @($entries | ForEach-Object { [string]$_.path })
+    [Array]::Sort($ordinalPaths, [System.StringComparer]::Ordinal)
+    Assert-Equal ".kinotch/DEVELOPMENT_FLOW.md|.kinotch/README_BASE.md|.kinotch/defaults/catalog.json" ($ordinalPaths -join "|") "ordinal fixture order"
+
+    $originalCulture = [Threading.Thread]::CurrentThread.CurrentCulture
+    try {
+        [Threading.Thread]::CurrentThread.CurrentCulture = [Globalization.CultureInfo]::GetCultureInfo("ja-JP")
+        $legacyCultureOrder = @($entries | Sort-Object { [string]$_.path } | ForEach-Object { [string]$_.path })
+        Assert-True (($legacyCultureOrder -join "|") -ne ($ordinalPaths -join "|")) "fixture no longer reproduces the former culture-sensitive ordering"
+
+        foreach ($cultureName in @("ja-JP", "en-US", "tr-TR")) {
+            [Threading.Thread]::CurrentThread.CurrentCulture = [Globalization.CultureInfo]::GetCultureInfo($cultureName)
+            Assert-Equal $expectedHash (Get-KntBaseSnapshotHash -Entries $entries) ("snapshot hash changed under culture " + $cultureName)
+        }
+    }
+    finally {
+        [Threading.Thread]::CurrentThread.CurrentCulture = $originalCulture
+    }
+}
+
 Invoke-TestCase "bounded Base patch applies exact registered maintenance delta without changing source Base version" {
     Invoke-KntFixture -Name "valid-minimal" -Command "base-check" -ExpectedExit 0 -Prepare {
         param($root)
@@ -2327,7 +2363,7 @@ Invoke-TestCase "Base documentation and profile metadata are finalized" {
     Assert-True ($workflow -match "knt\.ps1 setup") "Base CI setup step is missing"
     Assert-True ($workflow -match "actions/checkout@[0-9a-f]{40}(?:\s+#\s+v4)?") "Base Verify checkout action is not pinned to a full commit SHA"
     Assert-Equal 0 @($surfaceRegistry.surfaces.PSObject.Properties).Count "Base Surface Registry should be empty"
-    Assert-Equal "0.5.22" $baseVersion "Base version"
+    Assert-Equal "0.5.23" $baseVersion "Base version"
     Assert-True ($baseReadme -match "Surface Default Kit") "README_BASE Surface Kit wording is missing"
     Assert-True ($baseReadme -match "OVERRIDE") "README_BASE override boundary is missing"
     Assert-True (@($catalog.defaults | Where-Object { $_.kind -eq "surface" }).Count -ge 8) "Surface Default catalog entries are incomplete"
