@@ -1,8 +1,8 @@
 # Current State
 
-Base version: `0.5.22`
+Base version: `0.5.23`
 
-Behavioral baseline: Base v0.5.22 keeps the accepted bounded maintenance-patch provenance chain and hardens Windows path/platform detection so protected-path containment remains correct even when the `OS` environment variable is absent. Base v0.5.14 was a docs/Base-contract reconciliation release; runtime/default behavior remains anchored to accepted main `93b109bf1b42dfc17b9f297cb0cb27af49c4526b`, and hosted Verify `36349297603` / behavioral acceptance gate `36322175070` remain valid behavior evidence. The v0.5.14 change removes duplicated devflow audit-depth vocabulary from Base guidance and delegates exact cross-repository workflow values to the devflow canonical specification / `.devflow/WORKFLOW.yaml`; it does not change Runtime, Default, Surface, template, or consumer-adoption behavior.
+Behavioral baseline: Base v0.5.23 makes bounded maintenance-patch source snapshot hashing explicitly ordinal/culture-independent, preserving identical provenance across Linux and Windows cultures. It retains the v0.5.22 Windows path/platform hardening and the accepted maintenance-patch provenance chain. Base v0.5.14 was a docs/Base-contract reconciliation release; runtime/default behavior remains anchored to accepted main `93b109bf1b42dfc17b9f297cb0cb27af49c4526b`, and hosted Verify `36349297603` / behavioral acceptance gate `36322175070` remain valid behavior evidence. The v0.5.14 change removes duplicated devflow audit-depth vocabulary from Base guidance and delegates exact cross-repository workflow values to the devflow canonical specification / `.devflow/WORKFLOW.yaml`; it does not change Runtime, Default, Surface, template, or consumer-adoption behavior.
 
 ## Implemented
 
@@ -123,7 +123,7 @@ Behavioral baseline: Base v0.5.22 keeps the accepted bounded maintenance-patch p
   `2bit-cell-automaton`, `colony-ai`, and `refil-viewer`; existing
   CLI/MCP/API/generated/browser/PWA/Streamlit/viewer behavior remains
   Project-owned as `OVERRIDE`.
-- Base v0.5.14 is the current Repository Base maintenance baseline; this patch is docs/Base-contract only and preserves the v0.5.13 runtime/default behavioral baseline.
+- Base v0.5.23 is the current Repository Base maintenance baseline; its new behavioral change is limited to culture-independent bounded-patch snapshot provenance and preserves the existing Runtime/Default/Surface behavior.
 - `project/docs/BASE_RELEASE_CHECKLIST.md` is the accepted Base release evidence checklist added by PR #35; it requires Base doctor/base-check/verify/self-tests plus same-version validation in `kinotch-default-canary` and explicitly does not authorize consumer adoption or bulk synchronization.
 - Surface Default Kit expansion is complete for the v0.5.0 safe slice: CLI, Windows,
   MCP, API, Agent, Config, and Logging helpers are implemented and ready for normal
@@ -180,7 +180,7 @@ Behavioral baseline: Base v0.5.22 keeps the accepted bounded maintenance-patch p
 - Production deploy policy remains project-specific.
 - Base-wide Meta belongs under .kinotch/meta/.
 - New repositories use .kinotch/templates/project/ as their generation source.
-- Base v0.5.14 is the current Phase 5 maintenance baseline; Runtime/default behavior remains unchanged from the v0.5.13 behavioral baseline, and Runtime semantics remain
+- Base v0.5.23 is the current Phase 5 maintenance baseline; Runtime/default behavior is unchanged by this provenance repair, and Runtime semantics remain
   unchanged and existing repositories are not bulk-migrated. Runtime and Default Canary embedded Base versions are tracked by their own repositories rather than inferred from the Base baseline.
 
 ## Next work
