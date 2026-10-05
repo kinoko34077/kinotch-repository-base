@@ -60,7 +60,7 @@
                   },
                   {
                       "path":  ".kinotch/maintenance-patches.json",
-                      "sha256":  "50602fe5305b68387490b60cdad0c4255bdfe4a72bee40a31557d3fcea8a11b2"
+                      "sha256":  "a4f4cf88780ee2e76955195a0579215d6a712dcaeda16c17ca9062eee60d50fc"
                   },
                   {
                       "path":  ".kinotch/maintenance-patches/verify-checkout-v4-immutable-from-0.3.8/knt.ps1",
