@@ -1,0 +1,57 @@
+{
+  "schema_version": "maintenance-catalog.v1",
+  "repository": "kinoko34077/kinotch-repository-base",
+  "baseline": "maintenance-common-baseline.v1",
+  "rollout": "PILOT",
+  "risk_profile": "MEDIUM",
+  "scope_risk_overrides": [
+    {
+      "scope": {
+        "kind": "component",
+        "selector": "base-snapshot-integrity"
+      },
+      "risk": "HIGH"
+    },
+    {
+      "scope": {
+        "kind": "component",
+        "selector": "consumer-adoption-boundary"
+      },
+      "risk": "HIGH"
+    }
+  ],
+  "repository_lenses": [],
+  "common_slot_overrides": [],
+  "repository_slots": [
+    {
+      "slot_id": "base.snapshot-integrity",
+      "title": "Base snapshot and generated-file integrity",
+      "lifecycle": "ACTIVE",
+      "scope": {
+        "kind": "component",
+        "selector": "base-snapshot-integrity"
+      },
+      "lens": "state-integrity-concurrency",
+      "coverage_key": "repository-base.snapshot-integrity",
+      "cadence_class": "GENERAL",
+      "minimum_depth": "STANDARD",
+      "external_freshness_class": "NORMAL",
+      "description": "Audit Base snapshot hashing, path containment, generated-file consistency, and fail-closed compatibility across supported platforms without mutating generated files."
+    },
+    {
+      "slot_id": "base.consumer-compatibility",
+      "title": "Base contract and consumer-adoption boundary",
+      "lifecycle": "ACTIVE",
+      "scope": {
+        "kind": "component",
+        "selector": "consumer-adoption-boundary"
+      },
+      "lens": "spec-implementation-drift",
+      "coverage_key": "repository-base.consumer-compatibility",
+      "cadence_class": "GENERAL",
+      "minimum_depth": "STANDARD",
+      "external_freshness_class": "NORMAL",
+      "description": "Check Base schema/templates, accepted Current State, bounded maintenance-patch provenance, and consumer compatibility without automatically adopting or publishing a Base release."
+    }
+  ]
+}
