@@ -25,8 +25,13 @@ adoption.
 The canary is a validation target only. A passing canary does not authorize
 automatic Base adoption or bulk synchronization of consumer repositories.
 
-## Current accepted release
+## Historical release evidence: Base v0.5.13
 
 For Base v0.5.13, the canary was synchronized and verified at its own owner
-repository. Future releases must update the release record and retain the
-same evidence boundary.
+repository. This is historical release evidence, not a declaration that
+v0.5.13 is the current Base version or that the canary has been verified
+against every subsequent Base version.
+
+The current accepted Base version and its verification provenance are tracked
+in [Current State](CURRENT_STATE.md). For a new Base release, record that
+release's own checklist evidence before claiming corresponding canary coverage.
