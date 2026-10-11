@@ -1,6 +1,6 @@
 # KiNoTch. Repository Base Specification
 
-Status: active for Base v0.5.4
+Status: active specification. Current accepted Base version and implementation state: [CURRENT_STATE.md](CURRENT_STATE.md).
 
 ## Purpose
 
