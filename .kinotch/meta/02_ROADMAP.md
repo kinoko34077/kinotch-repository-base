@@ -6,9 +6,10 @@ v0.5.3 integrity-boundary hardening
 safety release.
 Phase 3B safe Default behavior, Phase 4A read-only Canary validation, Phase 4B
 adoption-safety hardening, and the Phase 4C adoption decision review are
-complete. Eight repositories are recorded as cleanly adopted at Base v0.3.8;
-Base v0.5.3 is the current Surface Default Kit safety/lifecycle release over the
-v0.5.0 feature slice. Additional
+complete. Nine repositories are recorded as cleanly adopted at Base v0.3.8;
+Base v0.5.24 is the current Repository Base maintenance baseline over the
+v0.5.0 feature slice; v0.5.24 is a docs-only alignment release over v0.5.23.
+Additional
 repositories are explicitly staged, not adopted, or unavailable according to
 the operation-state table in `project/docs/DEFAULT_ROLLOUT_DRY_RUN.md`.
 Phase 2A Portable Contract validation remains independent and provisional;
@@ -202,9 +203,9 @@ preflight、OS-aware path containment、Surface/Manifest consistencyを保守修
 
 既存repoは一括変更せず、`jev-audit`、`kinotch-api`、
 `lyric_reader_page`、`weather-widget`、`memory-game`、
-`Structured-Cell-Automaton`、`2bit-cell-automaton`、`colony-ai` の初回適用を完了した。
-`refil-viewer` はBase適用準備まで完了したが、既存Vite build失敗のため
-clean Canaryには数えない。`standby-display`、`SynTrail-LM`、
+`Structured-Cell-Automaton`、`2bit-cell-automaton`、`colony-ai`、
+`refil-viewer` の初回適用を完了した。`refil-viewer`の既存Vite build障害は
+Project側で修復済みで、Base adoptionの証拠へ反映されている。`standby-display`、`SynTrail-LM`、
 `dev_agent`、`IDS-Composit`、`srt2subtitle`を含む残りのrepoは、既存実装、
 root hygiene、dirty worktree、またはcheckout可否を個別に確認し、導入しない
 判断も含めてrollout tableへ記録した。残りのrepoへ一括適用しない。
@@ -232,7 +233,7 @@ Surface Default Kit検証済み状態である。
 ## Phase 5 — 既存repoへの段階導入 / maintenance (current)
 
 専用adoption campaignを継続せず、通常のProject作業に同期判断を組み込む。
-Base v0.5.3を基準版として固定し、全repoを一括書換えしない。
+Base v0.5.24を基準版として固定し、全repoを一括書換えしない。
 
 - 改修するrepoから順次適用
 - project固有ロジックは無理に移動しない

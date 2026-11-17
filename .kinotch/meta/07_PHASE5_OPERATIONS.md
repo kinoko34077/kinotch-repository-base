@@ -1,7 +1,11 @@
 # Phase 5 Operations
 
-KiNoTch. Repository Base v0.4.0 is the current Surface Default Kit baseline. Base and
+KiNoTch. Repository Base v0.5.24 is the current maintenance baseline. Base and
 Runtime are not expanded merely because a reusable idea can be imagined.
+
+Base #56 remains a separate bounded consumer-compatibility source-drift
+re-audit. It is evidence reconciliation, not proof of a runtime defect and not
+authorization for bulk consumer synchronization.
 
 ## Operating rule
 

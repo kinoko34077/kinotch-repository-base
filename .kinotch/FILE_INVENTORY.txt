@@ -43,8 +43,8 @@
 .kinotch/schemas/resource.schema.json
 .kinotch/schemas/result.schema.json
 .kinotch/schemas/surface.schema.json
-.kinotch/scripts/knt.ps1
 .kinotch/scripts/knt-validation.ps1
+.kinotch/scripts/knt.ps1
 .kinotch/scripts/maintenance-patches.ps1
 .kinotch/scripts/path-containment.ps1
 .kinotch/scripts/update-base-index.ps1
