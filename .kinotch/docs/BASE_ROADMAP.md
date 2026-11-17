@@ -27,7 +27,7 @@
 
 ## Phase 3 — Default implementation
 
-現行Base v0.5.3でSurface Default実装、Hosted CI、Root/link境界、Default lifecycle、同一Base version保護を固定する。
+現行Base v0.5.24でSurface Default実装、Hosted CI、Root/link境界、Default lifecycle、同一Base version保護を固定する。v0.5.24はv0.5.23の挙動を変更しないdocs-only整合releaseである。
 
 - Surface Kits: `minimal`, `web-app`, `cli`, `windows`, `mcp`, `api`, `agent`, `library`
 - Tool Defaults: `ci-test`, `generated-integrity`, `file-io`, `pwa`, `config`, `logging`
