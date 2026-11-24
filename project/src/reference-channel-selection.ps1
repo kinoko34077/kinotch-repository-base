@@ -48,7 +48,9 @@ function Select-KntReferenceRelease {
     if ($assets.Count -ne 1) { throw "Expected exactly one Base bundle" }
     $asset = $assets[0]
     if (($asset.id -isnot [int] -and $asset.id -isnot [long]) -or $asset.id -le 0 -or
-        $asset.state -cne "uploaded" -or $asset.digest -isnot [string] -or
+        $asset.state -cne "uploaded" -or
+        ($asset.size -isnot [int] -and $asset.size -isnot [long]) -or
+        $asset.size -le 0 -or $asset.size -gt 16MB -or $asset.digest -isnot [string] -or
         $asset.digest -cnotmatch '^sha256:[0-9a-f]{64}$') {
         throw "Invalid bundle metadata"
     }
@@ -57,6 +59,7 @@ function Select-KntReferenceRelease {
         tag = $selected.tag_name
         release_id = [long]$selected.id
         asset_id = [long]$asset.id
+        size = [long]$asset.size
         digest = $asset.digest
         pinned = ($PinnedSequence -ne 0)
     }

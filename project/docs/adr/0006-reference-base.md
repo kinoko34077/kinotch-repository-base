@@ -85,3 +85,11 @@ Immutable releaseのtagとassetは固定されるが、release notes/title/lates
 Offlineは以前に承認・検証した同一bundleのみ明示選択できる。失効確認不能を明示し、正式gateはonline freshnessを満たさない場合HOLD。最新releaseの削除やAPI応答欠落を初回clientだけで完全検出できるとは主張しない。既知sequence下限は自動後退を抑制するが、失効機構・信頼されたローカル状態・cache同時更新は別B1検証。publisher権限が侵害された場合の独立した署名検証は本方式単独では提供しない。必要性が確認されれば再評価する。
 
 今回の `project/src/reference-channel-selection.ps1` は選択規則のみの純粋な試作。synthetic recordsで正常・不正・重複・後退・固定・取得不完全をテストする。通信、cache、展開、コード実行、承認/公開操作は一切行わない。正式loaderには未接続。
+
+## B1.1 配布物の検証（非稼働試作）
+
+GitHub Immutable Releaseはrelease tag / commit SHA / release assetを結び付ける署名付きattestationを自動生成する。独自署名の実装ではなく既存の `gh release verify <tag> -R github.com/kinoko34077/kinotch-repository-base` と `gh release verify-asset <tag> <file> -R github.com/kinoko34077/kinotch-repository-base` を優先候補とする。公式: https://docs.github.com/en/code-security/concepts/supply-chain-security/immutable-releases 、 https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/secure-your-dependencies/verify-release-integrity 、 https://cli.github.com/manual/gh_release_verify-asset 。GitHubの自動生成source archiveはasset attestation検証対象外なので、審査済みcommitから生成した明示assetを対象とする。既存ghの利用可否・必要バージョン・公開repoの認証要否・出力schemaは実環境で確認後に確定し、新規credentialや権限を勝手に作らない。署名付きrelease証明は公開物の出所を検証するがReview実施やpublisherアカウント非侵害を証明しない。
+
+REF-BUNDLE-001: 取得済みassetのbyte SHA-256（改行正規化なし）と外部から得たsizeを照合後、同一read streamからZIPを検査する。bundleはrootの `reference-bundle.json`（schema_version=1, source_commit, release_tag）、既存Base indexの固定root files、.kinotch/以下のみを持つfile-only archiveとする。現行.kinotchは104 blob・502271 bytes。試作上限は圧縮16 MiB、展開総量64 MiB、2048 entries、metadata 4096 bytes（全て将来の互換契約候補）。file-only portable path、重複/大小文字衝突、file/parent衝突、Windows device名、link/reparse属性、範囲外root、不足入口、tag/commit不一致を拒否する。実際の展開では既存Assert-KntSafePathを使う。ZIP metadataのみでは展開後サイズ・完全なBase index整合を証明しないため、展開時の実byte上限・全保護index検証・stagingの競合防止・cache入場・再検証は後続B1。現在のoffline試作はread-onlyで、展開/実行/ネットワーク/公開を行わない。
+
+REF-SEL-001のasset sizeもpositive integerかつ上限内であることを確認する。digestとsizeはmetadata取得の結果であり、署名検証の代わりではない。

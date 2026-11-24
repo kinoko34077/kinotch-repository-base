@@ -8,7 +8,7 @@ function New-Release([int]$Sequence) {
         immutable = $true
         prerelease = $false
         author = [pscustomobject]@{id=79015263;login="kinoko34077"}
-        assets = @([pscustomobject]@{id=[long](200+$Sequence);name="kinotch-base.zip";state="uploaded";digest=("sha256:" + ("a"*64))})
+        assets = @([pscustomobject]@{id=[long](200+$Sequence);name="kinotch-base.zip";state="uploaded";size=1024;digest=("sha256:" + ("a"*64))})
     }
 }
 function Assert-Throws([scriptblock]$Action, [string]$Pattern) {
@@ -47,5 +47,9 @@ $bad = New-Release 3; $bad.assets = @($bad.assets[0],$bad.assets[0])
 Assert-Throws { Select-KntReferenceRelease -Releases @($old,$bad) -Complete } "exactly one"
 $bad = New-Release 3; $bad.assets[0].digest = "sha256:bad"
 Assert-Throws { Select-KntReferenceRelease -Releases @($old,$bad) -Complete } "Invalid bundle"
-Write-Host "[PASS] Reference channel selection: 14 synthetic cases"
+$bad = New-Release 3; $bad.assets[0].size = 0
+Assert-Throws { Select-KntReferenceRelease -Releases @($old,$bad) -Complete } "Invalid bundle"
+$bad = New-Release 3; $bad.assets[0].size = 16MB+1
+Assert-Throws { Select-KntReferenceRelease -Releases @($old,$bad) -Complete } "Invalid bundle"
+Write-Host "[PASS] Reference channel selection: 16 synthetic cases"
 exit 0
