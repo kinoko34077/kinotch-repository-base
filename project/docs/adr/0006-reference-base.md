@@ -27,7 +27,7 @@ Observed examples: memory-game 0.3.8 (web-app OVERRIDE), kinotch-api 0.3.8 (api/
 
 ## Resolution contract candidate (B1)
 
-A small trusted entry uses the fixed canonical public Base repository, not an arbitrary URL supplied by a consumer. A compatibility channel (name illustrative: stable/v1) identifies an approved revision, not latest main. Resolve once at execution start to an exact Git commit and verify approval and integrity before executing ANY fetched code, including validators. Git identity alone or hashes provided by the same untrusted content do not establish approval. Prefer existing GitHub review/protection infrastructure; the exact approval authority, immutable history proof, channel format and revocation/rollback policy are unresolved B0/B1 security design items. Do not enable a live moving channel until reviewed and authorized.
+A small trusted entry uses the fixed canonical public Base repository, not an arbitrary URL supplied by a consumer. A compatibility channel (name illustrative: stable/v1) identifies an approved revision, not latest main. Resolve once at execution start to an exact Git commit and verify approval and integrity before executing ANY fetched code, including validators. Git identity alone or hashes provided by the same untrusted content do not establish approval. The later REF-GIT-001 design supersedes the generated-bundle candidate. Prefer existing GitHub review/protection infrastructure; the exact approval authority, immutable history proof, channel format and revocation/rollback policy are unresolved B0/B1 security design items. Do not enable a live moving channel until reviewed and authorized.
 
 Cache immutable snapshots by revision outside tracked consumer files; atomic admission, concurrency safety and path/link containment are required. Avoid hooks, arbitrary remotes, submodule execution, credentials and mutable caches as trust roots. Offline use is explicit and limited to verified previously admitted snapshots; report SHA and offline/stale status. Fail closed for formal verification when required freshness/trust is unavailable; never silently fetch or execute another revision. Pinning/rollback must select an approved compatible revision, not arbitrary code. Record consumer HEAD, selected capabilities, Base SHA and evidence; doctor/setup/verify in one CI run share the same resolved revision.
 
@@ -61,35 +61,31 @@ The initial probe in project/tests/reference-base-probe.ps1 isolates a synthetic
 | .github/workflows / AGENTS / knt launcher / .editorconfig / .gitattributes / .gitignore | host固定入口、ローカル設定として必要最小。全Base treeを置かない |
 | Project skeleton / domain / tests / deploy workflows | Project所有。初期生成は一度限り、共通更新で再生成しない |
 
-## B0.3 承認・配布方式比較（設計候補）
+## B0.3 承認・取得方式（設計候補 / 大局再探索）
 
 | 方式 | 判定 |
 |---|---|
-| main / mutable tag / owner Issue commentを直接実行 | 不採用。GitHub actorの一致や自己申告hashは未審査コードの排除にならない |
-| 独自署名付きmanifest | 独立した鍵の配布・回転・失効管理が必要。現時点で既存鍵の利用可能性は未確認。必須にしない |
-| GitHub immutable release + digest付き生成bundle | 第一候補。既存プラットフォームの承認・固定配布機構を使用。設定・公開の承認は別途必要 |
+| main / mutable tag / owner Issue commentを直接実行 | 不採用。未審査revisionの排除にならない |
+| 独自署名manifest | 鍵配布・回転・失効管理が必要。必須にしない |
+| immutable release + 生成ZIP asset | 保留。Gitで管理済みソースの二重配布・展開・検査の独自実装が増える |
+| immutable releaseで承認commitを固定 + native Git取得 | 第一候補。Gitの既存object管理、fetch、checkout、commit検証を再利用 |
 
-GitHub公式仕様:
-- https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository
-- https://docs.github.com/en/rest/releases/releases
-- https://docs.github.com/en/rest/releases/assets
+現行mainは143 blobs / 627132 bytes（うち.kinotch 104 blobs / 502271 bytes）、非通常file modeなし。ZIP生成物を追加する必要性は現時点で認められない。前試作のZIP検査は履歴に残すが、この候補から削除する。将来バイナリ配布等で必要性が具体化した時のみ再評価する。
 
-Immutable releaseのtagとassetは固定されるが、release notes/title/latest/prereleaseは変更可能なので承認の意味や順序を持たせない。現行repositoryにはreleaseがなく、immutability設定のGETも連携で未対応。よって本案は設定済み・公開許可済みとはみなさない。
+GitHub公式: https://docs.github.com/en/code-security/concepts/supply-chain-security/immutable-releases ; https://cli.github.com/manual/gh_release_verify ; https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/secure-your-dependencies/verify-release-integrity 。GitHubの自動source archiveはasset署名検証対象外なので使用しない。gh upstream pkg/cmd/release/verify/verify.go と shared/fetch.go / attestation.go の実装はrelease tag refのobject digestと署名を検証し、tag名をpredicateで照合する。assetがない場合の表示分岐もある。実際のassetless release発行・署名検証は未実証、設定・公開は別Human gate。
 
-### REF-SEL-001 — promotion選択候補
+### REF-SEL-001 — promotion選択
 
-固定正本repoの信頼できるGitHub API応答から、互換epoch v1の厳密なtag `base-ref-v1-NNNNNNNN`（8桁、1以上）を選択する。数字はコード版でなく中央昇格の順序。全ページ取得が完了していない場合は選択不可。draftは対象外。通常は最大sequence、固定利用・明示rollbackは承認済みsequenceを指定する。自動利用は既知の最低sequenceより後退しない。重複・不正tag・選択候補のmutable release・actor不一致・bundle metadata欠落/不正は失敗し、古い候補への暗黙fallbackをしない。mutable latest/prerelease flagは参照しない。
+固定正本repoの信頼できるGitHub API応答から、互換epoch v1のtag `base-ref-v1-NNNNNNNN`（8桁、1以上）を選択。全ページ取得完了が前提。draftは対象外。通常は最大sequence、固定利用・明示rollbackは承認済みsequenceを指定する。自動利用は既知下限より後退しない。重複・不正tag・選択候補のmutable release・actor不一致・release ID不正は失敗し、古い候補への暗黙fallbackをしない。mutable latest/prereleaseは意味を持たせない。選択はlocatorであり実行承認ではない。選択処理はassetを要求しない。
 
-承認された公開releaseを生成する操作は、独立Review、exact-head検証、bundleとtag commitの一致、互換試験、明示公開承認を前提とする。実行時はtagの実commit（target_commitish文字列は使わない）、release/asset ID、sha256 digestを固定し、bundleの取得・検証と安全展開を行う。生成bundleは正本ではなく、審査済みcommitから再現可能な配布物。初回起動の信頼根は審査済みlauncherと固定GitHub origin、repo identity、承認されたpublisher policy。取得元やactorをconsumer設定で変更させない。GitHub APIの完全性/TLS検証・tag解決・bundle/manifest一致・cacheの検証はB1の未実装境界。
+### REF-GIT-001 — native Gitによる取得と参照（候補）
 
-Offlineは以前に承認・検証した同一bundleのみ明示選択できる。失効確認不能を明示し、正式gateはonline freshnessを満たさない場合HOLD。最新releaseの削除やAPI応答欠落を初回clientだけで完全検出できるとは主張しない。既知sequence下限は自動後退を抑制するが、失効機構・信頼されたローカル状態・cache同時更新は別B1検証。publisher権限が侵害された場合の独立した署名検証は本方式単独では提供しない。必要性が確認されれば再評価する。
+1. 承認者が独立Review、exact-head検証、互換試験、明示公開承認を経て不変releaseを発行。初版は軽量tagのみを対象とし、annotated tagを暗黙peelしない。
+2. 固定repo identity/actor、release ID/tag、検証済みrelease attestationから得たobject digestを照合する。ghの出力schema、repository/issuer/predicate binding、必要version/認証を既存環境で実証。署名はReviewの実施自体を証明しない。
+3. consumer外の隔離Git object storeに固定originからtagをfetch、FETCH_HEADの実object type=commitと完全SHA一致を検査。取得時のGit object検証を使用。検証前にcheckoutや取得コードを実行しない。
+4. Gitの既存checkoutを用い、hooks/global/system/local config、filter、submodule、symlink、非通常mode、大小文字・host path、untracked/reparseを検証。既存Base indexとpath-containmentを再利用する。checkoutの改行変換は現行Base indexと整合するが、cache検証ではGit object/working-treeの同一性と未追跡コード混入を別途保証する。
+5. 同一実行内は解決済みcommitを固定。consumerのrootとBaseのrootを分離して既存Routerへ渡す。cacheの可変HEADを複数実行で共有しない。immutable snapshot / atomic admission / concurrency / offline trust receiptの最小実装をB1で検証。offlineは以前に承認済みのcommitを明示指定、鮮度不足の正式gateはHOLD。新規資格情報、権限変更、独自server/package managerを必須にしない。
 
-今回の `project/src/reference-channel-selection.ps1` は選択規則のみの純粋な試作。synthetic recordsで正常・不正・重複・後退・固定・取得不完全をテストする。通信、cache、展開、コード実行、承認/公開操作は一切行わない。正式loaderには未接続。
+Gitのlocal fixtureでA→Bのschema修正、利用側非変更、Aへのoffline rollback、移動tagの不一致拒否を実証する。現時点のfixtureは公開release、署名、ネットワーク、production cache、Git環境隔離全体の証明ではない。取得・署名検証と実行をつなぐ実運用admissionは未実装。
 
-## B1.1 配布物の検証（非稼働試作）
-
-GitHub Immutable Releaseはrelease tag / commit SHA / release assetを結び付ける署名付きattestationを自動生成する。独自署名の実装ではなく既存の `gh release verify <tag> -R github.com/kinoko34077/kinotch-repository-base` と `gh release verify-asset <tag> <file> -R github.com/kinoko34077/kinotch-repository-base` を優先候補とする。公式: https://docs.github.com/en/code-security/concepts/supply-chain-security/immutable-releases 、 https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/secure-your-dependencies/verify-release-integrity 、 https://cli.github.com/manual/gh_release_verify-asset 。GitHubの自動生成source archiveはasset attestation検証対象外なので、審査済みcommitから生成した明示assetを対象とする。既存ghの利用可否・必要バージョン・公開repoの認証要否・出力schemaは実環境で確認後に確定し、新規credentialや権限を勝手に作らない。署名付きrelease証明は公開物の出所を検証するがReview実施やpublisherアカウント非侵害を証明しない。
-
-REF-BUNDLE-001: 取得済みassetのbyte SHA-256（改行正規化なし）と外部から得たsizeを照合後、同一read streamからZIPを検査する。bundleはrootの `reference-bundle.json`（schema_version=1, source_commit, release_tag）、既存Base indexの固定root files、.kinotch/以下のみを持つfile-only archiveとする。現行.kinotchは104 blob・502271 bytes。試作上限は圧縮16 MiB、展開総量64 MiB、2048 entries、metadata 4096 bytes（全て将来の互換契約候補）。file-only portable path、重複/大小文字衝突、file/parent衝突、Windows device名、link/reparse属性、範囲外root、不足入口、tag/commit不一致を拒否する。実際の展開では既存Assert-KntSafePathを使う。ZIP metadataのみでは展開後サイズ・完全なBase index整合を証明しないため、展開時の実byte上限・全保護index検証・stagingの競合防止・cache入場・再検証は後続B1。現在のoffline試作はread-onlyで、展開/実行/ネットワーク/公開を行わない。
-
-REF-SEL-001のasset sizeもpositive integerかつ上限内であることを確認する。digestとsizeはmetadata取得の結果であり、署名検証の代わりではない。
+B0の設計受入ではこのnative pathを優先し、必要性のないZIP検査の追加作業を停止する。B1では署名検証の実環境適合と、既存routerによる最小参照実行の統合を先行する。失敗時のみ証拠付きで配布方式を再評価する。

@@ -16,7 +16,7 @@ function Select-KntReferenceRelease {
         if (-not $release.tag_name.StartsWith("base-ref-v1-", [StringComparison]::Ordinal)) { continue }
         if ($release.draft -isnot [bool]) { throw "Invalid draft flag" }
         if ($release.draft) { continue }
-        if ($release.tag_name -cnotmatch '^base-ref-v1-([0-9]{8})$') {
+        if ($release.tag_name -cnotmatch '\Abase-ref-v1-([0-9]{8})\z') {
             throw "Invalid channel tag"
         }
         $sequence = [int]$Matches[1]
@@ -44,23 +44,10 @@ function Select-KntReferenceRelease {
     if (($selected.id -isnot [int] -and $selected.id -isnot [long]) -or $selected.id -le 0) {
         throw "Invalid release identity"
     }
-    $assets = @($selected.assets | Where-Object { $_.name -ceq "kinotch-base.zip" })
-    if ($assets.Count -ne 1) { throw "Expected exactly one Base bundle" }
-    $asset = $assets[0]
-    if (($asset.id -isnot [int] -and $asset.id -isnot [long]) -or $asset.id -le 0 -or
-        $asset.state -cne "uploaded" -or
-        ($asset.size -isnot [int] -and $asset.size -isnot [long]) -or
-        $asset.size -le 0 -or $asset.size -gt 16MB -or $asset.digest -isnot [string] -or
-        $asset.digest -cnotmatch '^sha256:[0-9a-f]{64}$') {
-        throw "Invalid bundle metadata"
-    }
     return [pscustomobject]@{
         sequence = $sequence
         tag = $selected.tag_name
         release_id = [long]$selected.id
-        asset_id = [long]$asset.id
-        size = [long]$asset.size
-        digest = $asset.digest
         pinned = ($PinnedSequence -ne 0)
     }
 }
