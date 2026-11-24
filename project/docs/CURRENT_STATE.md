@@ -1,8 +1,8 @@
 # Current State
 
-Base version: `0.5.24`
+Base version: `0.5.25` (candidate; release acceptance pending)
 
-Behavioral baseline: Base v0.5.24 is a docs-only alignment release over v0.5.23; Runtime, Default, Surface, template, and consumer-adoption behavior are unchanged. The v0.5.23 bounded maintenance-patch source snapshot hashing remains explicitly ordinal/culture-independent, preserving identical provenance across Linux and Windows cultures. It retains the v0.5.22 Windows path/platform hardening and the accepted maintenance-patch provenance chain.
+Behavioral baseline: Base v0.5.25 candidate restricts Base and ci-test Default push triggers to main, preserving PR/manual triggers, verification commands and Surface runner selection. v0.5.24 is the last accepted maintenance baseline; v0.5.25 release/canary acceptance is pending. Runtime, Surface, and consumer-adoption behavior are unchanged. The v0.5.23 bounded maintenance-patch source snapshot hashing remains explicitly ordinal/culture-independent, preserving identical provenance across Linux and Windows cultures. It retains the v0.5.22 Windows path/platform hardening and the accepted maintenance-patch provenance chain.
 
 ## Implemented
 
@@ -123,7 +123,7 @@ Behavioral baseline: Base v0.5.24 is a docs-only alignment release over v0.5.23;
   `2bit-cell-automaton`, `colony-ai`, and `refil-viewer`; existing
   CLI/MCP/API/generated/browser/PWA/Streamlit/viewer behavior remains
   Project-owned as `OVERRIDE`.
-- Base v0.5.24 is the current Repository Base maintenance baseline; it synchronizes current Roadmap and Phase 5 documentation over v0.5.23 without changing Runtime/Default/Surface behavior.
+- Base v0.5.25 candidate changes only CI trigger routing and associated verification/identity records; last accepted v0.5.24 remains the release baseline until validation.
 - `project/docs/BASE_RELEASE_CHECKLIST.md` is the accepted Base release evidence checklist added by PR #35; it requires Base doctor/base-check/verify/self-tests plus same-version validation in `kinotch-default-canary` and explicitly does not authorize consumer adoption or bulk synchronization.
 - Surface Default Kit expansion is complete for the v0.5.0 safe slice: CLI, Windows,
   MCP, API, Agent, Config, and Logging helpers are implemented and ready for normal
@@ -180,7 +180,7 @@ Behavioral baseline: Base v0.5.24 is a docs-only alignment release over v0.5.23;
 - Production deploy policy remains project-specific.
 - Base-wide Meta belongs under .kinotch/meta/.
 - New repositories use .kinotch/templates/project/ as their generation source.
-- Base v0.5.24 is the current Phase 5 maintenance baseline; Runtime/default behavior is unchanged by this documentation alignment, and Runtime semantics remain
+- Base v0.5.25 candidate preserves Runtime/default contracts except for CI trigger routing; Runtime semantics remain
   unchanged and existing repositories are not bulk-migrated. Runtime and Default Canary embedded Base versions are tracked by their own repositories rather than inferred from the Base baseline.
 
 ## Next work

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "base_version": "0.5.24",
+  "base_version": "0.5.25",
   "files": [
     {
       "path": ".editorconfig",
@@ -12,7 +12,7 @@
     },
     {
       "path": ".github/workflows/verify.yml",
-      "sha256": "d9939368e4b8b1851e4aade0dd53261aa3c5f40ba9a3000eda4cd2de18c8b81b"
+      "sha256": "8e301a8c675dfe77ca03262dfdf4b16f609e613e61871e90dfb5754f944f40fa"
     },
     {
       "path": ".gitignore",
@@ -24,7 +24,7 @@
     },
     {
       "path": ".kinotch/BASE_VERSION",
-      "sha256": "be77b2b435f2681d220235ddc4246bea9853ab60be3223076985ca5cb3b8d7a2"
+      "sha256": "1bcc16b141ca0ed87498d6e6098db2910626656d5b0fbff9cc83b2aa89174f22"
     },
     {
       "path": ".kinotch/DEVELOPMENT_FLOW.md",
@@ -56,7 +56,7 @@
     },
     {
       "path": ".kinotch/docs/BASE_ROADMAP.md",
-      "sha256": "8860cac5c379e6426d8f9eddda627005f4bb02e8189118d09b8fdfcd06f1d630"
+      "sha256": "7f002554021353c0e3fbdaef9b80160138b72a90439d816a7dc8c315775e51d8"
     },
     {
       "path": ".kinotch/maintenance-patches.json",
@@ -100,7 +100,7 @@
     },
     {
       "path": ".kinotch/meta/07_PHASE5_OPERATIONS.md",
-      "sha256": "0f8fb2590916453c92a867068eedbf2d50929d215b1c0b2d207b7e1601127864"
+      "sha256": "870dd579fe9a26d48f847d257216e3598617dc92d3902617b8a1b24b97cc186c"
     },
     {
       "path": ".kinotch/meta/08_GITHUB_DEVELOPMENT_CONTROL.md",
@@ -228,7 +228,7 @@
     },
     {
       "path": ".kinotch/templates/defaults/ci-test/.github/workflows/kinotch-default.yml",
-      "sha256": "bb8aa4a4e4dbad0a29f352593a1d0a9c5400fb77c12c45619390ac7d78aa1374"
+      "sha256": "49eb5b9ca1398ee9c4c59e4e2e0eb31a7aa0e58f20a31fd8c8a44ef0ca255123"
     },
     {
       "path": ".kinotch/templates/defaults/cli/tools/cli-default.ps1",
@@ -428,7 +428,7 @@
     },
     {
       "path": ".kinotch/tests/run-tests.ps1",
-      "sha256": "f07adf8bfe0652ce422d86a618dbd90cd03cb28d92abf995e44f76319422b410"
+      "sha256": "dc15b9d9e5db29470a3671af2eb7a6e3d8916780da4c2a6c769f7959bfc53770"
     },
     {
       "path": "AGENTS.md",
