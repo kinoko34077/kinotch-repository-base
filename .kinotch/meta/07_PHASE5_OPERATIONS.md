@@ -1,6 +1,6 @@
 # Phase 5 Operations
 
-KiNoTch. Repository Base v0.5.25 is the CI-trigger change candidate; the last accepted maintenance baseline is v0.5.24 until release validation is recorded. Base and
+KiNoTch. Repository Base v0.5.26 is the CI-trigger change and legacy bounded-patch candidate; the last accepted maintenance baseline is v0.5.24 until release validation is recorded. Base and
 Runtime are not expanded merely because a reusable idea can be imagined.
 
 Base #56 remains a separate bounded consumer-compatibility source-drift

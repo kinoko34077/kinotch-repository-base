@@ -1,6 +1,6 @@
 {
     "schema_version":  1,
-  "authority_base_version":  "0.5.25",
+    "authority_base_version":  "0.5.26",
     "patches":  [
                     {
                         "id":  "verify-checkout-v4-immutable-from-0.3.8",
@@ -18,6 +18,19 @@
                                           "source_sha256":  "84bea22c610fb7d48d9291945c96fe191e1fed73d9b3c389025f0b4ea59d9b8b",
                                           "target_sha256":  "0cc7e22aa1001d4dd7555275908c0b085373241388b07501ee1ccf28b66766b9",
                                           "content_path":  "maintenance-patches/verify-checkout-v4-immutable-from-0.3.8/knt.ps1"
+                                      }
+                                  ]
+                    },
+                    {
+                        "id":  "verify-pr-first-from-0.3.8",
+                        "description":  "Restrict legacy Verify push to main after the registered immutable checkout patch, preserving PR, manual and verification steps.",
+                        "source_base_version":  "0.3.8",
+                        "files":  [
+                                      {
+                                          "path":  ".github/workflows/verify.yml",
+                                          "source_sha256":  "bf1e83775391751036f77ef90eb1a5de4272a10e402403057a4dd9b6e39c2059",
+                                          "target_sha256":  "6262fed23dbc209f2d5477f49f232275703fa124df62dbd26d0ad8640c15efba",
+                                          "content_path":  "maintenance-patches/verify-pr-first-from-0.3.8/verify.yml"
                                       }
                                   ]
                     }

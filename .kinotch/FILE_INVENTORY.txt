@@ -11,6 +11,7 @@
 .kinotch/maintenance-patches.json
 .kinotch/maintenance-patches/verify-checkout-v4-immutable-from-0.3.8/knt.ps1
 .kinotch/maintenance-patches/verify-checkout-v4-immutable-from-0.3.8/verify.yml
+.kinotch/maintenance-patches/verify-pr-first-from-0.3.8/verify.yml
 .kinotch/meta/00_CONTEXT.md
 .kinotch/meta/01_TARGET_STATE.md
 .kinotch/meta/02_ROADMAP.md
@@ -43,8 +44,8 @@
 .kinotch/schemas/resource.schema.json
 .kinotch/schemas/result.schema.json
 .kinotch/schemas/surface.schema.json
-.kinotch/scripts/knt-validation.ps1
 .kinotch/scripts/knt.ps1
+.kinotch/scripts/knt-validation.ps1
 .kinotch/scripts/maintenance-patches.ps1
 .kinotch/scripts/path-containment.ps1
 .kinotch/scripts/update-base-index.ps1

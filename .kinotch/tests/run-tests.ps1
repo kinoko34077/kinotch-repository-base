@@ -2178,6 +2178,44 @@ Invoke-TestCase "bounded Base patch chain preserves original support-file proven
     }
 }
 
+Invoke-TestCase "registered legacy PR-first CI patch preserves the exact two-step chain" {
+    Invoke-KntFixture -Name "valid-minimal" -Command "base-check" -ExpectedExit 0 -Prepare {
+        param($root)
+        Set-FixtureAsLegacyBase038Consumer $root
+        $authorityRouter = Join-Path $RepoRoot ".kinotch/scripts/knt.ps1"
+        $authorityBase = Join-Path $RepoRoot ".kinotch"
+        $indexPath = Join-Path $root ".kinotch/base-files.json"
+        $verifyPath = Join-Path $root ".github/workflows/verify.yml"
+        $manifestPath = Join-Path $root "project/project.json"
+        $manifestBefore = Get-Content -Raw -Encoding UTF8 $manifestPath
+        $before = Get-Content -Raw -Encoding UTF8 $indexPath
+        $bad = @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $authorityRouter -RootOverride $root -BaseOverride $authorityBase base-patch --id verify-pr-first-from-0.3.8 --apply 2>&1)
+        Assert-Equal 2 $LASTEXITCODE "PR-first patch must reject an unpinned source"
+        Assert-Equal $before (Get-Content -Raw -Encoding UTF8 $indexPath) "refusal changed index"
+        $first = @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $authorityRouter -RootOverride $root -BaseOverride $authorityBase base-patch --id verify-checkout-v4-immutable-from-0.3.8 --apply 2>&1)
+        Assert-Equal 0 $LASTEXITCODE ("first patch failed: " + ($first -join " "))
+        $pinned = Get-Content -Raw -Encoding UTF8 $verifyPath
+        $firstIndex = Get-Content -Raw -Encoding UTF8 $indexPath
+        $dry = @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $authorityRouter -RootOverride $root -BaseOverride $authorityBase base-patch --id verify-pr-first-from-0.3.8 2>&1)
+        Assert-Equal 0 $LASTEXITCODE ("dry-run failed: " + ($dry -join " "))
+        Assert-Equal $firstIndex (Get-Content -Raw -Encoding UTF8 $indexPath) "dry-run changed index"
+        Assert-Equal $pinned (Get-Content -Raw -Encoding UTF8 $verifyPath) "dry-run changed Verify"
+        $second = @(& $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $authorityRouter -RootOverride $root -BaseOverride $authorityBase base-patch --id verify-pr-first-from-0.3.8 --apply 2>&1)
+        Assert-Equal 0 $LASTEXITCODE ("PR-first patch failed: " + ($second -join " "))
+        $expected = [regex]::Replace($pinned, '(?m)^  push:\r?$', ("  push:" + [Environment]::NewLine + "    branches: [main]"))
+        $actual = Get-Content -Raw -Encoding UTF8 $verifyPath
+        Assert-Equal ($expected.Replace([string][char]13, "")) ($actual.Replace([string][char]13, "")) "Verify changed beyond the push trigger"
+        $index = Get-Content -Raw -Encoding UTF8 $indexPath | ConvertFrom-Json
+        Assert-Equal "0.3.8" ([string]$index.base_version) "legacy version changed"
+        Assert-Equal 2 @($index.maintenance_patches.patches).Count "patch chain length"
+        Assert-Equal "verify-pr-first-from-0.3.8" ([string]$index.maintenance_patches.patches[1].id) "second registered patch id"
+        Assert-Equal $manifestBefore (Get-Content -Raw -Encoding UTF8 $manifestPath) "Project manifest changed"
+    } -AssertOutput {
+        param($root, $output)
+        Assert-True ($output -match "Base maintenance patches") "consumer provenance was not checked"
+    }
+}
+
 Invoke-TestCase "bounded Base patch rejects an unregistered patch id" {
     Invoke-KntFixture -Name "valid-minimal" -Command "base-check" -ExpectedExit 0 -Prepare {
         param($root)
@@ -2367,7 +2405,7 @@ Invoke-TestCase "Base documentation and profile metadata are finalized" {
     Assert-True ($workflow -match "knt\.ps1 setup") "Base CI setup step is missing"
     Assert-True ($workflow -match "actions/checkout@[0-9a-f]{40}(?:\s+#\s+v4)?") "Base Verify checkout action is not pinned to a full commit SHA"
     Assert-Equal 0 @($surfaceRegistry.surfaces.PSObject.Properties).Count "Base Surface Registry should be empty"
-    Assert-Equal "0.5.25" $baseVersion "Base version"
+    Assert-Equal "0.5.26" $baseVersion "Base version"
     Assert-True ($baseReadme -match "Surface Default Kit") "README_BASE Surface Kit wording is missing"
     Assert-True ($baseReadme -match "OVERRIDE") "README_BASE override boundary is missing"
     Assert-True (@($catalog.defaults | Where-Object { $_.kind -eq "surface" }).Count -ge 8) "Surface Default catalog entries are incomplete"
