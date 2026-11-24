@@ -2,11 +2,10 @@
 $ErrorActionPreference = "Stop"
 $RepoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $BaseDir = Join-Path $RepoRoot ".kinotch"
-$Router = Join-Path $BaseDir "scripts/knt.ps1"
 $HostExe = if ($PSVersionTable.PSEdition -eq "Desktop") {
-    (Get-Command powershell -ErrorAction Stop).Source
+    (Get-Command powershell -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
 } else {
-    (Get-Command pwsh -ErrorAction Stop).Source
+    (Get-Command pwsh -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
 }
 
 function Get-TreeFingerprint([string]$Root) {
@@ -33,7 +32,7 @@ $Source = Join-Path $Temp "source"
 $Cache = Join-Path $Temp "cache"
 $Template = Join-Path $Temp "empty-template"
 $Hooks = Join-Path $Temp "empty-hooks"
-$Git = (Get-Command git -CommandType Application -ErrorAction Stop).Source
+$Git = (Get-Command git -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
 $SavedGitEnv = @{}
 foreach ($variable in @(Get-ChildItem Env: | Where-Object { $_.Name -like "GIT_*" })) {
     $SavedGitEnv[$variable.Name] = $variable.Value
