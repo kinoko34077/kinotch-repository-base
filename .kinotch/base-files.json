@@ -60,7 +60,7 @@
     },
     {
       "path": ".kinotch/maintenance-patches.json",
-      "sha256": "0d7bd7df0bb892fe0fe034fe10dec5abcb61e961aeb588ccd97598187ec947ab"
+      "sha256": "6f9fb7e26d7d17850e38ecb68eb240b0260ebd0d077af9765ed8d9c56b583e64"
     },
     {
       "path": ".kinotch/maintenance-patches/verify-checkout-v4-immutable-from-0.3.8/knt.ps1",
@@ -188,7 +188,7 @@
     },
     {
       "path": ".kinotch/scripts/knt.ps1",
-      "sha256": "f7c16131520659a141565e5cf913b6bbe3db8e2f60d4cb0049747fcdaca52da2"
+      "sha256": "74c38dac95c15f35ed664bfa959e751c8e7aaa28867d92211a8ddaac426d65a4"
     },
     {
       "path": ".kinotch/scripts/maintenance-patches.ps1",
