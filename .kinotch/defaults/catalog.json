@@ -17,65 +17,94 @@
       "kind": "surface",
       "description": "Web application Surface Default。",
       "default_state": "DEFAULT",
-      "compatible_surfaces": ["web"],
+      "compatible_surfaces": [
+        "web"
+      ],
       "profile": "web-app",
       "aliases": []
     },
     {
       "id": "cli",
-      "reference_entry": "project/tools/cli-default.ps1",
       "kind": "surface",
       "description": "Command-line Surface Default。",
       "default_state": "DEFAULT",
-      "compatible_surfaces": ["cli"],
+      "compatible_surfaces": [
+        "cli"
+      ],
       "profile": "cli",
-      "aliases": []
+      "aliases": [],
+      "reference_entries": {
+        "default": "project/tools/cli-default.ps1"
+      }
     },
     {
       "id": "windows",
-      "reference_entry": "project/tools/windows-shell.ps1",
       "kind": "surface",
       "description": "Windows desktop Surface Default。",
       "default_state": "DEFAULT",
-      "compatible_surfaces": ["gui_windows"],
+      "compatible_surfaces": [
+        "gui_windows"
+      ],
       "profile": "windows-gui",
-      "aliases": ["windows-gui"]
+      "aliases": [
+        "windows-gui"
+      ],
+      "reference_entries": {
+        "default": "project/tools/windows-shell.ps1"
+      }
     },
     {
       "id": "mcp",
       "kind": "surface",
       "description": "MCP tool/server Surface Default。",
       "default_state": "DEFAULT",
-      "compatible_surfaces": ["mcp"],
+      "compatible_surfaces": [
+        "mcp"
+      ],
       "profile": "mcp",
-      "aliases": []
+      "aliases": [],
+      "reference_entries": {
+        "default": "project/tools/mcp-default.ps1",
+        "contract": "project/contracts/mcp-tools.json"
+      }
     },
     {
       "id": "api",
-      "reference_entry": "project/tools/api-default.ps1",
       "kind": "surface",
       "description": "HTTP API Surface Default。",
       "default_state": "DEFAULT",
-      "compatible_surfaces": ["api"],
+      "compatible_surfaces": [
+        "api"
+      ],
       "profile": "api",
-      "aliases": []
+      "aliases": [],
+      "reference_entries": {
+        "default": "project/tools/api-default.ps1",
+        "contract": "project/contracts/api-error-envelope.json"
+      }
     },
     {
       "id": "agent",
-      "reference_entry": "project/tools/agent-default.ps1",
       "kind": "surface",
       "description": "Agent orchestration Surface Default。",
       "default_state": "DEFAULT",
-      "compatible_surfaces": ["agent"],
+      "compatible_surfaces": [
+        "agent"
+      ],
       "profile": "agent",
-      "aliases": []
+      "aliases": [],
+      "reference_entries": {
+        "default": "project/tools/agent-default.ps1"
+      }
     },
     {
       "id": "library",
       "kind": "surface",
       "description": "Reusable library/package Surface Default。",
       "default_state": "DEFAULT",
-      "compatible_surfaces": ["library"],
+      "compatible_surfaces": [
+        "library"
+      ],
       "profile": "library",
       "aliases": []
     },
@@ -84,7 +113,16 @@
       "kind": "tool",
       "description": "Non-deploying CI test Gate connection。",
       "default_state": "DEFAULT",
-      "compatible_surfaces": ["minimal", "web", "cli", "gui_windows", "mcp", "api", "agent", "library"],
+      "compatible_surfaces": [
+        "minimal",
+        "web",
+        "cli",
+        "gui_windows",
+        "mcp",
+        "api",
+        "agent",
+        "library"
+      ],
       "aliases": []
     },
     {
@@ -92,42 +130,87 @@
       "kind": "tool",
       "description": "Canonical-source generated artifact stale checking。",
       "default_state": "DEFAULT",
-      "compatible_surfaces": ["web", "cli", "api", "library"],
-      "aliases": []
+      "compatible_surfaces": [
+        "web",
+        "cli",
+        "api",
+        "library"
+      ],
+      "aliases": [],
+      "reference_entries": {
+        "check": "project/tools/check-generated.ps1",
+        "update": "project/tools/update-generated-integrity.ps1"
+      }
     },
     {
       "id": "file-io",
       "kind": "tool",
       "description": "Overrideable file open/save and picker boundary。",
       "default_state": "DEFAULT",
-      "compatible_surfaces": ["web", "cli", "gui_windows", "library"],
-      "aliases": []
+      "compatible_surfaces": [
+        "web",
+        "cli",
+        "gui_windows",
+        "library"
+      ],
+      "aliases": [],
+      "reference_entries": {
+        "default": "project/tools/file-io.ps1",
+        "contract": "project/contracts/file-io.json"
+      }
     },
     {
       "id": "pwa",
       "kind": "tool",
       "description": "Optional PWA manifest, service worker, and offline hooks。",
       "default_state": "DEFAULT",
-      "compatible_surfaces": ["web"],
-      "aliases": []
+      "compatible_surfaces": [
+        "web"
+      ],
+      "aliases": [],
+      "reference_entries": {
+        "check": "project/tools/pwa-check.ps1"
+      }
     },
     {
       "id": "config",
-      "reference_entry": "project/tools/config-default.ps1",
       "kind": "tool",
       "description": "Explicit configuration map merge and display redaction helpers。",
       "default_state": "DEFAULT",
-      "compatible_surfaces": ["minimal", "web", "cli", "gui_windows", "mcp", "api", "agent", "library"],
-      "aliases": []
+      "compatible_surfaces": [
+        "minimal",
+        "web",
+        "cli",
+        "gui_windows",
+        "mcp",
+        "api",
+        "agent",
+        "library"
+      ],
+      "aliases": [],
+      "reference_entries": {
+        "default": "project/tools/config-default.ps1"
+      }
     },
     {
       "id": "logging",
-      "reference_entry": "project/tools/logging-default.ps1",
       "kind": "tool",
       "description": "Structured UTC logging and replaceable sink helpers。",
       "default_state": "DEFAULT",
-      "compatible_surfaces": ["minimal", "web", "cli", "gui_windows", "mcp", "api", "agent", "library"],
-      "aliases": []
+      "compatible_surfaces": [
+        "minimal",
+        "web",
+        "cli",
+        "gui_windows",
+        "mcp",
+        "api",
+        "agent",
+        "library"
+      ],
+      "aliases": [],
+      "reference_entries": {
+        "default": "project/tools/logging-default.ps1"
+      }
     }
   ]
 }

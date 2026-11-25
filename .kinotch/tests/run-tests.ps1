@@ -2404,7 +2404,7 @@ exit 0
 ) "Base source version syntax"
     Assert-Equal $baseVersion ([string]$baseIndex.base_version) "Base index version"
     Assert-Equal $baseVersion ([string]$patchCatalog.authority_base_version) "Maintenance patch authority version"
-    Assert-True ($state -match ("(?m)^Base version: " + [regex]::Escape(([char]96 + $baseVersion + [char]96)))) "CURRENT_STATE source version does not match Base"
+    Assert-True ($state -match ("(?m)^Base version: " + [regex]::Escape(([string][char]96 + $baseVersion + [string][char]96)))) "CURRENT_STATE source version does not match Base"
     Assert-True ($baseReadme -match "Surface Default Kit") "README_BASE Surface Kit wording is missing"
     Assert-True ($baseReadme -match "OVERRIDE") "README_BASE override boundary is missing"
     Assert-True (@($catalog.defaults | Where-Object { $_.kind -eq "surface" }).Count -ge 8) "Surface Default catalog entries are incomplete"

@@ -68,6 +68,63 @@ try {
     $defaults.packs.api = @{state="DEFAULT"}
     Write-Json $defaultsPath $defaults
     Run-Router @("reference-path","api") 2 | Out-Null
+    # Mixed packs: central helpers and descriptors; local Project data and
+    # host-required artifacts. No per-consumer .kinotch or copied helper.
+    $defaults.packs.Remove("api")
+    foreach ($id in @("mcp","file-io","generated-integrity","pwa")) { $defaults.packs[$id] = @{state="DEFAULT"} }
+    $manifest.surfaces.cli = $true
+    $manifest.surfaces.web = $true
+    $manifest.surfaces.mcp = $true
+    Write-Json $manifestPath $manifest
+    Write-Json $defaultsPath $defaults
+    $projectRoot = Join-Path $Consumer "project"
+    Write-Json (Join-Path $projectRoot "generated-integrity.json") @{schema_version=1;algorithm="SHA-256";entries=@()}
+    New-Item -ItemType Directory -Path (Join-Path $projectRoot "public"),(Join-Path $projectRoot "src/pwa") -Force | Out-Null
+    Write-Json (Join-Path $projectRoot "public/manifest.webmanifest") @{name="reference fixture";start_url="./"}
+    [IO.File]::WriteAllText((Join-Path $projectRoot "public/service-worker.js"),"// fixture")
+    [IO.File]::WriteAllText((Join-Path $projectRoot "src/pwa/register.js"),"// fixture")
+    Run-Router @("doctor") 0 | Out-Null
+    $packet = Run-Router @("reference-path","file-io","generated-integrity:check","generated-integrity:update","mcp","mcp:contract","pwa:check") 0 | ConvertFrom-Json
+    if (@($packet.references).Count -ne 6) { throw "Mixed entries not resolved" }
+    $file = $packet.references[0].path
+    $update = $packet.references[2].path
+    & $HostExe -NoProfile -ExecutionPolicy Bypass -File $file -RootOverride $Consumer -BaseOverride $Base -Action save -Path "src/source.txt" -Content "source" | Out-Null
+    if ($LASTEXITCODE -ne 0 -or (Get-Content -LiteralPath (Join-Path $projectRoot "src/source.txt") -Raw) -cne "source") { throw "Reference file-io save failed" }
+    $read = & $HostExe -NoProfile -ExecutionPolicy Bypass -File $file -RootOverride $Consumer -BaseOverride $Base -Action open -Path "src/source.txt"
+    if ($LASTEXITCODE -ne 0 -or $read -cne "source") { throw "Reference file-io open failed" }
+    $savedPreference = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = "Continue"
+        & $HostExe -NoProfile -ExecutionPolicy Bypass -File $file -RootOverride $Consumer -BaseOverride $Base -Action save -Path "../escape.txt" -Content "forbidden" 2>&1 | Out-Null
+        $escapeCode = $LASTEXITCODE
+    }
+    finally { $ErrorActionPreference = $savedPreference }
+    if ($escapeCode -eq 0 -or (Test-Path -LiteralPath (Join-Path $Consumer "escape.txt"))) { throw "Reference file-io escaped Project" }
+    [IO.File]::WriteAllText((Join-Path $projectRoot "src/artifact.txt"),"artifact")
+    & $HostExe -NoProfile -ExecutionPolicy Bypass -File $update -RootOverride $Consumer -BaseOverride $Base -Source "src/source.txt" -Artifact "src/artifact.txt" -Generator "fixture" | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "Reference generated update failed" }
+    Run-Router @("generated-integrity") 0 | Out-Null
+    Run-Router @("pwa-check") 0 | Out-Null
+    Run-Router @("verify") 0 | Out-Null
+    . $packet.references[3].path
+    $resolved = Resolve-McpProjectPath -ProjectRoot $projectRoot -RelativePath "src/source.txt" -BaseOverride $Base
+    if ($resolved -cne (Join-Path $projectRoot "src/source.txt")) { throw "Reference MCP root mismatch" }
+    [IO.File]::WriteAllText((Join-Path $projectRoot "src/artifact.txt"),"changed")
+    $savedPreference = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = "Continue"
+        $staleOutput = @(& $HostExe -NoProfile -ExecutionPolicy Bypass -File $Router -RootOverride $Consumer -BaseOverride $Base -ReferenceMode generated-integrity 2>&1)
+        $staleCode = $LASTEXITCODE
+    }
+    finally { $ErrorActionPreference = $savedPreference }
+    if ($staleCode -eq 0 -or ($staleOutput -join " ") -notmatch "stale") { throw "Stale artifact was not rejected" }
+    Remove-Item -LiteralPath (Join-Path $projectRoot "public/service-worker.js")
+    Run-Router @("doctor") 1 | Out-Null
+    if (Test-Path -LiteralPath (Join-Path $Consumer ".kinotch")) { throw "Reference mode materialized Base" }
+    foreach ($path in @("project/tools/file-io.ps1","project/tools/check-generated.ps1","project/tools/update-generated-integrity.ps1","project/tools/pwa-check.ps1","project/contracts/mcp-tools.json")) {
+        if (Test-Path -LiteralPath (Join-Path $Consumer $path)) { throw "Reference entry was copied: $path" }
+    }
+    Write-Host "[PASS] Mixed reference packs: explicit Project roots, central file-io/generated/MCP/PWA, local assets, stale/escape/missing rejection"
     Write-Host "[PASS] Reference Defaults: real catalog/router, central helper, local override, disabled, compatibility and legacy conflict rejection"
 }
 finally { Remove-Item -LiteralPath $Temp -Recurse -Force }

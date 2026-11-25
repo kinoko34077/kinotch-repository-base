@@ -19,15 +19,16 @@ function Invoke-McpInputValidator {
 function Resolve-McpProjectPath {
     param(
         [Parameter(Mandatory=$true)][string]$ProjectRoot,
-        [Parameter(Mandatory=$true)][string]$RelativePath
+        [Parameter(Mandatory=$true)][string]$RelativePath,
+        [string]$BaseOverride
     )
 
     if ([IO.Path]::IsPathRooted($RelativePath) -or $RelativePath -match '^(?:[A-Za-z]:)?[\\/]') {
         throw "MCP Project path must be relative: $RelativePath"
     }
     $repositoryRoot = Split-Path -Parent $ProjectRoot
-    $containmentPath = Join-Path $repositoryRoot ".kinotch/scripts/path-containment.ps1"
-    if (-not (Get-Command Assert-KntSafePath -ErrorAction SilentlyContinue)) {
+    $containmentPath = if ($BaseOverride) { Join-Path $BaseOverride "scripts/path-containment.ps1" } else { Join-Path $repositoryRoot ".kinotch/scripts/path-containment.ps1" }
+    if ($BaseOverride -or -not (Get-Command Assert-KntSafePath -ErrorAction SilentlyContinue)) {
         if (-not (Test-Path -LiteralPath $containmentPath -PathType Leaf)) {
             throw "KiNoTch path containment helper is missing"
         }
