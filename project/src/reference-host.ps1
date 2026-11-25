@@ -35,15 +35,31 @@ function Invoke-KntIsolatedReferenceGit {
         $isolatedArgs = @("-C",$RepositoryPath,
             "-c","core.hooksPath=$EmptyHooks","-c","core.attributesFile=$EmptyConfig",
             "-c","core.fsmonitor=false","-c","core.autocrlf=false","-c","core.protectHFS=true","-c","core.protectNTFS=true",
+            "-c","core.longpaths=true",
             "-c","protocol.allow=never","-c","protocol.file.allow=always","-c","protocol.https.allow=always",
             "-c","http.followRedirects=false","-c","http.sslVerify=true","-c","http.extraHeader=",
             "-c","credential.helper=","-c","core.askPass=","-c","gc.auto=0","-c","maintenance.auto=false")
-        $output = @(& $GitExecutable @isolatedArgs @GitArguments 2>$null)
-        $code = $LASTEXITCODE
+        $stderr = Join-Path (Split-Path -Parent $EmptyConfig) ("git-stderr-" + [guid]::NewGuid().ToString("N"))
+        try {
+            $output = @(& $GitExecutable @isolatedArgs @GitArguments 2>$stderr)
+            $code = $LASTEXITCODE
+            $reason = "unclassified"
+            if ($code -ne 0 -and (Test-Path -LiteralPath $stderr -PathType Leaf)) {
+                $diagnostic = Get-Content -LiteralPath $stderr -Raw
+                if ($diagnostic -match '(?i)filename too long|file name too long|path too long') { $reason = "path-length" }
+                elseif ($diagnostic -match '(?i)invalid path') { $reason = "invalid-path" }
+                elseif ($diagnostic -match '(?i)unable to create file|cannot create directory') { $reason = "filesystem-create" }
+                elseif ($diagnostic -match '(?i)unable to read|missing blob|bad object') { $reason = "object-read" }
+                elseif ($diagnostic -match '(?i)index.lock|could not lock') { $reason = "index-lock" }
+                elseif ($diagnostic -match '(?i)not our ref|couldn.t find remote ref') { $reason = "missing-ref" }
+                elseif ($diagnostic -match '(?i)could not resolve host|failed to connect') { $reason = "network" }
+            }
+        }
+        finally { if (Test-Path -LiteralPath $stderr) { Remove-Item -LiteralPath $stderr -Force -ErrorAction Stop } }
         if ($code -ne 0) {
             $operation = @($GitArguments | Where-Object { $_ -in @("init","fetch","rev-parse","cat-file","ls-tree","checkout") } | Select-Object -First 1) -join ""
             if (-not $operation) { $operation = "other" }
-            throw "Isolated reference Git failed (operation $operation, exit $code)"
+            throw "Isolated reference Git failed (operation $operation, exit $code, category $reason)"
         }
         return $output
     }

@@ -26,7 +26,7 @@ function Invoke-Probe([string]$Consumer, [string]$ExternalBase, [string[]]$Argum
     }
 }
 
-$Temp = Join-Path ([IO.Path]::GetTempPath()) ("kinotch-reference-probe-" + [guid]::NewGuid().ToString("N"))
+$Temp = Join-Path ([IO.Path]::GetTempPath()) ("knt-ref-" + [guid]::NewGuid().ToString("N"))
 $Consumer = Join-Path $Temp "consumer"
 $Source = Join-Path $Temp "source"
 $Cache = Join-Path $Temp "cache"
@@ -256,7 +256,7 @@ try {
     }
     # Public transport arguments are derived by the core; simulate only transport
     # using an already trusted local fixture, never run unapproved network code.
-    $hostFixture = Join-Path $Temp "host-fixture"
+    $hostFixture = Join-Path $Temp "host"
     New-Item -ItemType Directory -Path $hostFixture | Out-Null
     $publicCache = Join-Path $hostFixture "public-cache"
     New-Item -ItemType Directory -Path $publicCache | Out-Null
