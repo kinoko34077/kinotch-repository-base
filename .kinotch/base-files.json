@@ -56,11 +56,11 @@
     },
     {
       "path": ".kinotch/docs/BASE_ROADMAP.md",
-      "sha256": "8860cac5c379e6426d8f9eddda627005f4bb02e8189118d09b8fdfcd06f1d630"
+      "sha256": "de414bdfe6c8eabacd21bf0b422a425c4ecf470132850f3a9efc7ac226c31be9"
     },
     {
       "path": ".kinotch/maintenance-patches.json",
-      "sha256": "0d7bd7df0bb892fe0fe034fe10dec5abcb61e961aeb588ccd97598187ec947ab"
+      "sha256": "14b039cfc5d054bc406d757531f646a11dd7df8b31cf8024b70eba97b50ee31a"
     },
     {
       "path": ".kinotch/maintenance-patches/verify-checkout-v4-immutable-from-0.3.8/knt.ps1",
@@ -100,7 +100,7 @@
     },
     {
       "path": ".kinotch/meta/07_PHASE5_OPERATIONS.md",
-      "sha256": "0f8fb2590916453c92a867068eedbf2d50929d215b1c0b2d207b7e1601127864"
+      "sha256": "88fe78ea7995a0ef27156ac299e0a275effc26e7bd4ccc7a73b917173a349539"
     },
     {
       "path": ".kinotch/meta/08_GITHUB_DEVELOPMENT_CONTROL.md",
@@ -428,7 +428,7 @@
     },
     {
       "path": ".kinotch/tests/run-tests.ps1",
-      "sha256": "f07adf8bfe0652ce422d86a618dbd90cd03cb28d92abf995e44f76319422b410"
+      "sha256": "8222bafda3501799c319d0024e5dbaeb19d5823c223029b0d2d3c1b0e638057f"
     },
     {
       "path": "AGENTS.md",
