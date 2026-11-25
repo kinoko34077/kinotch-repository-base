@@ -23,6 +23,7 @@
     },
     {
       "id": "cli",
+      "reference_entry": "project/tools/cli-default.ps1",
       "kind": "surface",
       "description": "Command-line Surface Default。",
       "default_state": "DEFAULT",
@@ -32,6 +33,7 @@
     },
     {
       "id": "windows",
+      "reference_entry": "project/tools/windows-shell.ps1",
       "kind": "surface",
       "description": "Windows desktop Surface Default。",
       "default_state": "DEFAULT",
@@ -50,6 +52,7 @@
     },
     {
       "id": "api",
+      "reference_entry": "project/tools/api-default.ps1",
       "kind": "surface",
       "description": "HTTP API Surface Default。",
       "default_state": "DEFAULT",
@@ -59,6 +62,7 @@
     },
     {
       "id": "agent",
+      "reference_entry": "project/tools/agent-default.ps1",
       "kind": "surface",
       "description": "Agent orchestration Surface Default。",
       "default_state": "DEFAULT",
@@ -109,6 +113,7 @@
     },
     {
       "id": "config",
+      "reference_entry": "project/tools/config-default.ps1",
       "kind": "tool",
       "description": "Explicit configuration map merge and display redaction helpers。",
       "default_state": "DEFAULT",
@@ -117,6 +122,7 @@
     },
     {
       "id": "logging",
+      "reference_entry": "project/tools/logging-default.ps1",
       "kind": "tool",
       "description": "Structured UTC logging and replaceable sink helpers。",
       "default_state": "DEFAULT",
