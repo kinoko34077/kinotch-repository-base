@@ -2,6 +2,7 @@ name: KiNoTch Default Verify
 
 on:
   push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
 

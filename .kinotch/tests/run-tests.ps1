@@ -1663,6 +1663,7 @@ Write-Output "agent-kit-ok"
 Invoke-TestCase "Base CI matrix and Project CI template have separate responsibilities" {
     $baseWorkflow = Get-Content -Raw -Encoding UTF8 (Join-Path $RepoRoot ".github/workflows/verify.yml")
     Assert-True ($baseWorkflow -match "matrix") "Base CI workflow lost its cross-platform matrix"
+    Assert-True ($baseWorkflow -match '(?m)^  push:\r?\n    branches: \[main\]\r?\n  pull_request:\r?\n  workflow_dispatch:\r?$') "Base CI must limit push to main and preserve PR/manual triggers"
     Assert-True ($baseWorkflow -match "ubuntu-latest") "Base CI workflow is missing Ubuntu"
     Assert-True ($baseWorkflow -match "windows-latest") "Base CI workflow is missing Windows"
     Assert-True ($baseWorkflow -match "powershell") "Base CI workflow is missing Windows PowerShell 5.1"
@@ -1670,6 +1671,7 @@ Invoke-TestCase "Base CI matrix and Project CI template have separate responsibi
 
     $projectTemplate = Get-Content -Raw -Encoding UTF8 (Join-Path $RepoRoot ".kinotch/templates/defaults/ci-test/.github/workflows/kinotch-default.yml")
     Assert-True ($projectTemplate -match "runs-on: ubuntu-latest") "Project CI template is missing the default Ubuntu runner"
+    Assert-True ($projectTemplate -match '(?m)^  push:\r?\n    branches: \[main\]\r?\n  pull_request:\r?\n  workflow_dispatch:\r?$') "Project template CI must limit push to main and preserve PR/manual triggers"
     Assert-True ($projectTemplate -match "shell: pwsh") "Project CI template is missing PowerShell Core"
     Assert-True ($projectTemplate -notmatch "matrix|windows-latest|powershell") "Project CI template imposes the Base three-environment matrix"
 }
@@ -1678,12 +1680,14 @@ Invoke-TestCase "Project ci-test selects one Surface-appropriate runner" {
         param($root, $output)
         $workflow = Get-Content -Raw -Encoding UTF8 (Join-Path $root ".github/workflows/kinotch-default.yml")
         Assert-True ($workflow -match "runs-on: ubuntu-latest") "CLI Project ci-test did not select Ubuntu"
+        Assert-True ($workflow -match '(?m)^  push:\r?\n    branches: \[main\]\r?\n  pull_request:\r?\n  workflow_dispatch:\r?$') "CLI CI must limit push to main and preserve PR/manual triggers"
         Assert-True ($workflow -notmatch "windows-latest|matrix") "CLI Project ci-test imposed a Windows or matrix runner"
     }
     Invoke-KntInitFixture -Profiles @("windows-gui") -Defaults @("ci-test") -RemoveExistingCi -AssertOutput {
         param($root, $output)
         $workflow = Get-Content -Raw -Encoding UTF8 (Join-Path $root ".github/workflows/kinotch-default.yml")
         Assert-True ($workflow -match "runs-on: windows-latest") "Windows Project ci-test did not select Windows"
+        Assert-True ($workflow -match '(?m)^  push:\r?\n    branches: \[main\]\r?\n  pull_request:\r?\n  workflow_dispatch:\r?$') "Windows CI must limit push to main and preserve PR/manual triggers"
         Assert-True ($workflow -notmatch "matrix") "Windows Project ci-test imposed a matrix runner"
     }
 }
@@ -2363,7 +2367,7 @@ Invoke-TestCase "Base documentation and profile metadata are finalized" {
     Assert-True ($workflow -match "knt\.ps1 setup") "Base CI setup step is missing"
     Assert-True ($workflow -match "actions/checkout@[0-9a-f]{40}(?:\s+#\s+v4)?") "Base Verify checkout action is not pinned to a full commit SHA"
     Assert-Equal 0 @($surfaceRegistry.surfaces.PSObject.Properties).Count "Base Surface Registry should be empty"
-    Assert-Equal "0.5.24" $baseVersion "Base version"
+    Assert-Equal "0.5.25" $baseVersion "Base version"
     Assert-True ($baseReadme -match "Surface Default Kit") "README_BASE Surface Kit wording is missing"
     Assert-True ($baseReadme -match "OVERRIDE") "README_BASE override boundary is missing"
     Assert-True (@($catalog.defaults | Where-Object { $_.kind -eq "surface" }).Count -ge 8) "Surface Default catalog entries are incomplete"

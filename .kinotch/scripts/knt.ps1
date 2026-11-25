@@ -751,32 +751,14 @@ function Finalize-DefaultImplementation([string]$DefaultId, $Manifest, [string]$
         $workflowPath = Join-Path $Root ".github/workflows/kinotch-default.yml"
         if (-not (Test-Path -LiteralPath $workflowPath -PathType Leaf)) { return }
         $runner = if ([bool](Get-KntJsonProperty $Manifest.surfaces "gui_windows")) { "windows-latest" } else { "ubuntu-latest" }
-        $workflow = @"
-name: KiNoTch Default Verify
-
-on:
-  push:
-  pull_request:
-  workflow_dispatch:
-
-permissions:
-  contents: read
-
-jobs:
-  verify:
-    runs-on: $runner
-    defaults:
-      run:
-        shell: pwsh
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - name: Base / project diagnostics
-        run: ./.kinotch/scripts/knt.ps1 doctor
-      - name: Project setup
-        run: ./.kinotch/scripts/knt.ps1 setup
-      - name: Project verification
-        run: ./.kinotch/scripts/knt.ps1 verify
-"@
+        $templatePath = Join-Path $BaseDir "templates/defaults/ci-test/.github/workflows/kinotch-default.yml"
+        $safeTemplatePath = Assert-KntSafePath -Root $BaseDir -Candidate $templatePath -Description "ci-test workflow template"
+        $workflow = [IO.File]::ReadAllText($safeTemplatePath)
+        $runnerPattern = '(?m)^    runs-on: ubuntu-latest(?=\r?$)'
+        if ([regex]::Matches($workflow, $runnerPattern).Count -ne 1) {
+            throw "ci-test workflow template must declare exactly one default Ubuntu runner"
+        }
+        $workflow = [regex]::Replace($workflow, $runnerPattern, "    runs-on: $runner").TrimEnd([char[]]"`r`n")
         $safeWorkflowPath = Assert-KntSafeWritePath -Root $Root -Candidate $workflowPath -Description "ci-test workflow"
         [IO.File]::WriteAllText($safeWorkflowPath, $workflow.TrimStart(), (New-Object System.Text.UTF8Encoding($false)))
     }
