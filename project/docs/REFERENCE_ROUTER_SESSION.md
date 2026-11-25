@@ -1,0 +1,7 @@
+# 参照型Routerの統合実行（候補）
+
+#66 B1/B2。信頼済みhostの session 実行入口を再利用する。UseSnapshot の有効期間内に中央の既存Routerを明示ReferenceModeで起動し、実commit、mode、cache再利用、command、native exit code、診断を返す。失敗を成功へ変換しない。版選択、Default判断、cache/cleanupの再実装は行わない。
+
+通常Project commandと診断のみ。deploy/init/migrate/base-refresh/base-patchは別の権限・変更境界、reference-pathの返す一時pathはsession外へ持ち出さないためこの入口の対象外。将来の薄いhost callerは結果のexit_codeを終了値へ対応させる。
+
+試験では有効な保護indexを持つA/B版のschemaを切り替え、同じconsumerでdoctorの失敗→成功・verify・offline旧版・cache reuse・stage cleanup・consumer無変更を確認する。合成承認のみ。本番の承認元/host保護/remote取得/配備は未受入。
