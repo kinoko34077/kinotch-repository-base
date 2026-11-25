@@ -142,6 +142,56 @@ try {
     catch { if ($_.Exception.Message -notmatch "requires CURRENT") { throw }; $rejectedOfflineVerification=$true }
     if (-not $rejectedOfflineVerification -or $hostCalls.resolve -ne 3 -or
         @(Get-ChildItem -LiteralPath $trustedHostRoot -Filter "session-*").Count -ne 0) { throw "Offline formal verification was not rejected or cleaned" }
+    # Exercise the same fixed CLI entry a trusted installation will expose.
+    # Copy only to this disposable host fixture, not to a consumer repo.
+    $install = Join-Path $trustedHostRoot "base-source"
+    New-Item -ItemType Directory -Path @((Join-Path $install "project"),(Join-Path $install ".kinotch/scripts")) -Force | Out-Null
+    Copy-Item -LiteralPath (Join-Path $root "project/src") -Destination (Join-Path $install "project/src") -Recurse
+    Copy-Item -LiteralPath (Join-Path $root ".kinotch/scripts/path-containment.ps1") -Destination (Join-Path $install ".kinotch/scripts/path-containment.ps1")
+    $profile = Join-Path $trustedHostRoot "reference-host-profile.ps1"
+    $decisionPath = Join-Path $trustedHostRoot "fixture-decision.json"
+    $profileText = @'
+$fixtureProfile = Get-Content -LiteralPath (Join-Path $PSScriptRoot "fixture-decision.json") -Raw -Encoding UTF8 | ConvertFrom-Json
+$fixtureDecision = $fixtureProfile.decision
+return @{GitExecutable=$fixtureProfile.git;Channel="fixture";PolicyRevision="fixture";ResolveApproved=({param($r,$c,$p,$pin) $fixtureDecision}.GetNewClosure())}
+'@
+    [IO.File]::WriteAllText($profile,$profileText,(New-Object System.Text.UTF8Encoding($false)))
+    $cli = Join-Path $install "project/src/reference-cli.ps1"
+    function Write-CliDecision([string]$sha,[string]$mode) {
+        $hostDecision.commit=$sha; $hostDecision.mode=$mode
+        [IO.File]::WriteAllText($decisionPath,(@{git=$git;decision=$hostDecision} | ConvertTo-Json -Depth 10),(New-Object System.Text.UTF8Encoding($false)))
+    }
+    function Run-ReferenceCli([string[]]$argv,[int]$expectedCode) {
+        $previousPreference=$ErrorActionPreference
+        try {
+            $ErrorActionPreference="Continue"
+            $cliOutput=@(& $hostExe -NoProfile -ExecutionPolicy Bypass -File $cli $consumer @argv 2>&1)
+            $cliCode=$LASTEXITCODE
+        } finally {$ErrorActionPreference=$previousPreference}
+        if ($cliCode -ne $expectedCode) {throw "CLI exit mismatch: expected $expectedCode, got $cliCode : $($cliOutput -join ' ')"}
+        return @($cliOutput | ForEach-Object {[string]$_})
+    }
+    Write-CliDecision $commitB "CURRENT"
+    $cliResult=Run-ReferenceCli @("smoke","-RootOverride","ignored-root","argument with spaces") 0
+    if ($cliResult -cnotcontains "-RootOverride" -or $cliResult -cnotcontains "ignored-root" -or $cliResult -cnotcontains "argument with spaces" -or
+        ($cliResult -join " ") -notmatch "commit=$commitB mode=CURRENT exit=0") {throw "CLI did not preserve argument data and identity"}
+    $cliResult=Run-ReferenceCli @("verification") 0
+    if (($cliResult -join " ") -notmatch "step=verify exit=0") {throw "CLI verification did not complete"}
+    Write-CliDecision $commitA "CURRENT"
+    $cliResult=Run-ReferenceCli @("doctor") 1
+    if (($cliResult -join " ") -notmatch "commit=$commitA mode=CURRENT exit=1") {throw "CLI failure identity lost"}
+    Write-CliDecision $commitB "OFFLINE"
+    Run-ReferenceCli @("verification") 1 | Out-Null
+    Run-ReferenceCli @("doctor") 0 | Out-Null
+    Remove-Item -LiteralPath $profile -Force
+    Run-ReferenceCli @("doctor") 1 | Out-Null
+    if (@(Get-ChildItem -LiteralPath $trustedHostRoot -Filter "session-*").Count -ne 0) {throw "CLI leaked session"}
+    # Bootstrap and migration consume identical static templates. They are not
+    # installed by this fixture and contain no independent loader or version pin.
+    $entryTemplates=Join-Path $root "project/templates/reference"
+    $localEntry=Get-Content -LiteralPath (Join-Path $entryTemplates "knt.cmd") -Raw
+    if ($localEntry -notmatch 'KNT_REFERENCE_ENTRY' -or $localEntry -match 'https?://|git fetch|\.kinotch\\scripts') {throw "Local entry is not a thin host caller"}
+    Write-Host "[PASS] Reference CLI: fixed host layout, data arguments, verification, native failure, offline boundary, missing profile, thin entry"
     Move-Item -LiteralPath $source -Destination (Join-Path $temp "offline")
     $decision.mode="OFFLINE"
     $decision.commit=$commitA

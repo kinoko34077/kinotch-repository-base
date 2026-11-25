@@ -11,3 +11,10 @@
 ## 共通host入口と連続検証（B3接続候補）
 
 `Invoke-KntBaseHostCommand` は信頼済みhostの既存 `Invoke-KntPublicReferenceSession` とRouter adapterを接続する。Baseの正規repo/IDを固定し、consumerが供給元・承認resolver・policy・host rootを選択する入口にしない。通常commandの返却と `-Verification`（doctor/setup/verifyの既存順序）を提供する。後者は一回だけ版を解決し、同一SHAで各処理を実行、最初の非成功で残りを実行せず各結果と終了値を返す。正式検証ではCURRENTのみ、通常commandは承認済みOFFLINEも可。実行結果は#1121の証拠に接続するための素材であり、真正性・鮮度・保証の同等性・CI省略を決めない。host配置/保護/承認元/production callerは未受入。既存workflowを変更しない。
+
+
+## ローカルCLI・Bootstrap/移行共通入口候補
+
+信頼済みhostにだけ `base-source/project/src/reference-cli.ps1` を配置する。host root直下の `reference-host-profile.ps1` は保護側が設置する唯一の設定入口であり、GitExecutable/Channel/PolicyRevision/ResolveApproved（scriptblock）と任意PinnedCommitを返す。consumerがprofile・供給元・承認元を指定できない。profile欠落時は非成功、未承認版の取得・実行へfallbackしない。通常CLIは `reference-cli.ps1 <consumer-root> <command> [arguments...]`、正式連続検証は `verification`。出力は診断、真正CI receiptではない。host設置・profileの真正性/アクセス保護・admissionは別受入。
+
+`project/templates/reference/AGENTS.md` と `knt.cmd` は新規明示採用と既存移行で同じ中央ファイルを参照する。Windowsの薄い `knt.cmd` は信頼済みローカルshellが一度設定した絶対host executable/entryの環境変数を利用する（CIの信頼境界ではない）。host profile/loader/固定版をconsumerへ置かない。正式workflowは#1121の承認済み共通callerをBootstrapの既存SEED/verify保護契約に接続する。未受入workflowの名前やSHAを仮定して生成しない。既存minimal/replayを変えない。
