@@ -114,3 +114,9 @@ B0の設計受入ではこのnative pathを優先し、必要性のないZIP検�
 共有shallow cacheへの並行fetchでGit自身のshallow lock競合を再現した（4件中1成功、3失敗）。共通cacheを正本repository単位のrootと不変commit単位のbare repositoryへ分ける。未知版は専用incoming directoryへexact SHAを浅く取得し、実SHA/type/bare/alternates不在を確認後、同一親内のdirectory moveで確定する。同一版の競合は先に成立した正しいcacheを再利用し、上書きしない。失敗したincomingのみ破棄。取得済み版はoriginに接続せず再利用。source unavailable/未知版/破損refは成功にしない。既存の独立snapshot供給関数を変更理由に沿って再利用する。
 
 Linux合成Git実験は4異なる版＋同一版競合2件の6並行で4 publish/2 race-hit、incoming残存なし、offline再利用成功。異版間のobject重複は残るため実容量・保持寿命の測定後に必要な回収を設計する。実hostのPowerShell関数/fixtureはCIで確認する。今回の受入範囲は信頼済みローカルsource/rootからの取得と保持に限定し、ネットワーク・実運用承認・自動選択・cache root保護・全host pathの保証とは区別する。
+
+## B1.3 利用単位の共通接続（非稼働試作）
+
+`Invoke-KntReferenceSession` は信頼済みhostから注入された承認済み版決定を1回取得し、対象repo/channel/policyと明示pinの一致を確認する。その後はexact SHAを固定し、B1.2の保持とB1.1の独立snapshotを再利用する。利用adapterはstage・exact SHA・状態を受け、成功/失敗とも一時stageを片付ける。利用結果には実解決commit・policy・CURRENT/OFFLINE・cache再利用を残す。OFFLINEは既存の保持済み版のみを許す。拒否・不明・不一致・未保持版から暗黙fallbackしない。
+
+承認の真正性・互換性・鮮度・失効・offline可否は信頼済み解決元の責務。合成providerは本番承認元ではない。devflow #1121の原典取得・共通判定を独立再実装せず、正式契約成立後に薄い接続を追加する。今回のfixtureは同一利用入口のA/B決定・実Router・明示offline/pin・拒否・例外時cleanupを検証する。ネットワーク・実運用入口・権限・公開・他repo適用なし。

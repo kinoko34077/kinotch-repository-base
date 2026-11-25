@@ -148,6 +148,86 @@ try {
     if (-not $rejected -or @(Get-ChildItem -LiteralPath $Stages -Force).Count -ne $stageCount) { throw "Corrupt retained identity admitted or leaked stage" }
     Invoke-FixtureGit $retainedA.path @("update-ref","refs/kinotch/retained/$commitA",$commitA) | Out-Null
 
+    # Normal-use composition: one trusted resolution per invocation, no consumer
+    # changes, no durable stage, no implicit fallback on rejected/unknown identity.
+    $sessionCache = Join-Path $Temp "session-cache"
+    New-Item -ItemType Directory -Path $sessionCache | Out-Null
+    $sessionCalls = @{resolve=0; use=0}
+    $fixtureResolution = [pscustomobject]@{
+        repository="fixture/base"; channel="stable-v1"; policy_revision="fixture-policy"
+        commit=$commitA; mode="CURRENT"
+    }
+    $sessionArgs = @{
+        Repository="fixture/base"; Channel="stable-v1"; PolicyRevision="fixture-policy"
+        CacheRoot=$sessionCache; Source=$Source; StageRoot=$Stages; EmptyTemplate=$Template
+        ResolveApproved={param($repo,$channel,$policy,$pin)
+            $sessionCalls.resolve++
+            if ($repo -cne "fixture/base" -or $channel -cne "stable-v1" -or $policy -cne "fixture-policy") { throw "Unexpected resolver input" }
+            $fixtureResolution
+        }
+        InvokeGit={param($repo,$argv) Invoke-FixtureGit $repo $argv}
+        UseSnapshot={param($root,$selected,$mode)
+            $sessionCalls.use++
+            if ((Get-FixtureCommit $root "HEAD") -cne $selected) { throw "Session selected wrong snapshot" }
+            if ($selected -ceq $commitA) {
+                Invoke-Probe -Consumer $Consumer -ExternalBase (Join-Path $root ".kinotch") -Arguments @("doctor") -Expected 1 -Pattern "project\.name must have at least $minimum characters"
+            }
+            else {
+                Invoke-Probe -Consumer $Consumer -ExternalBase (Join-Path $root ".kinotch") -Arguments @("doctor") -Expected 0 -Pattern "Base version:"
+            }
+            "fixture-use-ok"
+        }
+    }
+    $normalA = Invoke-KntReferenceSession @sessionArgs
+    $fixtureResolution.commit = $commitB
+    $normalB = Invoke-KntReferenceSession @sessionArgs
+    if ($normalA.commit -cne $commitA -or $normalB.commit -cne $commitB -or
+        $normalA.reused -or $normalB.reused -or $normalB.result[0] -cne "fixture-use-ok" -or
+        $sessionCalls.resolve -ne 2 -or $sessionCalls.use -ne 2 -or
+        @(Get-ChildItem -LiteralPath $Stages -Force).Count -ne $stageCount) { throw "Normal session composition failed" }
+
+    # Explicit offline/pin remains available with the source absent.
+    Move-Item -LiteralPath $Source -Destination $offlineSource
+    $fixtureResolution.commit = $commitA
+    $fixtureResolution.mode = "OFFLINE"
+    $offline = Invoke-KntReferenceSession @sessionArgs -PinnedCommit $commitA
+    if ($offline.mode -cne "OFFLINE" -or $offline.commit -cne $commitA -or -not $offline.reused) { throw "Offline session failed" }
+    $sessionCacheCount = @(Get-ChildItem -LiteralPath $sessionCache -Force).Count
+    $fixtureResolution.commit = ("3" * 40)
+    $rejected = $false
+    try { Invoke-KntReferenceSession @sessionArgs | Out-Null }
+    catch { if ($_.Exception.Message -notmatch "offline revision not retained") { throw }; $rejected = $true }
+    if (-not $rejected -or @(Get-ChildItem -LiteralPath $sessionCache -Force).Count -ne $sessionCacheCount) { throw "Offline miss changed cache" }
+    Move-Item -LiteralPath $offlineSource -Destination $Source
+
+    $fixtureResolution.commit = $commitA
+    $fixtureResolution.mode = "BLOCKED"
+    $rejected = $false
+    try { Invoke-KntReferenceSession @sessionArgs | Out-Null }
+    catch { if ($_.Exception.Message -notmatch "not admitted") { throw }; $rejected = $true }
+    if (-not $rejected) { throw "Blocked resolution executed" }
+    $fixtureResolution.mode = "CURRENT"
+    $fixtureResolution.policy_revision = "wrong-policy"
+    $rejected = $false
+    try { Invoke-KntReferenceSession @sessionArgs | Out-Null }
+    catch { if ($_.Exception.Message -notmatch "resolution identity") { throw }; $rejected = $true }
+    if (-not $rejected) { throw "Wrong policy executed" }
+    $fixtureResolution.policy_revision = "fixture-policy"
+    $rejected = $false
+    try { Invoke-KntReferenceSession @sessionArgs -PinnedCommit $commitB | Out-Null }
+    catch { if ($_.Exception.Message -notmatch "Pinned commit mismatch") { throw }; $rejected = $true }
+    if (-not $rejected -or $sessionCalls.use -ne 3) { throw "Unexpected session use" }
+
+    # Failed invocation also releases the stage and retains both cached revisions.
+    $sessionArgs.UseSnapshot = {param($root,$selected,$mode) throw "synthetic consumer failure"}
+    $rejected = $false
+    try { Invoke-KntReferenceSession @sessionArgs | Out-Null }
+    catch { if ($_.Exception.Message -notmatch "synthetic consumer failure") { throw }; $rejected = $true }
+    if (-not $rejected -or @(Get-ChildItem -LiteralPath $Stages -Force).Count -ne $stageCount -or
+        @(Get-ChildItem -LiteralPath $sessionCache -Force).Count -ne $sessionCacheCount -or
+        (Get-TreeFingerprint $Consumer) -cne $before) { throw "Session failure cleanup failed" }
+    Write-Host "[PASS] Reference session: one resolution per use, A/B auto-selection fixture, explicit offline/pin, denied/wrong/missing resolution rejection, success/failure cleanup"
+
     # Unsupported gitlink mode is rejected without materializing it.
     Invoke-FixtureGit $Source @("update-index","--add","--cacheinfo","160000,$commitA,unexpected-link") | Out-Null
     Invoke-FixtureGit $Source @("commit","--quiet","-m","synthetic unsupported tree") | Out-Null
