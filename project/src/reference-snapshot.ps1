@@ -1,3 +1,76 @@
+# B1.2: cache identity/retention only; never authorizes a revision.
+function Assert-KntReferenceDirectory([string]$Path) {
+    if (-not [IO.Path]::IsPathRooted($Path) -or -not (Test-Path -LiteralPath $Path -PathType Container)) {
+        throw "Invalid trusted local root"
+    }
+    if (((Get-Item -LiteralPath $Path -Force).Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+        throw "Trusted root is a reparse point"
+    }
+}
+
+function Assert-KntReferenceCommit([string]$Commit) {
+    if ($Commit -cnotmatch '\A[0-9a-f]{40}\z') { throw "Invalid exact commit identity" }
+}
+
+function Test-KntRetainedCache([string]$Path,[string]$Commit,[scriptblock]$InvokeGit) {
+    if (-not (Test-Path -LiteralPath $Path)) { return $false }
+    Assert-KntReferenceDirectory $Path
+    if ([string](& $InvokeGit $Path @("rev-parse","--is-bare-repository")) -cne "true" -or
+        (Test-Path -LiteralPath (Join-Path $Path "objects/info/alternates"))) {
+        throw "Invalid retained cache"
+    }
+    $actual = [string](& $InvokeGit $Path @("rev-parse","--verify","refs/kinotch/retained/$Commit"))
+    if ($actual -cne $Commit -or [string](& $InvokeGit $Path @("cat-file","-t",$actual)) -cne "commit") {
+        throw "Retained commit identity mismatch"
+    }
+    return $true
+}
+
+# The host supplies the repository-specific trusted cache root and exact admitted
+# commit. Local source only in this prototype; no consumer-controlled URL.
+function Receive-KntReferenceCommit {
+    param(
+        [Parameter(Mandatory=$true)][string]$CacheRoot,
+        [Parameter(Mandatory=$true)][string]$Source,
+        [Parameter(Mandatory=$true)][string]$Commit,
+        [Parameter(Mandatory=$true)][string]$EmptyTemplate,
+        [Parameter(Mandatory=$true)][scriptblock]$InvokeGit
+    )
+    Assert-KntReferenceCommit $Commit
+    Assert-KntReferenceDirectory $CacheRoot
+    Assert-KntReferenceDirectory $EmptyTemplate
+    if (@(Get-ChildItem -LiteralPath $EmptyTemplate -Force).Count -ne 0) { throw "Git template must be empty" }
+    if (-not [IO.Path]::IsPathRooted($Source)) { throw "Invalid trusted source path" }
+    $target = Assert-KntSafePath -Root $CacheRoot -Candidate (Join-Path $CacheRoot $Commit) -Description "Retained cache"
+    if (Test-KntRetainedCache $target $Commit $InvokeGit) {
+        return [pscustomobject]@{ path=$target; commit=$Commit; reused=$true }
+    }
+    if (-not (Test-Path -LiteralPath $Source -PathType Container)) { throw "Source unavailable" }
+    Assert-KntReferenceDirectory $Source
+    $incoming = Assert-KntSafePath -Root $CacheRoot -Candidate (Join-Path $CacheRoot ("incoming-" + [guid]::NewGuid().ToString("N"))) -Description "Incoming cache"
+    New-Item -ItemType Directory -Path $incoming -ErrorAction Stop | Out-Null
+    try {
+        & $InvokeGit $incoming @("init","--quiet","--bare","--template=$EmptyTemplate") | Out-Null
+        # Each fetch owns its shallow metadata. Only the validated directory is
+        # published. The native same-parent move never overwrites a cache.
+        $ref = "refs/kinotch/retained/$Commit"
+        & $InvokeGit $incoming @("-c","fetch.fsckObjects=true","fetch","--quiet","--no-write-fetch-head","--no-tags","--no-recurse-submodules","--depth=1","--no-auto-gc","--",$Source,($Commit + ":" + $ref)) | Out-Null
+        if (-not (Test-KntRetainedCache $incoming $Commit $InvokeGit)) { throw "Incoming cache missing" }
+        $reused = $false
+        try { [IO.Directory]::Move($incoming,$target) }
+        catch {
+            # Another invocation may have published this exact identity. Never
+            # overwrite its directory; any inconsistent existing state fails.
+            if (-not (Test-KntRetainedCache $target $Commit $InvokeGit)) { throw }
+            $reused = $true
+        }
+        return [pscustomobject]@{ path=$target; commit=$Commit; reused=$reused }
+    }
+    finally {
+        if (Test-Path -LiteralPath $incoming) { Remove-Item -LiteralPath $incoming -Recurse -Force }
+    }
+}
+
 # B1: trusted local cache -> independent exact-commit snapshot.
 # Internal prototype only. Caller owns trust/admission, isolated Git invocation,
 # protected cache/staging roots and lifetime. No network, approval or execution here.
@@ -9,16 +82,9 @@ function New-KntReferenceSnapshot {
         [Parameter(Mandatory=$true)][string]$EmptyTemplate,
         [Parameter(Mandatory=$true)][scriptblock]$InvokeGit
     )
-    if ($Commit -cnotmatch '\A[0-9a-f]{40}\z') { throw "Invalid exact commit identity" }
+    Assert-KntReferenceCommit $Commit
     # These roots must already be established by the trusted host, not consumer input.
-    foreach ($root in @($Cache,$StageRoot,$EmptyTemplate)) {
-        if (-not [IO.Path]::IsPathRooted($root) -or -not (Test-Path -LiteralPath $root -PathType Container)) {
-            throw "Invalid trusted local root"
-        }
-        if (((Get-Item -LiteralPath $root -Force).Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
-            throw "Trusted root is a reparse point"
-        }
-    }
+    foreach ($root in @($Cache,$StageRoot,$EmptyTemplate)) { Assert-KntReferenceDirectory $root }
     if (@(Get-ChildItem -LiteralPath $EmptyTemplate -Force).Count -ne 0) { throw "Git template must be empty" }
     $stage = Assert-KntSafePath -Root $StageRoot -Candidate (Join-Path $StageRoot ([guid]::NewGuid().ToString("N"))) -Description "Reference stage"
     # Never overwrite an existing stage. The caller owns successful stage cleanup.

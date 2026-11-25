@@ -108,3 +108,9 @@ B0の設計受入ではこのnative pathを優先し、必要性のないZIP検�
 `project/src/reference-snapshot.ps1` の `New-KntReferenceSnapshot` は信頼済みhostが確立したcache・commit・stage root・隔離Git呼出を入力とする非稼働試作。呼出側が真正な承認、固定origin、環境/config隔離、root保護、cacheの寿命、成功stageの寿命を所有する。これら未実証のまま実運用しない。任意consumer入力を信頼済み引数へ変換しない。特殊tree modeを拒否するが、全host path・cache完全性・同時更新安全性の受入は後続B1。
 
 #1154の `devflow_mapped_read` は既存固定checkoutのimport pathを利用するため、同じsnapshot供給を利用できる候補。Base固有Routerとmapper固有packageを分離し、言語別の取得/版解決実装を増やさない。承認・証拠はdevflow #1121の正本に接続する。実Python接続・本番有効化は未実施。
+
+## B1.2 版単位の取得・保持（非稼働試作）
+
+共有shallow cacheへの並行fetchでGit自身のshallow lock競合を再現した（4件中1成功、3失敗）。共通cacheを正本repository単位のrootと不変commit単位のbare repositoryへ分ける。未知版は専用incoming directoryへexact SHAを浅く取得し、実SHA/type/bare/alternates不在を確認後、同一親内のdirectory moveで確定する。同一版の競合は先に成立した正しいcacheを再利用し、上書きしない。失敗したincomingのみ破棄。取得済み版はoriginに接続せず再利用。source unavailable/未知版/破損refは成功にしない。既存の独立snapshot供給関数を変更理由に沿って再利用する。
+
+Linux合成Git実験は4異なる版＋同一版競合2件の6並行で4 publish/2 race-hit、incoming残存なし、offline再利用成功。異版間のobject重複は残るため実容量・保持寿命の測定後に必要な回収を設計する。実hostのPowerShell関数/fixtureはCIで確認する。今回の受入範囲は信頼済みローカルsource/rootからの取得と保持に限定し、ネットワーク・実運用承認・自動選択・cache root保護・全host pathの保証とは区別する。
