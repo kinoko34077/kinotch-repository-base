@@ -1,7 +1,11 @@
+param([string]$RootOverride,[string]$BaseOverride)
+
 $ErrorActionPreference = "Stop"
-$repositoryRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot "../.."))
-. (Join-Path $repositoryRoot ".kinotch/scripts/path-containment.ps1")
-$projectRoot = [IO.Path]::GetFullPath((Join-Path $repositoryRoot "project"))
+if ([bool]$RootOverride -ne [bool]$BaseOverride) { throw "RootOverride and BaseOverride must be supplied together" }
+$containmentPath = if ($BaseOverride) { Join-Path $BaseOverride "scripts/path-containment.ps1" } else { Join-Path $PSScriptRoot "../../.kinotch/scripts/path-containment.ps1" }
+. $containmentPath
+$context = Resolve-KntDefaultContext -ScriptRoot $PSScriptRoot -RootOverride $RootOverride -BaseOverride $BaseOverride
+$projectRoot = $context.ProjectRoot
 $manifestPath = Assert-KntSafePath -Root $projectRoot -Candidate (Join-Path $projectRoot "public/manifest.webmanifest") -Description "PWA manifest"
 $workerPath = Assert-KntSafePath -Root $projectRoot -Candidate (Join-Path $projectRoot "public/service-worker.js") -Description "PWA service worker"
 $registrationPath = Assert-KntSafePath -Root $projectRoot -Candidate (Join-Path $projectRoot "src/pwa/register.js") -Description "PWA registration helper"
