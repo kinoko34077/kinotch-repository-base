@@ -114,3 +114,66 @@ function New-KntReferenceSnapshot {
         if (-not $completed) { Remove-Item -LiteralPath $stage -Recurse -Force }
     }
 }
+
+# B1.3: compose one use of a trusted resolution. Not an authority or a live
+# launcher. The host owns the resolver, its evidence, roots and Git isolation.
+function Invoke-KntReferenceSession {
+    param(
+        [Parameter(Mandatory=$true)][string]$Repository,
+        [Parameter(Mandatory=$true)][string]$Channel,
+        [Parameter(Mandatory=$true)][string]$PolicyRevision,
+        [Parameter(Mandatory=$true)][string]$CacheRoot,
+        [Parameter(Mandatory=$true)][string]$Source,
+        [Parameter(Mandatory=$true)][string]$StageRoot,
+        [Parameter(Mandatory=$true)][string]$EmptyTemplate,
+        [Parameter(Mandatory=$true)][scriptblock]$ResolveApproved,
+        [Parameter(Mandatory=$true)][scriptblock]$InvokeGit,
+        [Parameter(Mandatory=$true)][scriptblock]$UseSnapshot,
+        [string]$PinnedCommit = ""
+    )
+    if ($PinnedCommit) { Assert-KntReferenceCommit $PinnedCommit }
+    # The injected trusted authority, not this function, establishes admission,
+    # compatibility, freshness, revocation, and offline eligibility.
+    $resolution = & $ResolveApproved $Repository $Channel $PolicyRevision $PinnedCommit
+    if ($null -eq $resolution -or $resolution -is [array] -or
+        $resolution.repository -isnot [string] -or $resolution.repository -cne $Repository -or
+        $resolution.channel -isnot [string] -or $resolution.channel -cne $Channel -or
+        $resolution.policy_revision -isnot [string] -or $resolution.policy_revision -cne $PolicyRevision -or
+        $resolution.mode -isnot [string] -or
+        $resolution.commit -isnot [string]) { throw "Invalid reference resolution identity" }
+    # Copy the selected values once. Do not re-resolve after acquisition starts.
+    $commit = $resolution.commit
+    $mode = $resolution.mode
+    Assert-KntReferenceCommit $commit
+    if ($PinnedCommit -and $commit -cne $PinnedCommit) { throw "Pinned commit mismatch" }
+
+    if ($mode -ceq "CURRENT") {
+        $retained = Receive-KntReferenceCommit -CacheRoot $CacheRoot -Source $Source -Commit $commit -EmptyTemplate $EmptyTemplate -InvokeGit $InvokeGit
+    }
+    elseif ($mode -ceq "OFFLINE") {
+        # OFFLINE is an explicitly admitted cached revision, never an automatic
+        # downgrade on rejection, unknown trust, or a failed current fetch.
+        Assert-KntReferenceDirectory $CacheRoot
+        $cached = Assert-KntSafePath -Root $CacheRoot -Candidate (Join-Path $CacheRoot $commit) -Description "Offline retained cache"
+        if (-not (Test-KntRetainedCache $cached $commit $InvokeGit)) { throw "Approved offline revision not retained" }
+        $retained = [pscustomobject]@{ path=$cached; commit=$commit; reused=$true }
+    }
+    else { throw "Reference use not admitted" }
+
+    $stage = New-KntReferenceSnapshot -Cache $retained.path -Commit $commit -StageRoot $StageRoot -EmptyTemplate $EmptyTemplate -InvokeGit $InvokeGit
+    try {
+        $result = @(& $UseSnapshot $stage $commit $mode)
+        return [pscustomobject]@{
+            repository=$Repository
+            channel=$Channel
+            policy_revision=$PolicyRevision
+            commit=$commit
+            mode=$mode
+            reused=$retained.reused
+            result=$result
+        }
+    }
+    finally {
+        Remove-Item -LiteralPath $stage -Recurse -Force -ErrorAction Stop
+    }
+}
