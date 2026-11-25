@@ -130,3 +130,18 @@ function Assert-KntSafeWritePath {
 
     return Assert-KntSafePath -Root $Root -Candidate $Candidate -Description $Description -Windows $Windows -AllowRoot:$AllowRoot
 }
+
+# Shared context for project-owned scripts, both legacy materialized and central.
+function Resolve-KntDefaultContext {
+    param(
+        [Parameter(Mandatory=$true)][string]$ScriptRoot,
+        [string]$RootOverride,
+        [string]$BaseOverride
+    )
+    if ([bool]$RootOverride -ne [bool]$BaseOverride) { throw "RootOverride and BaseOverride must be supplied together" }
+    $repositoryRoot = if ($RootOverride) { (Resolve-Path -LiteralPath $RootOverride).Path } else { [IO.Path]::GetFullPath((Join-Path $ScriptRoot "../..")) }
+    $baseDir = if ($BaseOverride) { (Resolve-Path -LiteralPath $BaseOverride).Path } else { Join-Path $repositoryRoot ".kinotch" }
+    $projectRoot = Assert-KntSafePath -Root $repositoryRoot -Candidate (Join-Path $repositoryRoot "project") -Description "Default Project root"
+    if (-not (Test-Path -LiteralPath $projectRoot -PathType Container)) { throw "Default Project root missing" }
+    return [pscustomobject]@{ RepositoryRoot=$repositoryRoot; ProjectRoot=$projectRoot; BaseDir=$baseDir }
+}

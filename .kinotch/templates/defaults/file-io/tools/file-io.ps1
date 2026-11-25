@@ -1,13 +1,17 @@
 param(
     [Parameter(Mandatory=$true)][ValidateSet("open", "save", "save_as")][string]$Action,
     [Parameter(Mandatory=$true)][string]$Path,
-    [string]$Content
+    [string]$Content,
+    [string]$RootOverride,
+    [string]$BaseOverride
 )
 
 $ErrorActionPreference = "Stop"
-$repositoryRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot "../.."))
-. (Join-Path $repositoryRoot ".kinotch/scripts/path-containment.ps1")
-$projectRoot = [IO.Path]::GetFullPath((Join-Path $repositoryRoot "project"))
+if ([bool]$RootOverride -ne [bool]$BaseOverride) { throw "RootOverride and BaseOverride must be supplied together" }
+$containmentPath = if ($BaseOverride) { Join-Path $BaseOverride "scripts/path-containment.ps1" } else { Join-Path $PSScriptRoot "../../.kinotch/scripts/path-containment.ps1" }
+. $containmentPath
+$context = Resolve-KntDefaultContext -ScriptRoot $PSScriptRoot -RootOverride $RootOverride -BaseOverride $BaseOverride
+$projectRoot = $context.ProjectRoot
 if ([IO.Path]::IsPathRooted($Path)) {
     Write-Error "File path must be relative to the Project root"
     exit 1

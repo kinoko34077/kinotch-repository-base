@@ -1,6 +1,6 @@
 # Phase 5 Operations
 
-KiNoTch. Repository Base v0.5.24 is the current maintenance baseline. Base and
+KiNoTch. Repository Base v0.5.24 remains the accepted maintenance release baseline. Reference-mode source development is tracked by Base #66; source candidate identity does not imply release or consumer adoption. Base and
 Runtime are not expanded merely because a reusable idea can be imagined.
 
 Base #56 remains a separate bounded consumer-compatibility source-drift

@@ -1,6 +1,7 @@
 param(
     [string]$RootOverride,
     [string]$BaseOverride,
+    [switch]$ReferenceMode,
 
     [Parameter(Position=0)]
     [string]$Command = "help",
@@ -183,6 +184,19 @@ function Test-DefaultCatalogSemantics($Catalog) {
         $entryId = [string]$entry.id
         $current = @{}
         foreach ($path in @(Get-DefaultTemplateRepositoryPaths -DefaultId $entryId)) { $current[(Get-KntRepositoryPathKey $path)] = $true }
+        if ($entry.PSObject.Properties["reference_entries"]) {
+            $roles = @($entry.reference_entries.PSObject.Properties)
+            if ($roles.Count -eq 0) { [void]$errors.Add("Default '$entryId' reference entries are empty") }
+            foreach ($role in $roles) {
+                $reference = [string]$role.Value
+                if ($role.Name -cnotmatch '\A[a-z][a-z0-9-]*\z' -or
+                    -not (Test-KntRepositoryRelativePathSyntax $reference) -or
+                    $reference -cnotmatch '\Aproject/(tools|contracts)/' -or
+                    $reference -cnotin @(Get-DefaultTemplateRepositoryPaths -DefaultId $entryId)) {
+                    [void]$errors.Add("Default '$entryId' reference entry is not a current owned helper or contract: $reference")
+                }
+            }
+        }
         $retired = @{}
         $retiredPaths = if ($entry.PSObject.Properties["retired_paths"]) { @($entry.retired_paths) } else { @() }
         foreach ($retiredPath in $retiredPaths) {
@@ -377,6 +391,96 @@ function Get-DefaultTrustedOwnedPaths($Catalog, [string]$DefaultId) {
         $paths[(Get-KntRepositoryPathKey $canonical)] = $canonical
     }
     return $paths
+}
+
+# Explicit reference mode: resolve only a selected, catalog-owned helper.
+# The trusted host owns external source admission; this is not a downloader.
+function Resolve-KntDefaultReference($Entry, $Pack, [string]$Role = "default") {
+    $state = [string](Get-KntJsonProperty $Pack "state")
+    $id = [string]$Entry.id
+    if ($state -eq "DISABLED") {
+        return [pscustomobject]@{ id=$id; entry=$Role; state="DISABLED"; path=$null }
+    }
+    if ($state -notin @("DEFAULT","OVERRIDE")) { throw "Default '$id' is not selected" }
+    $entriesProperty = $Entry.PSObject.Properties["reference_entries"]
+    $entryProperty = if ($entriesProperty) { $entriesProperty.Value.PSObject.Properties[$Role] } else { $null }
+    if (-not $entryProperty -or $entryProperty.Name -cne $Role) { throw "Default '$id' has no supported reference entry '$Role'" }
+    $relative = [string]$entryProperty.Value
+    $local = Resolve-KntContainedPath -BaseRoot $Root -RelativePath $relative -Description "Default '$id' local entry"
+    if ($state -eq "OVERRIDE") {
+        if (-not (Test-Path -LiteralPath $local -PathType Leaf)) { throw "OVERRIDE '$id' entry is missing" }
+        return [pscustomobject]@{ id=$id; entry=$Role; state="OVERRIDE"; path=$local }
+    }
+    if ($Pack.PSObject.Properties["materialized_files"]) {
+        foreach ($recorded in @($Pack.materialized_files)) {
+            if ((Get-KntRepositoryPathKey ([string]$recorded.path)) -ceq (Get-KntRepositoryPathKey $relative)) {
+                throw "DEFAULT '$id' still has legacy materialized provenance for '$relative'; migrate explicitly"
+            }
+        }
+    }
+    if (Test-Path -LiteralPath $local) { throw "DEFAULT '$id' has a local helper or contract; migrate explicitly or select OVERRIDE" }
+    $templateRelative = "templates/defaults/$id/" + $relative.Substring("project/".Length)
+    $central = Resolve-KntContainedPath -BaseRoot $BaseDir -RelativePath $templateRelative -Description "Default '$id' central entry"
+    if (-not (Test-Path -LiteralPath $central -PathType Leaf)) { throw "DEFAULT '$id' central entry is missing" }
+    return [pscustomobject]@{ id=$id; entry=$Role; state="DEFAULT"; path=$central }
+}
+
+function Get-KntReferenceBaseRoot {
+    if (-not $ReferenceMode -or -not $RootOverride -or -not $BaseOverride) {
+        throw "Reference access requires -ReferenceMode with explicit Project and Base roots"
+    }
+    $baseRoot = Split-Path -Parent $BaseDir
+    $comparison = Get-KntPathComparison -Windows (Test-KntWindowsPlatform)
+    if (-not [string]::Equals((Join-Path $baseRoot ".kinotch"),$BaseDir,$comparison)) {
+        throw "Reference Base must be a canonical .kinotch directory"
+    }
+    if ([string]::Equals($baseRoot,$Root,$comparison)) { throw "Reference Base and Project roots must be distinct" }
+    return $baseRoot
+}
+
+function Get-KntReferenceSelection($Manifest) {
+    $manifestErrors = @(Test-KntSchema -Data $Manifest -Schema (Get-KntJson -Path (Join-Path $BaseDir "schemas/project.schema.json")) -Path "project/project.json")
+    if ($manifestErrors.Count -gt 0) { throw "Reference Project manifest is invalid: $($manifestErrors -join '; ')" }
+    $defaultsPath = Resolve-KntManifestProjectPath -Manifest $Manifest -Name "defaults" -Default "defaults.json"
+    if (-not (Test-Path -LiteralPath $defaultsPath -PathType Leaf)) { throw "No selected Default packs" }
+    $defaults = Get-KntJson -Path $defaultsPath
+    $errors = @(Test-KntSchema -Data $defaults -Schema (Get-KntJson -Path (Join-Path $BaseDir "schemas/defaults.schema.json")) -Path "project/defaults.json")
+    if ($errors.Count -gt 0) { throw "Reference Default state is invalid: $($errors -join '; ')" }
+    $catalog = Get-DefaultCatalog
+    $selected = @{}
+    foreach ($property in @($defaults.packs.PSObject.Properties)) {
+        $packEntry = Find-AnyDefaultCatalogEntry -Catalog $catalog -Identifier ([string]$property.Name)
+        if ($selected.ContainsKey([string]$packEntry.id)) { throw "Duplicate selected Default '$($packEntry.id)'" }
+        $selected[[string]$packEntry.id] = $property.Value
+    }
+    return [pscustomobject]@{ catalog=$catalog; selected=$selected }
+}
+
+function Get-KntSelectedReference($Manifest,$Selection,[string]$Id,[string]$Role = "default") {
+    $entry = Find-AnyDefaultCatalogEntry -Catalog $Selection.catalog -Identifier $Id
+    if (-not $Selection.selected.ContainsKey([string]$entry.id)) { throw "Default '$Id' is not selected" }
+    $pack = $Selection.selected[[string]$entry.id]
+    if ([string]$pack.state -eq "DEFAULT") {
+        $compatibilityError = Get-KntManifestDefaultCompatibilityError -Manifest $Manifest -Catalog $Selection.catalog -Entry $entry
+        if ($compatibilityError) { throw $compatibilityError }
+    }
+    return Resolve-KntDefaultReference -Entry $entry -Pack $pack -Role $Role
+}
+
+function Invoke-KntReferencePaths($Manifest) {
+    [void](Get-KntReferenceBaseRoot)
+    if (@($RemainingArgs).Count -eq 0) { throw "reference-path requires a selected Default id" }
+    $selection = Get-KntReferenceSelection $Manifest
+    $results = New-Object System.Collections.Generic.List[object]
+    foreach ($request in $RemainingArgs) {
+        $parts = $request.Split(':')
+        if ($parts.Count -gt 2 -or [string]::IsNullOrWhiteSpace($parts[0])) { throw "Invalid reference request '$request'" }
+        $role = if ($parts.Count -eq 2) { $parts[1] } else { "default" }
+        if ($role -cnotmatch '\A[a-z][a-z0-9-]*\z') { throw "Invalid reference entry '$role'" }
+        [void]$results.Add((Get-KntSelectedReference -Manifest $Manifest -Selection $selection -Id $parts[0] -Role $role))
+    }
+    Write-Host ([pscustomobject]@{ references=$results.ToArray() } | ConvertTo-Json -Depth 6 -Compress)
+    return 0
 }
 
 function Get-DefaultOptions([string]$CommandName) {
@@ -982,28 +1086,45 @@ function Apply-DefaultImplementationPlan($Plan, [System.Collections.Generic.List
     return [pscustomobject]@{ default_id = $defaultId; conflict = $false }
 }
 
-function Invoke-GeneratedDefaultScript([string]$ScriptRelativePath, [string]$CommandLabel) {
+function Invoke-GeneratedDefaultScript([string]$ScriptRelativePath,[string]$CommandLabel,[string]$DefaultId,[string]$Role = "check") {
     $projectRoot = Join-Path $Root "project"
     $scriptPath = Join-Path $projectRoot $ScriptRelativePath
+    $rootArguments = @()
+    if ($ReferenceMode) {
+        $manifest = Get-Manifest
+        $reference = Get-KntSelectedReference -Manifest $manifest -Selection (Get-KntReferenceSelection $manifest) -Id $DefaultId -Role $Role
+        if ($reference.state -eq "DISABLED") { throw "Default '$DefaultId' is disabled; no check was run" }
+        $scriptPath = $reference.path
+        if ($reference.state -eq "DEFAULT") { $rootArguments = @("-RootOverride",$Root,"-BaseOverride",$BaseDir) }
+    }
     if (-not (Test-Path -LiteralPath $scriptPath -PathType Leaf)) {
         Write-Host "[$CommandLabel] MISSING project/$ScriptRelativePath" -ForegroundColor Red
         return 1
     }
-    $powerShell = (Get-Command pwsh -ErrorAction SilentlyContinue | Select-Object -First 1).Source
-    if ([string]::IsNullOrWhiteSpace($powerShell)) {
-        $powerShell = (Get-Command powershell -ErrorAction Stop | Select-Object -First 1).Source
+    $powerShell = if ($ReferenceMode) { (Get-Process -Id $PID).Path } else {
+        $legacyHost = (Get-Command pwsh -ErrorAction SilentlyContinue | Select-Object -First 1).Source
+        if ([string]::IsNullOrWhiteSpace($legacyHost)) { $legacyHost = (Get-Command powershell -ErrorAction Stop | Select-Object -First 1).Source }
+        $legacyHost
     }
-    & $powerShell -NoProfile -ExecutionPolicy Bypass -File $scriptPath
-    if ($null -ne $LASTEXITCODE) { return $LASTEXITCODE }
-    return 0
+    # Keep native diagnostics out of the integer result used by verify.
+    $previousPreference = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = "Continue"
+        $output = @(& $powerShell -NoProfile -ExecutionPolicy Bypass -File $scriptPath @rootArguments 2>&1)
+        $code = $LASTEXITCODE
+    }
+    finally { $ErrorActionPreference = $previousPreference }
+    foreach ($line in $output) { Write-Host ([string]$line) }
+    if ($null -eq $code) { return 1 }
+    return [int]$code
 }
 
 function Invoke-PwaCheck {
-    return Invoke-GeneratedDefaultScript -ScriptRelativePath "tools/pwa-check.ps1" -CommandLabel "pwa-check"
+    return Invoke-GeneratedDefaultScript -ScriptRelativePath "tools/pwa-check.ps1" -CommandLabel "pwa-check" -DefaultId "pwa"
 }
 
 function Invoke-GeneratedIntegrityCheck {
-    return Invoke-GeneratedDefaultScript -ScriptRelativePath "tools/check-generated.ps1" -CommandLabel "generated-integrity"
+    return Invoke-GeneratedDefaultScript -ScriptRelativePath "tools/check-generated.ps1" -CommandLabel "generated-integrity" -DefaultId "generated-integrity"
 }
 
 function Invoke-Init {
@@ -1291,6 +1412,7 @@ function Invoke-Migrate($Manifest) {
 }
 
 function Test-BaseFiles {
+    param([string]$RepositoryRoot = $Root, [switch]$QuietSuccess)
     if (-not (Test-Path -LiteralPath $BaseFilesPath -PathType Leaf)) {
         Write-Knt "base-files.json is missing."
         return $false
@@ -1303,7 +1425,7 @@ function Test-BaseFiles {
         $ok = $false
     }
     if (-not (Test-KntMaintenancePatchProvenance -Index $index)) { $ok = $false }
-    $protectedPaths = @(Get-BaseProtectedPaths -Root $Root)
+    $protectedPaths = @(Get-BaseProtectedPaths -Root $RepositoryRoot)
     $indexedPaths = @($index.files | ForEach-Object { [string]$_.path })
     foreach ($expectedPath in $protectedPaths) {
         if ($expectedPath -notin $indexedPaths) {
@@ -1318,14 +1440,14 @@ function Test-BaseFiles {
         }
     }
     foreach ($entry in @($index.files)) {
-        $path = Join-Path $Root $entry.path
+        $path = Join-Path $RepositoryRoot $entry.path
         if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
             Write-Host "[base-check] MISSING  $($entry.path)" -ForegroundColor Red
             $ok = $false
             continue
         }
         try {
-            [void](Assert-KntSafePath -Root $Root -Candidate $path -Description "Base protected file")
+            [void](Assert-KntSafePath -Root $RepositoryRoot -Candidate $path -Description "Base protected file")
         }
         catch {
             Write-Host "[base-check] UNSAFE  $($entry.path): $($_.Exception.Message)" -ForegroundColor Red
@@ -1338,7 +1460,7 @@ function Test-BaseFiles {
             $ok = $false
         }
     }
-    if ($ok) { Write-Knt "Base files: OK" }
+    if ($ok -and -not $QuietSuccess) { Write-Knt "Base files: OK" }
     return $ok
 }
 
@@ -1580,6 +1702,18 @@ function Test-SelectedDefaultImplementations($DefaultsData) {
         }
         if ($state -ne "DEFAULT") { continue }
 
+        $referencePaths = @{}
+        if ($ReferenceMode) {
+            $referenceEntry = Find-AnyDefaultCatalogEntry -Catalog $catalog -Identifier $defaultId
+            $defaultId = [string]$referenceEntry.id
+            if ($referenceEntry.PSObject.Properties["reference_entries"]) {
+                foreach ($role in @($referenceEntry.reference_entries.PSObject.Properties)) {
+                    $referencePaths[(Get-KntRepositoryPathKey ([string]$role.Value))] = $true
+                    try { [void](Resolve-KntDefaultReference -Entry $referenceEntry -Pack $packProperty.Value -Role $role.Name) }
+                    catch { Write-Host "[doctor] $($_.Exception.Message)" -ForegroundColor Red; $ok = $false }
+                }
+            }
+        }
         $templateRoot = Join-Path $BaseDir ("templates/defaults/" + $defaultId)
         if (-not (Test-Path -LiteralPath $templateRoot -PathType Container)) {
             # Profile-only Defaults intentionally have no materialized files.
@@ -1588,7 +1722,7 @@ function Test-SelectedDefaultImplementations($DefaultsData) {
 
         $plan = @(Get-DefaultImplementationPlan -DefaultId $defaultId -ProjectRoot $projectRoot -Kind "Default" -ExistingState $packProperty.Value)
         foreach ($item in $plan) {
-            if ($null -eq $item.template) { continue }
+            if ($null -eq $item.template -or $referencePaths.ContainsKey((Get-KntRepositoryPathKey $item.repository_relative))) { continue }
             if (-not (Test-Path -LiteralPath $item.destination -PathType Leaf)) {
                 Write-Host "[doctor] MISSING implementation for Default '$defaultId': $($item.repository_relative)" -ForegroundColor Red
                 $ok = $false
@@ -1598,12 +1732,13 @@ function Test-SelectedDefaultImplementations($DefaultsData) {
         $provenanceProperty = $packProperty.Value.PSObject.Properties["materialized_files"]
         $hasProvenance = $null -ne $provenanceProperty -and @($packProperty.Value.materialized_files).Count -gt 0
         if (-not $hasProvenance) {
-            Write-Host "[doctor] WARNING Default '$defaultId': legacy DEFAULT provenance unknown; preserve files or mark OVERRIDE before updating" -ForegroundColor Yellow
+            if ($referencePaths.Count -eq 0) { Write-Host "[doctor] WARNING Default '$defaultId': legacy DEFAULT provenance unknown; preserve files or mark OVERRIDE before updating" -ForegroundColor Yellow }
             continue
         }
 
         foreach ($recorded in @($packProperty.Value.materialized_files)) {
             $recordedPath = [string]$recorded.path
+            if ($referencePaths.ContainsKey((Get-KntRepositoryPathKey $recordedPath))) { continue }
             $trustedOwnedPaths = Get-DefaultTrustedOwnedPaths -Catalog $catalog -DefaultId $defaultId
             if (-not $trustedOwnedPaths.ContainsKey((Get-KntRepositoryPathKey $recordedPath))) {
                 Write-Host "[doctor] DEFAULT '$defaultId' has untrusted provenance path '$recordedPath'; mark the pack OVERRIDE" -ForegroundColor Red
@@ -1633,6 +1768,24 @@ function Test-SelectedDefaultImplementations($DefaultsData) {
     return $ok
 }
 
+function Get-KntManifestDefaultCompatibilityError($Manifest,$Catalog,$Entry) {
+    $manifestSurfaces = @(Get-ManifestSurfaceIds -Manifest $Manifest)
+    if ([string]$Entry.kind -eq "surface") {
+        $requiredSurfaces = @($Entry.compatible_surfaces)
+        if ($requiredSurfaces.Count -gt 0 -and @($requiredSurfaces | Where-Object { $_ -in $manifestSurfaces }).Count -eq 0) {
+            return "Surface Default '$($Entry.id)' is not enabled in Manifest"
+        }
+        return $null
+    }
+    $profileIds = if ($Manifest.PSObject.Properties["profiles"] -and @($Manifest.profiles).Count -gt 0) {
+        @($Manifest.profiles | ForEach-Object { [string]$_ })
+    } elseif (-not [string]::IsNullOrWhiteSpace([string]$Manifest.profile)) {
+        @([string]$Manifest.profile)
+    } else { @() }
+    $keys = @(Get-DefaultCompatibilityKeys -Catalog $Catalog -ProfileIds $profileIds -SurfaceIds $manifestSurfaces)
+    return Get-DefaultCompatibilityError -Entry $Entry -SelectedSurfaces $keys
+}
+
 function Invoke-Doctor($Manifest) {
     $ok = $true
     Write-Knt "Repository root: $Root"
@@ -1646,7 +1799,10 @@ function Invoke-Doctor($Manifest) {
     $baseVersion = (Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $BaseDir "BASE_VERSION")).Trim()
     Write-Knt "Base version: $baseVersion"
 
-    if (-not $RootOverride -and -not (Test-BaseFiles)) { $ok = $false }
+    if ($ReferenceMode) {
+        if (-not (Test-BaseFiles -RepositoryRoot (Get-KntReferenceBaseRoot))) { $ok = $false }
+    }
+    elseif (-not $RootOverride -and -not (Test-BaseFiles)) { $ok = $false }
 
     $required = @(
         "project/docs/INDEX.md",
@@ -1717,30 +1873,12 @@ function Invoke-Doctor($Manifest) {
     }
     if (-not (Test-SelectedDefaultImplementations -DefaultsData $defaultsDataForImplementation)) { $ok = $false }
     if ($defaultsDataForImplementation) {
-        $manifestSurfaces = @(Get-ManifestSurfaceIds -Manifest $Manifest)
-        $manifestProfileIds = if ($Manifest.PSObject.Properties["profiles"] -and @($Manifest.profiles).Count -gt 0) {
-            @($Manifest.profiles | ForEach-Object { [string]$_ })
-        }
-        elseif (-not [string]::IsNullOrWhiteSpace([string]$Manifest.profile)) {
-            @([string]$Manifest.profile)
-        }
-        else { @() }
-        $manifestCompatibilityKeys = @(Get-DefaultCompatibilityKeys -Catalog $catalog -ProfileIds $manifestProfileIds -SurfaceIds $manifestSurfaces)
         foreach ($packProperty in @($defaultsDataForImplementation.packs.PSObject.Properties)) {
             $state = [string](Get-KntJsonProperty $packProperty.Value "state")
             if ($state -ne "DEFAULT") { continue }
             try {
                 $entry = Find-AnyDefaultCatalogEntry -Catalog $catalog -Identifier ([string]$packProperty.Name)
-                $compatibilityError = if ([string]$entry.kind -eq "surface") {
-                    $requiredSurfaces = @($entry.compatible_surfaces)
-                    if ($requiredSurfaces.Count -gt 0 -and @($requiredSurfaces | Where-Object { $_ -in $manifestSurfaces }).Count -eq 0) {
-                        "Surface Default '$($entry.id)' is not enabled in Manifest"
-                    }
-                    else { $null }
-                }
-                else {
-                    Get-DefaultCompatibilityError -Entry $entry -SelectedSurfaces $manifestCompatibilityKeys
-                }
+                $compatibilityError = Get-KntManifestDefaultCompatibilityError -Manifest $Manifest -Catalog $catalog -Entry $entry
                 if ($compatibilityError) {
                     Write-Host "[doctor] $compatibilityError" -ForegroundColor Red
                     $ok = $false
@@ -1762,7 +1900,8 @@ function Invoke-Doctor($Manifest) {
         catch {
             # Existing custom profile names remain diagnosable by their profile file.
         }
-        $profilePath = Join-Path $BaseDir ("profiles/" + $profileFileName + ".json")
+        try { $profilePath = Resolve-KntContainedPath -BaseRoot (Join-Path $BaseDir "profiles") -RelativePath ($profileFileName + ".json") -Description "Profile path" }
+        catch { Write-Host "[doctor] $($_.Exception.Message)" -ForegroundColor Red; $ok = $false; continue }
         if (-not (Test-Path -LiteralPath $profilePath -PathType Leaf)) {
             Write-Host "[doctor] MISSING profile: $selectedProfile" -ForegroundColor Red
             $ok = $false
@@ -1849,6 +1988,7 @@ Usage:
 
 Common commands:
   doctor      Base/project structure and schema diagnostics
+  reference-path <id>...  Selected helper paths (explicit reference mode only)
   init        Create a Project from catalog Surface/Tool Defaults
               --profile minimal|web-app|cli|windows-gui|mcp|api|agent|library
               --default ci-test|generated-integrity|file-io|pwa|config|logging
@@ -1873,8 +2013,16 @@ try {
         Show-Help
         exit 0
     }
+    if ($ReferenceMode) {
+        $referenceBaseRoot = Get-KntReferenceBaseRoot
+        if ($Command -eq "base-patch") { throw "Reference mode cannot apply a legacy Base patch" }
+        if ($Command -notin @("doctor","base-check") -and -not (Test-BaseFiles -RepositoryRoot $referenceBaseRoot -QuietSuccess)) {
+            throw "Reference Base integrity check failed"
+        }
+    }
     if ($Command -eq "base-check") {
-        if (Test-BaseFiles) { exit 0 } else { exit 1 }
+        $checkRoot = if ($ReferenceMode) { Get-KntReferenceBaseRoot } else { $Root }
+        if (Test-BaseFiles -RepositoryRoot $checkRoot) { exit 0 } else { exit 1 }
     }
     if ($Command -eq "base-patch") {
         exit (Invoke-KntBasePatch)
@@ -1900,6 +2048,7 @@ try {
 
     $manifest = Get-Manifest
     if ($Command -eq "doctor") { exit (Invoke-Doctor $manifest) }
+    if ($Command -eq "reference-path") { exit (Invoke-KntReferencePaths $manifest) }
     if ($Command -eq "generated-integrity") { exit (Invoke-GeneratedIntegrityCheck) }
     if ($Command -eq "pwa-check") { exit (Invoke-PwaCheck) }
 
