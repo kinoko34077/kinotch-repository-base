@@ -2365,7 +2365,10 @@ Invoke-TestCase "Base documentation and profile metadata are finalized" {
     Assert-Equal 0 @($surfaceRegistry.surfaces.PSObject.Properties).Count "Base Surface Registry should be empty"
     $baseIndex = Get-Content -Raw -Encoding UTF8 (Join-Path $RepoRoot ".kinotch/base-files.json") | ConvertFrom-Json
     $patchCatalog = Get-Content -Raw -Encoding UTF8 (Join-Path $RepoRoot ".kinotch/maintenance-patches.json") | ConvertFrom-Json
-    Assert-True ($baseVersion -match '^\d+\.\d+\.\d+
+    Assert-True ($baseVersion -match '^\d+\.\d+\.\d+$') "Base version syntax is invalid"
+    Assert-Equal $baseVersion ([string]$baseIndex.base_version) "Base index version differs from source"
+    Assert-Equal $baseVersion ([string]$patchCatalog.authority_base_version) "Maintenance authority version differs from source"
+    Assert-True ($state.Contains('Base version: ' + [char]96 + $baseVersion + [char]96)) "CURRENT_STATE source version differs from source"
     Assert-True ($baseReadme -match "Surface Default Kit") "README_BASE Surface Kit wording is missing"
     Assert-True ($baseReadme -match "OVERRIDE") "README_BASE override boundary is missing"
     Assert-True (@($catalog.defaults | Where-Object { $_.kind -eq "surface" }).Count -ge 8) "Surface Default catalog entries are incomplete"
