@@ -188,7 +188,7 @@
     },
     {
       "path": ".kinotch/scripts/knt.ps1",
-      "sha256": "4c409f9581ff4b151477e3711cda0a9dfd240700fe2a55b2248d018123300a53"
+      "sha256": "01de860fea1a776202ed4aa644aa21d545bb081a9a6babc5d18c31167499747d"
     },
     {
       "path": ".kinotch/scripts/maintenance-patches.ps1",

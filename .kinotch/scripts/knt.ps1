@@ -1101,10 +1101,22 @@ function Invoke-GeneratedDefaultScript([string]$ScriptRelativePath,[string]$Comm
         Write-Host "[$CommandLabel] MISSING project/$ScriptRelativePath" -ForegroundColor Red
         return 1
     }
-    $powerShell = (Get-Process -Id $PID).Path
-    & $powerShell -NoProfile -ExecutionPolicy Bypass -File $scriptPath @rootArguments
-    if ($null -ne $LASTEXITCODE) { return $LASTEXITCODE }
-    return 0
+    $powerShell = if ($ReferenceMode) { (Get-Process -Id $PID).Path } else {
+        $legacyHost = (Get-Command pwsh -ErrorAction SilentlyContinue | Select-Object -First 1).Source
+        if ([string]::IsNullOrWhiteSpace($legacyHost)) { $legacyHost = (Get-Command powershell -ErrorAction Stop | Select-Object -First 1).Source }
+        $legacyHost
+    }
+    # Keep native diagnostics out of the integer result used by verify.
+    $previousPreference = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = "Continue"
+        $output = @(& $powerShell -NoProfile -ExecutionPolicy Bypass -File $scriptPath @rootArguments 2>&1)
+        $code = $LASTEXITCODE
+    }
+    finally { $ErrorActionPreference = $previousPreference }
+    foreach ($line in $output) { Write-Host ([string]$line) }
+    if ($null -eq $code) { return 1 }
+    return [int]$code
 }
 
 function Invoke-PwaCheck {
