@@ -4,6 +4,7 @@ $root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 . (Join-Path $root ".kinotch/scripts/update-base-index.ps1")
 . (Join-Path $root "project/src/reference-snapshot.ps1")
 . (Join-Path $root "project/src/reference-router.ps1")
+. (Join-Path $root "project/src/reference-host.ps1")
 $hostExe = (Get-Process -Id $PID).Path
 $git = (Get-Command git -CommandType Application | Select-Object -First 1).Source
 $temp = Join-Path ([IO.Path]::GetTempPath()) ("kr-" + [guid]::NewGuid().ToString("N"))
@@ -51,6 +52,7 @@ try {
     Copy-Item -LiteralPath (Join-Path $root ".kinotch/tests/fixtures/valid-minimal") -Destination (Join-Path $consumer "project") -Recurse
     $manifestPath = Join-Path $consumer "project/project.json"
     $manifest = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    $manifest.commands.setup = [pscustomobject]@{run="Write-Output 'consumer-setup-success'";cwd="."}
     $manifest.commands.test = [pscustomobject]@{run="Write-Output 'consumer-test-success'";cwd="."}
     $manifest.commands.build = [pscustomobject]@{run="Write-Output 'consumer-build-success'";cwd="."}
     $manifest.commands.smoke = [pscustomobject]@{exec="Write-Output";args=@("forward-start");cwd=".";forward_args=$true}
@@ -98,6 +100,48 @@ try {
     }
     $legacy = Invoke-KntReferenceRouterSession @run -Command test -Arguments @("unexpected")
     if ($legacy.exit_code -eq 0 -or ($legacy.output -join " ") -notmatch "cannot safely forward arguments") { throw "Legacy forwarding was not rejected" }
+    # A verification sequence must resolve once, use the same commit for
+    # all three steps and stop after the first failed step.
+    $decision.commit=$commitA
+    $badVerification = Invoke-KntReferenceVerificationSession @run
+    if ($badVerification.commit -cne $commitA -or $badVerification.exit_code -ne 1 -or
+        @($badVerification.steps).Count -ne 1 -or $badVerification.steps[0].command -cne "doctor" -or
+        $calls.resolve -ne 6) { throw "Verification failed to stop after doctor" }
+    $decision.commit=$commitB
+    $goodVerification = Invoke-KntReferenceVerificationSession @run
+    if ($goodVerification.exit_code -ne 0 -or $goodVerification.commit -cne $commitB -or
+        @($goodVerification.steps).Count -ne 3 -or
+        ($goodVerification.steps[1].output -join " ") -notmatch "consumer-setup-success" -or
+        ($goodVerification.steps[2].output -join " ") -notmatch "consumer-test-success" -or
+        $calls.resolve -ne 7) { throw "Verification sequence did not share one resolution" }
+    foreach ($stepResult in $goodVerification.steps) {
+        if ($stepResult.commit -cne $commitB -or $stepResult.mode -cne "CURRENT") { throw "Verification revision changed" }
+    }
+    # Central host entry using pre-retained fixture revisions, no public fetch.
+    $trustedHostRoot = Join-Path $temp "host"
+    $hostCache = Join-Path (Join-Path $trustedHostRoot "cache") "1380962239"
+    New-Item -ItemType Directory -Path $hostCache -Force | Out-Null
+    foreach ($sha in @($commitA,$commitB)) {
+        Copy-Item -LiteralPath (Join-Path $cache $sha) -Destination (Join-Path $hostCache $sha) -Recurse
+    }
+    $hostDecision = [pscustomobject]@{repository="kinoko34077/kinotch-repository-base";repository_id=[long]1380962239;channel="fixture";policy_revision="fixture";commit=$commitB;mode="CURRENT"}
+    $hostCalls = @{resolve=0}
+    $hostInvocation = @{
+        HostRoot=$trustedHostRoot; GitExecutable=$git; PowerShellExecutable=$hostExe
+        ConsumerRoot=$consumer; Channel="fixture"; PolicyRevision="fixture"
+        ResolveApproved={param($r,$c,$p,$pin) $hostCalls.resolve++; $hostDecision}
+    }
+    $hostVerified = Invoke-KntBaseHostCommand @hostInvocation -Verification
+    if ($hostVerified.exit_code -ne 0 -or $hostVerified.repository_id -ne 1380962239 -or
+        $hostVerified.commit -cne $commitB -or -not $hostVerified.reused -or $hostCalls.resolve -ne 1) { throw "Central host verification failed" }
+    $hostDecision.mode="OFFLINE"
+    $hostOffline = Invoke-KntBaseHostCommand @hostInvocation -Command doctor
+    if ($hostOffline.exit_code -ne 0 -or $hostOffline.mode -cne "OFFLINE" -or $hostCalls.resolve -ne 2) { throw "Ordinary offline command failed" }
+    $rejectedOfflineVerification=$false
+    try { Invoke-KntBaseHostCommand @hostInvocation -Verification | Out-Null }
+    catch { if ($_.Exception.Message -notmatch "requires CURRENT") { throw }; $rejectedOfflineVerification=$true }
+    if (-not $rejectedOfflineVerification -or $hostCalls.resolve -ne 3 -or
+        @(Get-ChildItem -LiteralPath $trustedHostRoot -Filter "session-*").Count -ne 0) { throw "Offline formal verification was not rejected or cleaned" }
     Move-Item -LiteralPath $source -Destination (Join-Path $temp "offline")
     $decision.mode="OFFLINE"
     $decision.commit=$commitA
@@ -106,8 +150,9 @@ try {
     $rejected=$false
     try { Invoke-KntReferenceRouterSession @run -Command reference-path | Out-Null }
     catch { if ($_.Exception.Message -notmatch "outside the reference Router adapter scope") {throw};$rejected=$true }
-    if (-not $rejected -or $calls.resolve -ne 6) { throw "Out-of-scope command resolved a revision" }
+    if (-not $rejected -or $calls.resolve -ne 8) { throw "Out-of-scope command resolved a revision" }
     if (@(Get-ChildItem -LiteralPath $stages -Force).Count -ne 0 -or (Fingerprint-RouterConsumer) -cne $before) { throw "Stage leak or consumer mutation" }
+    Write-Host "[PASS] Reference verification session: one resolution, same SHA, ordered doctor/setup/verify, first failure, formal offline rejection, central host entry"
     Write-Host "[PASS] Reference Router session: protected A/B, exact revision and exit, verify, structured arguments, legacy rejection, cache reuse, offline, no consumer change"
 }
 finally {

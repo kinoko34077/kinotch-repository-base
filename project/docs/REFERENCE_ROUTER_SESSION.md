@@ -7,3 +7,7 @@
 試験では有効な保護indexを持つA/B版のschemaを切り替え、同じconsumerでdoctorの失敗→成功・verify・offline旧版・cache reuse・stage cleanup・consumer無変更を確認する。合成承認のみ。本番の承認元/host保護/remote取得/配備は未受入。
 
 追加引数は信頼済みhostがsession内の一時JSONにデータとして書き、固定child scriptが既存RouterのRemainingArgsへ明示bindする。RootOverride/BaseOverride等はhost固定値であり利用側引数で上書きしない。structured forward_argsのみ許可、legacy拒否は既存Routerに委譲する。payloadはsession内で消去する。
+
+## 共通host入口と連続検証（B3接続候補）
+
+`Invoke-KntBaseHostCommand` は信頼済みhostの既存 `Invoke-KntPublicReferenceSession` とRouter adapterを接続する。Baseの正規repo/IDを固定し、consumerが供給元・承認resolver・policy・host rootを選択する入口にしない。通常commandの返却と `-Verification`（doctor/setup/verifyの既存順序）を提供する。後者は一回だけ版を解決し、同一SHAで各処理を実行、最初の非成功で残りを実行せず各結果と終了値を返す。正式検証ではCURRENTのみ、通常commandは承認済みOFFLINEも可。実行結果は#1121の証拠に接続するための素材であり、真正性・鮮度・保証の同等性・CI省略を決めない。host配置/保護/承認元/production callerは未受入。既存workflowを変更しない。
