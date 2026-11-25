@@ -183,6 +183,10 @@ Behavioral baseline: Base v0.5.24 is a docs-only alignment release over v0.5.23;
 - Base v0.5.24 is the current Phase 5 maintenance baseline; Runtime/default behavior is unchanged by this documentation alignment, and Runtime semantics remain
   unchanged and existing repositories are not bulk-migrated. Runtime and Default Canary embedded Base versions are tracked by their own repositories rather than inferred from the Base baseline.
 
+## 参照型Baseの開発（#66）
+
+B0設計・合成Git試作はPR #67で受入済み。既存利用者の配布方式・Base v0.5.24は未変更。B1の独立snapshot供給、信頼済み承認源・実運用入口は開発中であり、本番の利用可能機能ではない。設計候補・検証範囲はADR0006と#66を参照。
+
 ## Next work
 
 1. Keep using the private `kinoko34077/kinotch-default-canary` repository as

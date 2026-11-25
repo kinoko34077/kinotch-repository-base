@@ -100,3 +100,11 @@ B0の設計受入ではこのnative pathを優先し、必要性のないZIP検�
 - 毎回のrelease作成・公開承認が新たな反復操作になるなら目的に反する。通常利用で自動的に選択可能な承認源（事前に承認された固定policyに基づくexact integration candidate）を優先比較する。#1121が整備するReview/CI証拠の真正性・有効性・鮮度・失効を利用する。単にmainのSHAが一致、commitが存在、checkがgreenというだけではadmissionを認めない。実装に必要な安定した非特権読み取り経路を検証する。Immutable Release案は安全な代替候補として残すが、独立した署名/承認機構の追加開発や新しいper-update手動制約は必要性を確認するまで行わない。
 - 承認源と取得機構は独立。承認済み不変revisionを入力としてGit取得・既存Routerを利用する共通経路は、承認源の正式受入前もsynthetic fixtureで検証できる。fixtureのexpected SHAは合成の検証入力で実運用承認ではない。実際に外部コードを自動実行する信頼policy・権限・設定・公開は独立ReviewとHuman gateを維持。
 - B3は#1121との接続契約と代表検証に限定。#1122全repo展開はHOLD。#63/#65の旧配布も再開しない。
+
+## B1.1 独立snapshot供給（試作）
+
+取得と承認、利用を分離する。既存Gitの保持refから、新規の実行単位repoへexact commitだけをnative local transportで浅く取得する。全履歴clone・hardlink・alternates・共有worktreeを不要とする。保持refの実SHA/type、通常file modeをcheckout前に確認し、失敗した新規領域のみ破棄する。正常な別領域・永続cacheは保持する。
+
+`project/src/reference-snapshot.ps1` の `New-KntReferenceSnapshot` は信頼済みhostが確立したcache・commit・stage root・隔離Git呼出を入力とする非稼働試作。呼出側が真正な承認、固定origin、環境/config隔離、root保護、cacheの寿命、成功stageの寿命を所有する。これら未実証のまま実運用しない。任意consumer入力を信頼済み引数へ変換しない。特殊tree modeを拒否するが、全host path・cache完全性・同時更新安全性の受入は後続B1。
+
+#1154の `devflow_mapped_read` は既存固定checkoutのimport pathを利用するため、同じsnapshot供給を利用できる候補。Base固有Routerとmapper固有packageを分離し、言語別の取得/版解決実装を増やさない。承認・証拠はdevflow #1121の正本に接続する。実Python接続・本番有効化は未実施。
