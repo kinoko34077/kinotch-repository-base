@@ -4,6 +4,7 @@ $RepoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $BaseDir = Join-Path $RepoRoot ".kinotch"
 . (Join-Path $BaseDir "scripts/path-containment.ps1")
 . (Join-Path $RepoRoot "project/src/reference-snapshot.ps1")
+. (Join-Path $RepoRoot "project/src/reference-host.ps1")
 $HostExe = (Get-Process -Id $PID).Path
 Write-Host "Reference fixture host: $($PSVersionTable.PSVersion) / $($PSVersionTable.PSEdition)"
 
@@ -25,7 +26,7 @@ function Invoke-Probe([string]$Consumer, [string]$ExternalBase, [string[]]$Argum
     }
 }
 
-$Temp = Join-Path ([IO.Path]::GetTempPath()) ("kinotch-reference-probe-" + [guid]::NewGuid().ToString("N"))
+$Temp = Join-Path ([IO.Path]::GetTempPath()) ("knt-ref-" + [guid]::NewGuid().ToString("N"))
 $Consumer = Join-Path $Temp "consumer"
 $Source = Join-Path $Temp "source"
 $Cache = Join-Path $Temp "cache"
@@ -227,6 +228,76 @@ try {
         @(Get-ChildItem -LiteralPath $sessionCache -Force).Count -ne $sessionCacheCount -or
         (Get-TreeFingerprint $Consumer) -cne $before) { throw "Session failure cleanup failed" }
     Write-Host "[PASS] Reference session: one resolution per use, A/B auto-selection fixture, explicit offline/pin, denied/wrong/missing resolution rejection, success/failure cleanup"
+
+    # Public host identity and environment boundary, no external network.
+    if ((Get-KntPublicReferenceOrigin "kinoko34077/.ai-guidelines") -cne "https://github.com/kinoko34077/.ai-guidelines.git") { throw "Wrong origin" }
+    foreach ($bad in @("another/base","kinoko34077/..","kinoko34077/base/extra","https://github.com/kinoko34077/base")) {
+        $rejected = $false
+        try { Get-KntPublicReferenceOrigin $bad | Out-Null }
+        catch { if ($_.Exception.Message -notmatch "Unsupported public repository identity") { throw }; $rejected = $true }
+        if (-not $rejected) { throw "Invalid public origin accepted" }
+    }
+    $isolatedConfig = Join-Path $Temp "isolated-gitconfig"
+    [IO.File]::WriteAllText($isolatedConfig,"")
+    $env:GIT_DIR = Join-Path $Temp "nonexistent-git-dir"
+    $env:GIT_CONFIG_COUNT = "1"
+    $env:GIT_CONFIG_KEY_0 = "core.fsmonitor"
+    $env:GIT_CONFIG_VALUE_0 = "injected"
+    $env:GIT_SSL_NO_VERIFY = "1"
+    try {
+        $actual = [string](Invoke-KntIsolatedReferenceGit -GitExecutable $Git -RepositoryPath $Source -GitArguments @("rev-parse","HEAD") -EmptyConfig $isolatedConfig -EmptyHooks $Hooks)
+        if ($actual -cne $commitB -or $env:GIT_CONFIG_VALUE_0 -cne "injected" -or
+            $env:GIT_SSL_NO_VERIFY -cne "1" -or $env:GIT_DIR -cne (Join-Path $Temp "nonexistent-git-dir")) {
+            throw "Git environment was not isolated and restored"
+        }
+    }
+    finally {
+        foreach ($key in @("GIT_DIR","GIT_CONFIG_COUNT","GIT_CONFIG_KEY_0","GIT_CONFIG_VALUE_0","GIT_SSL_NO_VERIFY")) { Remove-Item -LiteralPath ("Env:" + $key) }
+    }
+    # Public transport arguments are derived by the core; simulate only transport
+    # using an already trusted local fixture, never run unapproved network code.
+    $hostFixture = Join-Path $Temp "host"
+    New-Item -ItemType Directory -Path $hostFixture | Out-Null
+    $publicCache = Join-Path $hostFixture "public-cache"
+    New-Item -ItemType Directory -Path $publicCache | Out-Null
+    $publicCall = @{seen=$false}
+    # Receive-KntReferenceCommit has its own dynamically scoped $Source (URL).
+    # Keep the fixture transport source under a distinct name.
+    $fixturePublicLocalSource = $Source
+    $retainedPublic = Receive-KntReferenceCommit -CacheRoot $publicCache -PublicRepository "kinoko34077/kinotch-repository-base" -Commit $commitB -EmptyTemplate $Template -InvokeGit {
+        param($repo,$argv)
+        if ("fetch" -in $argv) {
+            $remoteIndex = [array]::IndexOf($argv,"https://github.com/kinoko34077/kinotch-repository-base.git")
+            if ($remoteIndex -lt 0 -or $argv[-1] -cne ($commitB + ":refs/kinotch/retained/" + $commitB)) { throw "Public exact fetch mismatch" }
+            $publicCall.seen = $true
+            $argv[$remoteIndex] = $fixturePublicLocalSource
+        }
+        Invoke-KntIsolatedReferenceGit -GitExecutable $Git -RepositoryPath $repo -GitArguments $argv -EmptyConfig $isolatedConfig -EmptyHooks $Hooks
+    }
+    if (-not $publicCall.seen -or $retainedPublic.commit -cne $commitB) { throw "Public transport fixture failed" }
+    $hostCacheParent = Join-Path $hostFixture "cache"
+    $hostRepoCache = Join-Path $hostCacheParent "1380962239"
+    New-Item -ItemType Directory -Path $hostRepoCache -Force | Out-Null
+    Move-Item -LiteralPath $retainedPublic.path -Destination (Join-Path $hostRepoCache $commitB)
+    $hostResolution = [pscustomobject]@{
+        repository="kinoko34077/kinotch-repository-base"; repository_id=[long]1380962239
+        channel="fixture"; policy_revision="fixture"; commit=$commitB; mode="OFFLINE"
+    }
+    $hostArgs = @{
+        HostRoot=$hostFixture; GitExecutable=$Git; Repository="kinoko34077/kinotch-repository-base"
+        RepositoryId=[long]1380962239; Channel="fixture"; PolicyRevision="fixture"
+        ResolveApproved={param($repo,$channel,$policy,$pin) $hostResolution}
+        UseSnapshot={param($root,$selected,$mode) if ($mode -cne "OFFLINE" -or $selected -cne $commitB) { throw "Wrong host resolution" }; "host-use-ok"}
+    }
+    $hostResult = Invoke-KntPublicReferenceSession @hostArgs
+    if ($hostResult.result[0] -cne "host-use-ok" -or $hostResult.repository_id -ne 1380962239 -or
+        @(Get-ChildItem -LiteralPath $hostFixture -Filter "session-*").Count -ne 0) { throw "Host offline session failed" }
+    $hostResolution.repository_id = [long]1385584542
+    $rejected = $false
+    try { Invoke-KntPublicReferenceSession @hostArgs | Out-Null }
+    catch { if ($_.Exception.Message -notmatch "numeric repository identity mismatch") { throw }; $rejected = $true }
+    if (-not $rejected -or @(Get-ChildItem -LiteralPath $hostFixture -Filter "session-*").Count -ne 0) { throw "Host identity mismatch not rejected" }
+    Write-Host "[PASS] Reference host: fixed public origin, exact fetch arguments, Git environment isolation/restoration, numeric repository identity, offline session cleanup"
 
     # Unsupported gitlink mode is rejected without materializing it.
     Invoke-FixtureGit $Source @("update-index","--add","--cacheinfo","160000,$commitA,unexpected-link") | Out-Null

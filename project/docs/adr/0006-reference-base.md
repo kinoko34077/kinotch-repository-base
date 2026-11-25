@@ -120,3 +120,9 @@ Linux合成Git実験は4異なる版＋同一版競合2件の6並行で4 publish
 `Invoke-KntReferenceSession` は信頼済みhostから注入された承認済み版決定を1回取得し、対象repo/channel/policyと明示pinの一致を確認する。その後はexact SHAを固定し、B1.2の保持とB1.1の独立snapshotを再利用する。利用adapterはstage・exact SHA・状態を受け、成功/失敗とも一時stageを片付ける。利用結果には実解決commit・policy・CURRENT/OFFLINE・cache再利用を残す。OFFLINEは既存の保持済み版のみを許す。拒否・不明・不一致・未保持版から暗黙fallbackしない。
 
 承認の真正性・互換性・鮮度・失効・offline可否は信頼済み解決元の責務。合成providerは本番承認元ではない。devflow #1121の原典取得・共通判定を独立再実装せず、正式契約成立後に薄い接続を追加する。今回のfixtureは同一利用入口のA/B決定・実Router・明示offline/pin・拒否・例外時cleanupを検証する。ネットワーク・実運用入口・権限・公開・他repo適用なし。
+
+## B1.4 信頼済みhostの公開repo接続候補（非稼働）
+
+取得元は信頼済みproviderが指定したmanaged repositoryの正規名・numeric repository IDと一致させる。公開repo向けのHTTPS originは固定GitHub hostとownerから構築し、任意URL・redirect・credential helperを許可しない。repo ID別cache、版別bare cache、session別stageを再利用する。既存Git invocationに隔離config/hooks、TLS検証、必要transportのみ、親process環境の保存復元を適用する。Git executableとhost-only rootは既に信頼されたhostから供給し、未承認snapshotからloader自身を読み込まない。process-wide環境隔離のため1 session/PowerShell processを前提とする。別process間の並行は既存独立領域方式で扱う。
+
+host rootのアクセス保護、信頼済み承認源、実ネットワーク、production launcherへの配備は未受入。CIは外部接続を増やさず固定HTTPS引数を合成local transportで検証し、実Gitの環境隔離・既存cacheからのoffline利用・numeric ID不一致を確認する。実devflow #1121の承認証拠とは別責務。repo identityの真正性はresolverの責務でありURL構築だけで証明しない。現在のBase treeは148 blobs/671104 bytes（Git原本の総byte、実cache容量ではない）。キャッシュ保持・回収は利用量と必要rollback保証に基づき後続で設計する。

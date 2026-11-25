@@ -12,6 +12,8 @@
 - [Base v0.5.3 integrity boundaries](adr/0005-base-v053-integrity-boundaries.md)
 - [参照型Base設計・非稼働試作（#66）](adr/0006-reference-base.md)
 - [参照型Default利用契約（B2候補）](REFERENCE_DEFAULTS.md)
+- [参照型Router統合実行（B1/B2候補）](REFERENCE_ROUTER_SESSION.md)
+- [旧Base参照型移行判定（B4候補）](REFERENCE_MIGRATION_PLAN.md)
 
 ## Base-wide Meta
 

@@ -1,8 +1,12 @@
 # B1.2: cache identity/retention only; never authorizes a revision.
 function Assert-KntReferenceDirectory([string]$Path) {
-    if (-not [IO.Path]::IsPathRooted($Path) -or -not (Test-Path -LiteralPath $Path -PathType Container)) {
+    if (-not [IO.Path]::IsPathRooted($Path) -or
+        ((Test-KntWindowsPlatform) -and $Path -notmatch '^(?:[A-Za-z]:[\\/]|\\\\[^\\]+\\[^\\]+(?:\\|$))') -or
+        -not (Test-Path -LiteralPath $Path -PathType Container)) {
         throw "Invalid trusted local root"
     }
+    $canonical = [IO.Path]::GetFullPath($Path)
+    [void](Assert-KntSafePath -Root ([IO.Path]::GetPathRoot($canonical)) -Candidate $canonical -Description "Trusted local root" -AllowRoot)
     if (((Get-Item -LiteralPath $Path -Force).Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
         throw "Trusted root is a reparse point"
     }
@@ -26,12 +30,23 @@ function Test-KntRetainedCache([string]$Path,[string]$Commit,[scriptblock]$Invok
     return $true
 }
 
+# Public origins are derived from a trusted managed repository identity.
+# This is URL construction, not verification of ownership or approval.
+function Get-KntPublicReferenceOrigin([string]$Repository) {
+    if ($Repository -cnotmatch '\Akinoko34077/([A-Za-z0-9_.-]+)\z') { throw "Unsupported public repository identity" }
+    $name = $Matches[1]
+    if ($name -in @(".","..")) { throw "Unsupported public repository identity" }
+    return "https://github.com/kinoko34077/$name.git"
+}
+
 # The host supplies the repository-specific trusted cache root and exact admitted
-# commit. Local source only in this prototype; no consumer-controlled URL.
+# commit. Local sources are for trusted fixtures; public source is canonical GitHub.
 function Receive-KntReferenceCommit {
+    [CmdletBinding(DefaultParameterSetName="Local")]
     param(
         [Parameter(Mandatory=$true)][string]$CacheRoot,
-        [Parameter(Mandatory=$true)][string]$Source,
+        [Parameter(Mandatory=$true,ParameterSetName="Local")][string]$Source,
+        [Parameter(Mandatory=$true,ParameterSetName="Public")][string]$PublicRepository,
         [Parameter(Mandatory=$true)][string]$Commit,
         [Parameter(Mandatory=$true)][string]$EmptyTemplate,
         [Parameter(Mandatory=$true)][scriptblock]$InvokeGit
@@ -40,13 +55,17 @@ function Receive-KntReferenceCommit {
     Assert-KntReferenceDirectory $CacheRoot
     Assert-KntReferenceDirectory $EmptyTemplate
     if (@(Get-ChildItem -LiteralPath $EmptyTemplate -Force).Count -ne 0) { throw "Git template must be empty" }
-    if (-not [IO.Path]::IsPathRooted($Source)) { throw "Invalid trusted source path" }
+    $isPublic = $PSCmdlet.ParameterSetName -eq "Public"
+    if ($isPublic) { $Source = Get-KntPublicReferenceOrigin $PublicRepository }
+    elseif (-not [IO.Path]::IsPathRooted($Source)) { throw "Invalid trusted source path" }
     $target = Assert-KntSafePath -Root $CacheRoot -Candidate (Join-Path $CacheRoot $Commit) -Description "Retained cache"
     if (Test-KntRetainedCache $target $Commit $InvokeGit) {
         return [pscustomobject]@{ path=$target; commit=$Commit; reused=$true }
     }
-    if (-not (Test-Path -LiteralPath $Source -PathType Container)) { throw "Source unavailable" }
-    Assert-KntReferenceDirectory $Source
+    if (-not $isPublic) {
+        if (-not (Test-Path -LiteralPath $Source -PathType Container)) { throw "Source unavailable" }
+        Assert-KntReferenceDirectory $Source
+    }
     $incoming = Assert-KntSafePath -Root $CacheRoot -Candidate (Join-Path $CacheRoot ("incoming-" + [guid]::NewGuid().ToString("N"))) -Description "Incoming cache"
     New-Item -ItemType Directory -Path $incoming -ErrorAction Stop | Out-Null
     try {
@@ -118,12 +137,15 @@ function New-KntReferenceSnapshot {
 # B1.3: compose one use of a trusted resolution. Not an authority or a live
 # launcher. The host owns the resolver, its evidence, roots and Git isolation.
 function Invoke-KntReferenceSession {
+    [CmdletBinding(DefaultParameterSetName="Local")]
     param(
         [Parameter(Mandatory=$true)][string]$Repository,
+        [long]$RepositoryId = 0,
         [Parameter(Mandatory=$true)][string]$Channel,
         [Parameter(Mandatory=$true)][string]$PolicyRevision,
         [Parameter(Mandatory=$true)][string]$CacheRoot,
-        [Parameter(Mandatory=$true)][string]$Source,
+        [Parameter(Mandatory=$true,ParameterSetName="Local")][string]$Source,
+        [Parameter(Mandatory=$true,ParameterSetName="Public")][switch]$PublicGitHub,
         [Parameter(Mandatory=$true)][string]$StageRoot,
         [Parameter(Mandatory=$true)][string]$EmptyTemplate,
         [Parameter(Mandatory=$true)][scriptblock]$ResolveApproved,
@@ -132,6 +154,10 @@ function Invoke-KntReferenceSession {
         [string]$PinnedCommit = ""
     )
     if ($PinnedCommit) { Assert-KntReferenceCommit $PinnedCommit }
+    if ($PSCmdlet.ParameterSetName -eq "Public") {
+        if (-not $PublicGitHub -or $RepositoryId -le 0) { throw "Public reference requires a trusted numeric repository identity" }
+        [void](Get-KntPublicReferenceOrigin $Repository)
+    }
     # The injected trusted authority, not this function, establishes admission,
     # compatibility, freshness, revocation, and offline eligibility.
     $resolution = & $ResolveApproved $Repository $Channel $PolicyRevision $PinnedCommit
@@ -141,6 +167,9 @@ function Invoke-KntReferenceSession {
         $resolution.policy_revision -isnot [string] -or $resolution.policy_revision -cne $PolicyRevision -or
         $resolution.mode -isnot [string] -or
         $resolution.commit -isnot [string]) { throw "Invalid reference resolution identity" }
+    if ($PublicGitHub -and (($resolution.repository_id -isnot [int] -and $resolution.repository_id -isnot [long]) -or $resolution.repository_id -ne $RepositoryId)) {
+        throw "Reference numeric repository identity mismatch"
+    }
     # Copy the selected values once. Do not re-resolve after acquisition starts.
     $commit = $resolution.commit
     $mode = $resolution.mode
@@ -148,7 +177,12 @@ function Invoke-KntReferenceSession {
     if ($PinnedCommit -and $commit -cne $PinnedCommit) { throw "Pinned commit mismatch" }
 
     if ($mode -ceq "CURRENT") {
-        $retained = Receive-KntReferenceCommit -CacheRoot $CacheRoot -Source $Source -Commit $commit -EmptyTemplate $EmptyTemplate -InvokeGit $InvokeGit
+        if ($PublicGitHub) {
+            $retained = Receive-KntReferenceCommit -CacheRoot $CacheRoot -PublicRepository $Repository -Commit $commit -EmptyTemplate $EmptyTemplate -InvokeGit $InvokeGit
+        }
+        else {
+            $retained = Receive-KntReferenceCommit -CacheRoot $CacheRoot -Source $Source -Commit $commit -EmptyTemplate $EmptyTemplate -InvokeGit $InvokeGit
+        }
     }
     elseif ($mode -ceq "OFFLINE") {
         # OFFLINE is an explicitly admitted cached revision, never an automatic
@@ -165,6 +199,7 @@ function Invoke-KntReferenceSession {
         $result = @(& $UseSnapshot $stage $commit $mode)
         return [pscustomobject]@{
             repository=$Repository
+            repository_id=$RepositoryId
             channel=$Channel
             policy_revision=$PolicyRevision
             commit=$commit
