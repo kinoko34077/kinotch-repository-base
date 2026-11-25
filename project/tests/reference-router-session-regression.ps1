@@ -147,6 +147,11 @@ try {
     # Shared new-repository seed uses the same admitted snapshot as commands.
     # No Project command execution or local Base materialization.
     $seedManifest = Get-Content -LiteralPath (Join-Path $consumer "project/project.json") -Raw -Encoding UTF8 | ConvertFrom-Json
+    # The ten-file seed intentionally contains no source or test directory.
+    # Preserve explicit declarations, but only declare paths present in this
+    # initial Git tree; empty directories cannot survive a Git checkout.
+    $seedManifest.paths.PSObject.Properties.Remove("source")
+    $seedManifest.paths.PSObject.Properties.Remove("tests")
     $seedManifest.paths | Add-Member -NotePropertyName defaults -NotePropertyValue "defaults.json" -Force
     $seedManifest.commands.setup = [pscustomobject]@{run="throw 'seed must not execute setup'";cwd="."}
     $seedJson = $seedManifest | ConvertTo-Json -Depth 20
@@ -161,6 +166,15 @@ try {
         $newSeed.files["project/defaults.json"] -cne $seedDefaults -or $newSeed.files["project/docs/SPEC.md"] -cne "# Explicit Project" -or
         $newSeed.files[".github/workflows/verify.yml"] -cne "# fixture workflow only" -or
         @($newSeed.files.Keys | Where-Object {$_ -like ".kinotch/*"}).Count -ne 0) {throw "Reference seed content or identity mismatch"}
+    # A user-declared path absent from the persisted seed must fail closed.
+    # Do not silently remove an explicit path or create temporary-only dirs.
+    $seedManifest.paths | Add-Member -NotePropertyName source -NotePropertyValue "src/" -Force
+    $missingPathArgs = $seedArgs.Clone()
+    $missingPathArgs.ManifestJson = $seedManifest | ConvertTo-Json -Depth 20
+    $seedRejected=$false
+    try {Invoke-KntReferenceSeedSession @missingPathArgs | Out-Null}
+    catch {if ($_.Exception.Message -notmatch "did not pass") {throw}; $seedRejected=$true}
+    if (-not $seedRejected -or @(Get-ChildItem -LiteralPath $seedScratch -Force).Count -ne 0) {throw "Missing declared Project path was not rejected or cleaned"}
     $decision.commit=$commitA
     $seedRejected=$false
     try {Invoke-KntReferenceSeedSession @seedArgs | Out-Null}
@@ -231,7 +245,7 @@ return @{GitExecutable=$fixtureProfile.git;Channel="fixture";PolicyRevision="fix
     $rejected=$false
     try { Invoke-KntReferenceRouterSession @run -Command reference-path | Out-Null }
     catch { if ($_.Exception.Message -notmatch "outside the reference Router adapter scope") {throw};$rejected=$true }
-    if (-not $rejected -or $calls.resolve -ne 11) { throw "Out-of-scope command resolved a revision" }
+    if (-not $rejected -or $calls.resolve -ne 12) { throw "Out-of-scope command resolved a revision" }
     if (@(Get-ChildItem -LiteralPath $stages -Force).Count -ne 0 -or (Fingerprint-RouterConsumer) -cne $before) { throw "Stage leak or consumer mutation" }
     Write-Host "[PASS] Reference verification session: one resolution, same SHA, ordered doctor/setup/verify, first failure, formal offline rejection, central host entry"
     Write-Host "[PASS] Reference Router session: protected A/B, exact revision and exit, verify, structured arguments, legacy rejection, cache reuse, offline, no consumer change"
