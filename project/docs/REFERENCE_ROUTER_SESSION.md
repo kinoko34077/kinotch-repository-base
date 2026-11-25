@@ -18,3 +18,8 @@
 信頼済みhostにだけ `base-source/project/src/reference-cli.ps1` を配置する。host root直下の `reference-host-profile.ps1` は保護側が設置する唯一の設定入口であり、GitExecutable/Channel/PolicyRevision/ResolveApproved（scriptblock）と任意PinnedCommitを返す。consumerがprofile・供給元・承認元を指定できない。profile欠落時は非成功、未承認版の取得・実行へfallbackしない。通常CLIは `reference-cli.ps1 <consumer-root> <command> [arguments...]`、正式連続検証は `verification`。出力は診断、真正CI receiptではない。host設置・profileの真正性/アクセス保護・admissionは別受入。
 
 `project/templates/reference/AGENTS.md` と `knt.cmd` は新規明示採用と既存移行で同じ中央ファイルを参照する。Windowsの薄い `knt.cmd` は信頼済みローカルshellが一度設定した絶対host executable/entryの環境変数を利用する（CIの信頼境界ではない）。host profile/loader/固定版をconsumerへ置かない。正式workflowは#1121の承認済み共通callerをBootstrapの既存SEED/verify保護契約に接続する。未受入workflowの名前やSHAを仮定して生成しない。既存minimal/replayを変えない。
+
+
+## 新規Project seedの共通供給
+
+`Invoke-KntReferenceSeedSession` は既存の承認済みsnapshot sessionを一回利用し、固定10pathの新規Project seedを返す。中央AGENTS/knt.cmdと既存Project docs/contract templatesを読み、明示manifest/defaults/specは保持、正式Verify内容は信頼済みhost（#1121 owner）からのみ供給。標準初期pathに限定し、独立stageで既存doctorの中央index/Schema/互換/ローカル必須物の検査を通す。Project commandは実行しない。CURRENT以外/不足素材/非互換/必要なhost asset不足は拒否、stageを消去する。seed結果はdevflow #1168/#1169が消費する形式であり、新規repoの書込・実運用provider配線・CI証拠の真正性は別責務。

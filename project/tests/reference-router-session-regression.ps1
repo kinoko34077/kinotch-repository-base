@@ -49,6 +49,8 @@ try {
     }
     New-Item -ItemType Directory -Path (Join-Path $source "project") | Out-Null
     Copy-Item -LiteralPath (Join-Path $root "project/project.json") -Destination (Join-Path $source "project/project.json")
+    New-Item -ItemType Directory -Path (Join-Path $source "project/templates") | Out-Null
+    Copy-Item -LiteralPath (Join-Path $root "project/templates/reference") -Destination (Join-Path $source "project/templates/reference") -Recurse
     Copy-Item -LiteralPath (Join-Path $root ".kinotch/tests/fixtures/valid-minimal") -Destination (Join-Path $consumer "project") -Recurse
     $manifestPath = Join-Path $consumer "project/project.json"
     $manifest = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
@@ -142,6 +144,35 @@ try {
     catch { if ($_.Exception.Message -notmatch "requires CURRENT") { throw }; $rejectedOfflineVerification=$true }
     if (-not $rejectedOfflineVerification -or $hostCalls.resolve -ne 3 -or
         @(Get-ChildItem -LiteralPath $trustedHostRoot -Filter "session-*").Count -ne 0) { throw "Offline formal verification was not rejected or cleaned" }
+    # Shared new-repository seed uses the same admitted snapshot as commands.
+    # No Project command execution or local Base materialization.
+    $seedManifest = Get-Content -LiteralPath (Join-Path $consumer "project/project.json") -Raw -Encoding UTF8 | ConvertFrom-Json
+    $seedManifest.paths | Add-Member -NotePropertyName defaults -NotePropertyValue "defaults.json" -Force
+    $seedManifest.commands.setup = [pscustomobject]@{run="throw 'seed must not execute setup'";cwd="."}
+    $seedJson = $seedManifest | ConvertTo-Json -Depth 20
+    $seedDefaults = '{"schema_version":1,"packs":{}}'
+    $seedScratch = Join-Path $temp "seed-scratch"
+    New-Item -ItemType Directory -Path $seedScratch | Out-Null
+    $seedArgs=@{InvokeSession=$invoke;ScratchRoot=$seedScratch;PowerShellExecutable=$hostExe;ManifestJson=$seedJson;DefaultsJson=$seedDefaults;Specification="# Explicit Project";TrustedVerifyContent="# fixture workflow only"}
+    $decision.commit=$commitB; $decision.mode="CURRENT"
+    $newSeed=Invoke-KntReferenceSeedSession @seedArgs
+    if ($newSeed.commit -cne $commitB -or $newSeed.doctor_exit_code -ne 0 -or
+        $newSeed.files.Count -ne 10 -or $newSeed.files["project/project.json"] -cne $seedJson -or
+        $newSeed.files["project/defaults.json"] -cne $seedDefaults -or $newSeed.files["project/docs/SPEC.md"] -cne "# Explicit Project" -or
+        $newSeed.files[".github/workflows/verify.yml"] -cne "# fixture workflow only" -or
+        @($newSeed.files.Keys | Where-Object {$_ -like ".kinotch/*"}).Count -ne 0) {throw "Reference seed content or identity mismatch"}
+    $decision.commit=$commitA
+    $seedRejected=$false
+    try {Invoke-KntReferenceSeedSession @seedArgs | Out-Null}
+    catch {if ($_.Exception.Message -notmatch "did not pass") {throw}; $seedRejected=$true}
+    if (-not $seedRejected -or @(Get-ChildItem -LiteralPath $seedScratch -Force).Count -ne 0) {throw "Incompatible reference seed not rejected or cleaned"}
+    $decision.mode="OFFLINE"; $decision.commit=$commitB
+    $seedRejected=$false
+    try {Invoke-KntReferenceSeedSession @seedArgs | Out-Null}
+    catch {if ($_.Exception.Message -notmatch "CURRENT admission") {throw};$seedRejected=$true}
+    if (-not $seedRejected -or @(Get-ChildItem -LiteralPath $seedScratch -Force).Count -ne 0) {throw "Offline seed not rejected or cleaned"}
+    $decision.mode="CURRENT"
+    Write-Host "[PASS] Reference new Project seed: ten fixed files, admitted doctor, explicit data, incompatible/offline rejection, no Project commands, cleanup"
     # Exercise the same fixed CLI entry a trusted installation will expose.
     # Copy only to this disposable host fixture, not to a consumer repo.
     $install = Join-Path $trustedHostRoot "base-source"
@@ -200,7 +231,7 @@ return @{GitExecutable=$fixtureProfile.git;Channel="fixture";PolicyRevision="fix
     $rejected=$false
     try { Invoke-KntReferenceRouterSession @run -Command reference-path | Out-Null }
     catch { if ($_.Exception.Message -notmatch "outside the reference Router adapter scope") {throw};$rejected=$true }
-    if (-not $rejected -or $calls.resolve -ne 8) { throw "Out-of-scope command resolved a revision" }
+    if (-not $rejected -or $calls.resolve -ne 11) { throw "Out-of-scope command resolved a revision" }
     if (@(Get-ChildItem -LiteralPath $stages -Force).Count -ne 0 -or (Fingerprint-RouterConsumer) -cne $before) { throw "Stage leak or consumer mutation" }
     Write-Host "[PASS] Reference verification session: one resolution, same SHA, ordered doctor/setup/verify, first failure, formal offline rejection, central host entry"
     Write-Host "[PASS] Reference Router session: protected A/B, exact revision and exit, verify, structured arguments, legacy rejection, cache reuse, offline, no consumer change"
