@@ -185,7 +185,7 @@ Behavioral baseline: v0.5.24 remains the accepted release. v0.5.27 is a source c
 
 ## 参照型Baseの開発（#66）
 
-B0設計・合成Git試作はPR #67で受入済み。既存利用者の配布方式・Base v0.5.24は未変更。B1.1の独立snapshot供給はPR #68で非稼働試作を受入済み。B1.2の取得・保持、信頼済み承認源・実運用入口は開発中であり、本番の利用可能機能ではない。設計候補・検証範囲はADR0006と#66を参照。
+B0–B1.3 (#67–#70)、B2 source候補 (#71)、固定origin/隔離Git/統合Router/非破壊移行判定 (#72)、独立stageでの移行候補・検証・復元 (#73) はmainへ限定受入済み。既存利用者の配布方式・正式Base v0.5.24は未変更。信頼済み承認源・host保護・本番入口/実consumer採用は未受入であり、本番利用可能とは扱わない。設計・検証範囲はADR0006、#66を参照。
 
 ## Next work
 
