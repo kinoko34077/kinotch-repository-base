@@ -261,13 +261,16 @@ try {
     $publicCache = Join-Path $hostFixture "public-cache"
     New-Item -ItemType Directory -Path $publicCache | Out-Null
     $publicCall = @{seen=$false}
+    # Receive-KntReferenceCommit has its own dynamically scoped $Source (URL).
+    # Keep the fixture transport source under a distinct name.
+    $fixturePublicLocalSource = $Source
     $retainedPublic = Receive-KntReferenceCommit -CacheRoot $publicCache -PublicRepository "kinoko34077/kinotch-repository-base" -Commit $commitB -EmptyTemplate $Template -InvokeGit {
         param($repo,$argv)
         if ("fetch" -in $argv) {
             $remoteIndex = [array]::IndexOf($argv,"https://github.com/kinoko34077/kinotch-repository-base.git")
             if ($remoteIndex -lt 0 -or $argv[-1] -cne ($commitB + ":refs/kinotch/retained/" + $commitB)) { throw "Public exact fetch mismatch" }
             $publicCall.seen = $true
-            $argv[$remoteIndex] = $Source
+            $argv[$remoteIndex] = $fixturePublicLocalSource
         }
         Invoke-KntIsolatedReferenceGit -GitExecutable $Git -RepositoryPath $repo -GitArguments $argv -EmptyConfig $isolatedConfig -EmptyHooks $Hooks
     }

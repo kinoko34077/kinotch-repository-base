@@ -40,7 +40,11 @@ function Invoke-KntIsolatedReferenceGit {
             "-c","credential.helper=","-c","core.askPass=","-c","gc.auto=0","-c","maintenance.auto=false")
         $output = @(& $GitExecutable @isolatedArgs @GitArguments 2>$null)
         $code = $LASTEXITCODE
-        if ($code -ne 0) { throw "Isolated reference Git failed (exit $code)" }
+        if ($code -ne 0) {
+            $operation = @($GitArguments | Where-Object { $_ -in @("init","fetch","rev-parse","cat-file","ls-tree","checkout") } | Select-Object -First 1) -join ""
+            if (-not $operation) { $operation = "other" }
+            throw "Isolated reference Git failed (operation $operation, exit $code)"
+        }
         return $output
     }
     finally {
