@@ -72,3 +72,75 @@ function Get-KntLegacyReferenceMigrationPlan {
         items=$items.ToArray()
     }
 }
+
+# Build and inspect a migration candidate only in a disposable independent snapshot.
+# Replacement contents are supplied by the trusted host, not a consumer manifest.
+# No consumer ref, worktree, index or source cache is changed by this function.
+function Invoke-KntLegacyReferenceMigrationCandidate {
+    param(
+        [Parameter(Mandatory=$true)][string]$SourceRepositoryPath,
+        [Parameter(Mandatory=$true)][string]$SourceCommit,
+        [Parameter(Mandatory=$true)][string]$ConsumerCache,
+        [Parameter(Mandatory=$true)][string]$ConsumerCommit,
+        [Parameter(Mandatory=$true)][string]$StageRoot,
+        [Parameter(Mandatory=$true)][string]$EmptyTemplate,
+        [Parameter(Mandatory=$true)][System.Collections.IDictionary]$ReplacementFiles,
+        [Parameter(Mandatory=$true)][scriptblock]$InvokeGit,
+        [Parameter(Mandatory=$true)][scriptblock]$UseCandidate
+    )
+    $expected = @("AGENTS.md","knt.cmd",".github/workflows/verify.yml")
+    if (@($ReplacementFiles.Keys).Count -ne $expected.Count) { throw "Exactly three trusted host entry replacements are required" }
+    foreach ($path in $expected) {
+        if (@($ReplacementFiles.Keys) -cnotcontains $path -or $ReplacementFiles[$path] -isnot [string] -or [string]::IsNullOrWhiteSpace($ReplacementFiles[$path])) {
+            throw "Missing or invalid trusted host entry replacement: $path"
+        }
+    }
+    $stage = New-KntReferenceSnapshot -Cache $ConsumerCache -Commit $ConsumerCommit -StageRoot $StageRoot -EmptyTemplate $EmptyTemplate -InvokeGit $InvokeGit
+    try {
+        $plan = Get-KntLegacyReferenceMigrationPlan -SourceRepositoryPath $SourceRepositoryPath -SourceCommit $SourceCommit -ConsumerRepositoryPath $stage -ConsumerCommit $ConsumerCommit -InvokeGit $InvokeGit
+        if ($plan.status -cne "CANDIDATE") { throw "Legacy migration plan is HOLD; no candidate applied" }
+        if (@(& $InvokeGit $stage @("status","--porcelain")).Count -ne 0) { throw "Independent migration snapshot is not clean" }
+        $oldTree = [string](& $InvokeGit $stage @("rev-parse",($ConsumerCommit+"^{tree}")))
+        $retired = @(Get-KntMigrationTreeEntry $stage $ConsumerCommit ".kinotch" $InvokeGit)
+        if ($retired.Count -ne 1 -or $retired[0].type -cne "tree") { throw "Legacy Base tree missing" }
+        # The sole destructive operation targets our newly created stage only.
+        & $InvokeGit $stage @("rm","-r","--quiet","--",".kinotch") | Out-Null
+        foreach ($path in $expected) {
+            $target = Assert-KntSafePath -Root $stage -Candidate (Join-Path $stage $path) -Description "Migration entry replacement"
+            [IO.File]::WriteAllText($target,[string]$ReplacementFiles[$path],(New-Object System.Text.UTF8Encoding($false)))
+        }
+        & $InvokeGit $stage (@("add","--")+$expected) | Out-Null
+        $tree = [string](& $InvokeGit $stage @("write-tree"))
+        Assert-KntReferenceCommit $tree
+        $changes = @(& $InvokeGit $stage @("diff-tree","-r","--name-status","--no-renames",$ConsumerCommit,$tree))
+        $seen = @()
+        $removed = 0
+        foreach ($line in $changes) {
+            if ($line -cmatch '\AD\t\.kinotch/.+\z') { $removed++; continue }
+            if ($line -cmatch '\AM\t(.+)\z' -and $expected -ccontains $Matches[1] -and $seen -cnotcontains $Matches[1]) {
+                $seen += $Matches[1]
+                continue
+            }
+            throw "Migration candidate contains an unexpected tree change"
+        }
+        if ($removed -lt 1 -or $seen.Count -ne $expected.Count -or (Test-Path -LiteralPath (Join-Path $stage ".kinotch"))) {
+            throw "Incomplete legacy Base retirement or host entry replacement"
+        }
+        # Verify the real candidate with the trusted caller, still in the stage.
+        $result = @(& $UseCandidate $stage $tree $plan)
+        # Restoration is explicitly tested in the same disposable repository.
+        & $InvokeGit $stage @("reset","--hard","--quiet",$ConsumerCommit) | Out-Null
+        if ([string](& $InvokeGit $stage @("write-tree")) -cne $oldTree -or
+            @(& $InvokeGit $stage @("status","--porcelain")).Count -ne 0) {
+            throw "Independent migration rollback did not restore the exact tree"
+        }
+        return [pscustomobject]@{
+            source_commit=$SourceCommit; consumer_commit=$ConsumerCommit; candidate_tree=$tree
+            restored_tree=$oldTree; removed_base_files=$removed; replaced_entries=$expected
+            result=$result; applied_to_consumer=$false
+        }
+    }
+    finally {
+        Remove-Item -LiteralPath $stage -Recurse -Force -ErrorAction Stop
+    }
+}
